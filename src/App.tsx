@@ -722,7 +722,7 @@ export default function App() {
 
   // Uygulamanın tanımlı olmayan adreslerinde temaya uygun 404 ekranı göster.
   const pathname = window.location.pathname;
-  const isKnownPath = pathname === '/' || pathname === '/index.html' || /^\\/paper\\/[^/]+\\/?$/.test(pathname);
+  const isKnownPath = pathname === '/' || pathname === '/index.html' || /^\/paper\/[^/]+\/?$/.test(pathname);
   if (!isKnownPath) return <NotFoundPage />;
 
   const eggClass = easterEgg === 'pink-flowers' ? 'easter-egg-pink' : easterEgg === 'ocean-fish' ? 'easter-egg-ocean' : '';
