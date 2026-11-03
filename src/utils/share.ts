@@ -1,23 +1,19 @@
 import { Paper } from '../types';
 import { WORK_ID_RE, shortWorkId } from './openalex';
 
-/** Paylaşım bağlantılarında kullanılan sorgu parametresi: ?makale=W123456789 */
-export const SHARE_PARAM = 'makale';
-
-/** Uygulamanın kök adresi (alt dizinde yayınlansa bile doğru çalışır). */
-function appBaseUrl(): string {
-  return `${window.location.origin}${window.location.pathname}`;
-}
-
+/** Uygulamanın herkese açık, arama motorlarınca okunabilir makale sayfası. */
 export function buildShareUrl(paper: Pick<Paper, 'id'>): string {
   const id = shortWorkId(paper.id);
-  return WORK_ID_RE.test(id) ? `${appBaseUrl()}?${SHARE_PARAM}=${id}` : appBaseUrl();
+  return WORK_ID_RE.test(id)
+    ? `${window.location.origin}/paper/${id}`
+    : `${window.location.origin}/`;
 }
 
-/** Açılışta adres çubuğundaki paylaşılan makale kimliğini okur (geçersizse null). */
+/** Açılışta eski paylaşım bağlantılarındaki makale kimliğini okur. */
 export function readSharedIdFromLocation(): string | null {
   try {
-    const raw = new URLSearchParams(window.location.search).get(SHARE_PARAM);
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('makale') || params.get('share');
     if (!raw) return null;
     const id = raw.trim().toUpperCase();
     return WORK_ID_RE.test(id) ? id : null;
@@ -26,12 +22,13 @@ export function readSharedIdFromLocation(): string | null {
   }
 }
 
-/** Makale açıldıktan sonra parametreyi adresten kaldırır; yenileyince aynı makale tekrar açılmasın. */
+/** Eski sorgu parametresini temizler. */
 export function clearSharedParam(): void {
   try {
     const url = new URL(window.location.href);
-    if (!url.searchParams.has(SHARE_PARAM)) return;
-    url.searchParams.delete(SHARE_PARAM);
+    if (!url.searchParams.has('makale') && !url.searchParams.has('share')) return;
+    url.searchParams.delete('makale');
+    url.searchParams.delete('share');
     window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
   } catch {
     /* sessizce geç */
@@ -65,10 +62,7 @@ async function copyText(text: string): Promise<boolean> {
 
 export type ShareResult = 'shared' | 'copied' | 'cancelled' | 'failed';
 
-/**
- * Telefonda sistemin paylaşım menüsünü açar (WhatsApp, Mesajlar vb.).
- * Desteklenmiyorsa bağlantıyı panoya kopyalar.
- */
+/** Telefonda paylaşım menüsünü açar; desteklenmiyorsa bağlantıyı kopyalar. */
 export async function sharePaper(paper: Paper, title?: string): Promise<ShareResult> {
   const url = buildShareUrl(paper);
   const shownTitle = (title || paper.title || 'Makale').trim();
@@ -83,7 +77,6 @@ export async function sharePaper(paper: Paper, title?: string): Promise<ShareRes
       return 'shared';
     } catch (err: any) {
       if (err && err.name === 'AbortError') return 'cancelled';
-      /* başka bir hata: kopyalamayı dene */
     }
   }
   return (await copyText(url)) ? 'copied' : 'failed';
