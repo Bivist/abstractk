@@ -1,4 +1,8 @@
 {
+  "rewrites": [
+    { "source": "/paper/:id", "destination": "/api/paper?id=:id" },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
