@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { SettingsState } from '../types';
-import { Smartphone, Trash2, LogIn, LogOut, UserRound, Cloud } from 'lucide-react';
+import { Smartphone, Trash2, LogIn, LogOut, UserRound, Cloud, Save } from 'lucide-react';
 
 interface SettingsScreenProps {
   settings: SettingsState;
@@ -11,6 +11,8 @@ interface SettingsScreenProps {
   /** Giriş özelliği (Supabase) yapılandırılmış mı? Değilse Hesap bölümü gizlenir. */
   authEnabled?: boolean;
   userEmail?: string | null;
+  userDisplayName?: string | null;
+  onUpdateDisplayName?: (name: string) => Promise<{ ok: boolean; message?: string }>;
   syncStatus?: 'idle' | 'syncing' | 'synced' | 'error';
   onOpenAuth?: () => void;
   onSignOut?: () => void;
@@ -24,10 +26,26 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   langDict,
   authEnabled = false,
   userEmail = null,
+  userDisplayName = null,
+  onUpdateDisplayName,
   syncStatus = 'idle',
   onOpenAuth,
   onSignOut
 }) => {
+  const [displayName, setDisplayName] = useState(userDisplayName || '');
+  const [nameBusy, setNameBusy] = useState(false);
+  const [nameMessage, setNameMessage] = useState<string | null>(null);
+  useEffect(() => { setDisplayName(userDisplayName || ''); }, [userDisplayName]);
+  const saveDisplayName = async () => {
+    if (!onUpdateDisplayName || nameBusy) return;
+    setNameBusy(true);
+    setNameMessage(null);
+    try {
+      const result = await onUpdateDisplayName(displayName);
+      setNameMessage(result.message || (result.ok ? 'Kaydedildi.' : 'Kaydedilemedi.'));
+    } finally { setNameBusy(false); }
+  };
+
   const syncText =
     syncStatus === 'syncing' ? (langDict.sync_syncing || 'Eşitleniyor…')
     : syncStatus === 'error' ? (langDict.sync_error || 'Eşitlenemedi, tekrar denenecek')
@@ -49,11 +67,30 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                     <UserRound className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-sm font-bold text-[#0a2540] dark:text-[#e0f4ff] block truncate">{userEmail}</span>
+                    <span className="text-sm font-bold text-[#0a2540] dark:text-[#e0f4ff] block truncate">{userDisplayName || userEmail}</span>
+                    <span className="text-[11px] text-[#4a7a96] dark:text-[#5fa8c8] block truncate">{userEmail}</span>
                     <span className={`text-[11px] flex items-center gap-1 mt-0.5 ${syncStatus === 'error' ? 'text-rose-500' : 'text-[#4a7a96] dark:text-[#5fa8c8]'}`}>
                       <Cloud className="w-3 h-3" /> {syncText}
                     </span>
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-[#4a7a96] dark:text-[#5fa8c8]">Görünen ad</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={displayName}
+                      maxLength={40}
+                      onChange={e => setDisplayName(e.target.value)}
+                      placeholder="İsmini belirle (isteğe bağlı)"
+                      className="min-w-0 flex-1 px-3 py-2.5 rounded-xl border border-[#c5dfe9] dark:border-[#0d2f45] bg-[#f7fbfd] dark:bg-[#020f1a] text-sm text-[#0a2540] dark:text-[#e0f4ff] outline-none focus:border-sky-500"
+                    />
+                    <button type="button" onClick={saveDisplayName} disabled={nameBusy || !displayName.trim() || displayName.trim() === (userDisplayName || '')} className="px-3 rounded-xl bg-sky-700 text-white text-xs font-bold disabled:opacity-40">
+                      <Save className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {nameMessage && <p role="status" className="text-[11px] text-[#4a7a96] dark:text-[#5fa8c8]">{nameMessage}</p>}
+                  <p className="text-[11px] text-[#4a7a96] dark:text-[#5fa8c8]">Bu isim hesabında saklanır ve giriş yaptığında diğer cihazlarında da görünür.</p>
                 </div>
                 <button
                   type="button"
