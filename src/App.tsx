@@ -12,6 +12,7 @@ import { useAuth } from './hooks/useAuth';
 import { authEnabled } from './lib/supabase';
 import { pullCloud, pushCloud, mergeSnapshots, type UserSnapshot } from './utils/cloudSync';
 import { signOutUser, updateDisplayName } from './utils/auth';
+import { trackEvent } from './utils/analytics';
 
 import { IntroSplash } from './components/IntroSplash';
 import { TopBar } from './components/TopBar';
@@ -305,6 +306,18 @@ export default function App() {
   // Localization Dictionary
   const langDict = I18N[settings.lang || 'tr'] || I18N.tr;
 
+  useEffect(() => {
+    if (detailPaper?.id) trackEvent('paper_viewed', { paper_id: detailPaper.id });
+  }, [detailPaper?.id]);
+
+  useEffect(() => {
+    trackEvent('app_tab_viewed', { tab: currentTab });
+  }, [currentTab]);
+
+  useEffect(() => {
+    if (auth.ready && auth.user) trackEvent('user_authenticated');
+  }, [auth.user?.id, auth.ready]);
+
   // Splash bittikten sonra paylaşılan makaleyi aç
   useEffect(() => {
     if (showSplash || !pendingShared) return;
@@ -452,16 +465,19 @@ export default function App() {
   // Makaleyi bağlantıyla paylaş: telefonda paylaşım menüsü, olmazsa panoya kopyala
   const handleSharePaper = useCallback(async (paper: Paper) => {
     const result = await sharePaper(paper, settings.translate && paper.trTitle ? paper.trTitle : paper.title);
+    if (result === 'shared' || result === 'copied') trackEvent('paper_shared', { paper_id: paper.id, method: result });
     if (result === 'copied') setToast(langDict.share_copied || 'Bağlantı kopyalandı');
     else if (result === 'failed') setToast(langDict.share_failed || 'Bağlantı paylaşılamadı');
   }, [settings.translate, langDict]);
 
   // Detay ekranındaki beğen / beğenmekten vazgeç
   const handleToggleLikeInDetail = useCallback((paper: Paper) => {
+    const alreadyLiked = likedPapers.some(p => p.id === paper.id);
+    trackEvent(alreadyLiked ? 'paper_unliked' : 'paper_liked', { paper_id: paper.id });
     setLikedPapers(prev =>
       prev.some(p => p.id === paper.id) ? prev.filter(p => p.id !== paper.id) : [paper, ...prev]
     );
-  }, []);
+  }, [likedPapers]);
 
   // Multi-tier Paper Fetching
   // Not: filtre ve "loading" bilgisi ref'lerden okunur; böylece "Uygula"dan hemen sonra
@@ -592,6 +608,7 @@ export default function App() {
       // LIKE
       SFX.right();
       if (!likedPapers.some(p => p.id === paper.id)) {
+        trackEvent('paper_liked', { paper_id: paper.id, source: 'swipe' });
         setLikedPapers(prev => [paper, ...prev]);
       }
     } else {
@@ -609,6 +626,7 @@ export default function App() {
     registerSwipeForSpeedCheck();
     trackPaperRead();
     if (!likedPapers.some(p => p.id === paper.id)) {
+      trackEvent('paper_liked', { paper_id: paper.id, source: 'reels' });
       setLikedPapers(prev => [paper, ...prev]);
     }
   };
@@ -911,6 +929,12 @@ export default function App() {
           const applied: FilterState = { ...newFilter, from: years.from, to: years.to };
           setFilter(applied);
           setIsFilterOpen(false);
+          trackEvent('filters_applied', {
+            has_subject: applied.sel.size > 0,
+            has_year_range: Boolean(applied.from || applied.to),
+            has_author: Boolean(applied.authorId || applied.aName),
+            has_journal: Boolean(applied.journalId || applied.jName)
+          });
           resetAndSearch(applied);
         }}
         langDict={langDict}
