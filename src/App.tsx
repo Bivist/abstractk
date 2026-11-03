@@ -705,6 +705,7 @@ export default function App() {
   const handleAssignFolder = (folderName: string) => {
     if (folderActionType === 'assign') {
       const selectedArr = Array.from(selectedLikeIds);
+      trackEvent('papers_added_to_folder', { paper_count: selectedArr.length });
       setFolders(prev => {
         const next = { ...prev };
         selectedArr.forEach(id => {
