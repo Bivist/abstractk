@@ -75,6 +75,19 @@ export async function updatePassword(password: string): Promise<AuthResult> {
   return error ? { ok: false, message: friendly(error) } : { ok: true, message: 'Şifren güncellendi.' };
 }
 
+/** Kullanıcının isteğe bağlı görünen adını Supabase profil metadata alanında saklar. */
+export async function updateDisplayName(displayName: string): Promise<AuthResult> {
+  if (!supabase) return { ok: false, message: 'Profil şu an güncellenemiyor.' };
+  const cleanName = displayName.trim();
+  if (!cleanName || cleanName.length > 40) {
+    return { ok: false, message: 'İsim 1–40 karakter arasında olmalı.' };
+  }
+  const { error } = await supabase.auth.updateUser({ data: { display_name: cleanName } });
+  return error
+    ? { ok: false, message: 'İsim kaydedilemedi. Lütfen tekrar dene.' }
+    : { ok: true, message: 'Görünen adın güncellendi.' };
+}
+
 export async function signOutUser(): Promise<void> {
   if (!supabase) return;
   await supabase.auth.signOut({ scope: 'local' }); // yalnızca bu cihaz; diğer cihazlar açık kalır
