@@ -5,7 +5,7 @@ interface VercelRequest extends IncomingMessage {
 }
 
 const SITE = 'https://abstractk.vercel.app';
-const WORK_ID_RE = /^W\\d{3,15}$/;
+const WORK_ID_RE = /^W\d{3,15}$/;
 
 function escapeHtml(value: unknown): string {
   return String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -19,7 +19,7 @@ function abstractFromIndex(index: Record<string, number[]> | null | undefined): 
   for (const [word, positions] of Object.entries(index)) {
     for (const position of positions) words[position] = word;
   }
-  return words.join(' ').replace(/\\s+/g, ' ').trim();
+  return words.join(' ').replace(/\s+/g, ' ').trim();
 }
 
 export default async function handler(req: VercelRequest, res: ServerResponse) {
