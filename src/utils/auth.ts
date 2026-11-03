@@ -44,12 +44,12 @@ export async function signInWithEmail(email: string, password: string): Promise<
   return error ? { ok: false, message: friendly(error) } : { ok: true };
 }
 
-export async function signUpWithEmail(email: string, password: string): Promise<AuthResult> {
+export async function signUpWithEmail(email: string, password: string, displayName = ''): Promise<AuthResult> {
   if (!supabase) return { ok: false, message: 'Giriş şu an kullanılamıyor.' };
   const { data, error } = await supabase.auth.signUp({
     email: email.trim(),
     password,
-    options: { emailRedirectTo: redirectUrl() }
+    options: { emailRedirectTo: redirectUrl(), data: displayName.trim() ? { display_name: displayName.trim() } : {} }
   });
   if (error) return { ok: false, message: friendly(error) };
   // E-posta zaten kayıtlıysa Supabase (hesap sızdırmamak için) hata yerine boş identities döner.
