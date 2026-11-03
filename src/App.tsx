@@ -34,6 +34,7 @@ import type { EasterEggMode } from './components/ThreeEasterEgg';
 const ThreeEasterEgg = lazy(() => import('./components/ThreeEasterEgg').then(m => ({ default: m.ThreeEasterEgg })));
 import { KasalotTailSplash } from './components/KasalotTailSplash';
 import { PolarAuroraEffect } from './components/PolarAuroraEffect';
+import { NotFoundPage } from './components/NotFoundPage';
 
 const DEFAULT_SETTINGS: SettingsState = {
   theme: 'auto',
@@ -718,6 +719,11 @@ export default function App() {
       setSelectedLikeIds(new Set());
     }
   };
+
+  // Uygulamanın tanımlı olmayan adreslerinde temaya uygun 404 ekranı göster.
+  const pathname = window.location.pathname;
+  const isKnownPath = pathname === '/' || pathname === '/index.html' || /^\\/paper\\/[^/]+\\/?$/.test(pathname);
+  if (!isKnownPath) return <NotFoundPage />;
 
   const eggClass = easterEgg === 'pink-flowers' ? 'easter-egg-pink' : easterEgg === 'ocean-fish' ? 'easter-egg-ocean' : '';
   const polarClass = isPolarNight ? 'polar-night-active' : '';
