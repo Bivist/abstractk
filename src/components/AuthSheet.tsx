@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Mail, Lock, Loader2 } from 'lucide-react';
+import { X, Mail, Lock, Loader2, UserRound } from 'lucide-react';
 import {
   signInWithGoogle,
   signInWithEmail,
@@ -36,6 +36,7 @@ const GoogleLogo = () => (
 export const AuthSheet: React.FC<AuthSheetProps> = ({ isOpen, onClose, recovery, onRecoveryDone, guestOption = false, langDict }) => {
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +89,7 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({ isOpen, onClose, recovery,
       if (mode === 'signin') {
         finish(await signInWithEmail(email, password));
       } else if (mode === 'signup') {
-        finish(await signUpWithEmail(email, password));
+        finish(await signUpWithEmail(email, password, displayName));
       } else if (mode === 'forgot') {
         finish(await sendPasswordReset(email), false);
       } else {
@@ -180,6 +181,22 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({ isOpen, onClose, recovery,
           )}
 
           <form onSubmit={submit} className="space-y-3" noValidate>
+            {mode === 'signup' && (
+              <label className="relative block">
+                <span className="sr-only">Görünen ad (isteğe bağlı)</span>
+                <UserRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#4a7a96] dark:text-[#5fa8c8]" />
+                <input
+                  type="text"
+                  autoComplete="nickname"
+                  maxLength={40}
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Görünen ad (isteğe bağlı)"
+                  className={inputCls}
+                />
+              </label>
+            )}
+
             {mode !== 'recovery' && (
               <label className="relative block">
                 <span className="sr-only">E-posta</span>
