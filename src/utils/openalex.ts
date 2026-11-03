@@ -307,13 +307,34 @@ export async function fetchWorkById(shortId: string): Promise<Paper | null> {
 }
 
 export async function resolveEntity(kind: "authors" | "sources", query: string): Promise<{ id: string; name: string | null }> {
-  if (!query.trim()) return { id: "", name: "" };
+  const requested = query.trim();
+  if (!requested) return { id: "", name: "" };
+
   try {
-    const res = await fetch(`${API}/${kind}?search=${encodeURIComponent(query)}&per-page=1&select=id,display_name`);
+    // Tek bir arama sonucunu körlemesine seçmek, benzer isimli başka yazar/dergileri
+    // eşleştirebiliyordu. Birkaç adayı getirip önce tam, sonra tekil eşleşme ara.
+    const res = await fetch(
+      `${API}/${kind}?search=${encodeURIComponent(requested)}&per_page=25&select=id,display_name`
+    );
     if (!res.ok) return { id: "", name: null };
+
     const json = await res.json();
-    const item = json.results?.[0];
-    return item ? { id: item.id.split("/").pop(), name: item.display_name } : { id: "", name: null };
+    const candidates: Array<{ id: string; display_name: string }> = json.results || [];
+    const wanted = normalizeString(requested).replace(/[^a-z0-9 ]/g, " ").replace(/\\s+/g, " ").trim();
+    const normalized = candidates.map(item => ({
+      item,
+      name: normalizeString(item.display_name || "").replace(/[^a-z0-9 ]/g, " ").replace(/\\s+/g, " ").trim()
+    }));
+
+    const exact = normalized.find(candidate => candidate.name === wanted);
+    const partial = normalized.filter(candidate =>
+      candidate.name.includes(wanted) || wanted.includes(candidate.name)
+    );
+    const match = exact || (partial.length === 1 ? partial[0] : null);
+
+    return match
+      ? { id: match.item.id.split("/").pop() || "", name: match.item.display_name }
+      : { id: "", name: null };
   } catch {
     return { id: "", name: null };
   }
