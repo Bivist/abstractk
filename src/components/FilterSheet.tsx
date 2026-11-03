@@ -122,10 +122,23 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
   const handleApply = async () => {
     setStatusMessage("Uygulanıyor…");
     try {
+      // Bu özel anahtar kelimeler arama filtresi değil, mevcut easter egg tetikleyicileridir.
+      const isEggKeyword = /(acuci|açuçi|asude|asoude|binali|binosh|binos|binoş)/i.test(normalizeString(authorInput));
       const [authorRes, journalRes] = await Promise.all([
-        resolveEntity("authors", authorInput),
+        isEggKeyword || !authorInput.trim()
+          ? Promise.resolve({ id: "", name: authorInput.trim() })
+          : resolveEntity("authors", authorInput),
         resolveEntity("sources", journalInput)
       ]);
+
+      if (authorInput.trim() && !isEggKeyword && !authorRes.id) {
+        setStatusMessage("Bu yazar adıyla güvenilir bir eşleşme bulunamadı. Lütfen adı daha açık yaz (ad + soyad).");
+        return;
+      }
+      if (journalInput.trim() && !journalRes.id) {
+        setStatusMessage("Bu dergi adıyla güvenilir bir eşleşme bulunamadı. Derginin tam adını kontrol et.");
+        return;
+      }
 
       const years = normalizeYears(draft.from, draft.to);
       const finalFilter: FilterState = {
@@ -141,8 +154,8 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
       onApply(finalFilter);
       setStatusMessage("");
       onClose();
-    } catch (err: any) {
-      setStatusMessage("Filtreler uygulanamadı.");
+    } catch {
+      setStatusMessage("Filtreler uygulanamadı. Bağlantını kontrol edip tekrar dene.");
     }
   };
 
