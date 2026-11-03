@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://abstractk.netlify.app/sitemap.xml
+Sitemap: https://abstractk.vercel.app/sitemap.xml
