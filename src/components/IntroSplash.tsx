@@ -35,8 +35,8 @@ export const IntroSplash: React.FC<IntroSplashProps> = ({ onComplete, lang = 'tr
           onClick={handleExit}
           className="fixed inset-0 z-50 flex items-center justify-center bg-[#eef7fb] dark:bg-[#020f1a] cursor-pointer select-none"
         >
-          {/* Soft ambient pearl glow behind the logo */}
-          <div className="absolute w-80 h-80 rounded-full bg-gradient-to-tr from-sky-400/20 to-cyan-300/15 dark:from-sky-500/15 dark:to-cyan-400/10 blur-3xl pointer-events-none" />
+          {/* Daha geniş, belirgin inci ışığı */}
+          <div className="absolute w-[min(82vw,440px)] aspect-square rounded-full bg-gradient-to-tr from-sky-400/25 via-cyan-300/20 to-teal-300/15 dark:from-sky-500/25 dark:via-cyan-400/15 dark:to-teal-400/10 blur-3xl pointer-events-none" />
 
           {/* Centered user logo - purely the logo image itself without any text clutter */}
           <motion.div
@@ -44,15 +44,15 @@ export const IntroSplash: React.FC<IntroSplashProps> = ({ onComplete, lang = 'tr
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 1.06, opacity: 0 }}
             transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-            className="relative flex items-center justify-center pointer-events-none"
+            className="relative flex items-center justify-center pointer-events-none drop-shadow-[0_18px_42px_rgba(2,132,199,0.25)]"
           >
             <AppIcon
               name="logo"
-              size={116}
-              className="w-28 h-28 sm:w-32 sm:h-32 object-contain drop-shadow-[0_12px_28px_rgba(2,132,199,0.22)]"
+              size={256}
+              className="w-56 h-56 sm:w-64 sm:h-64 object-contain"
               alt="Abstract Logo"
               fallback={
-                <div className="w-28 h-28 rounded-3xl bg-gradient-to-tr from-sky-600 via-cyan-500 to-teal-400 flex items-center justify-center text-white font-serif font-black text-4xl shadow-xl">
+                <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-[2.5rem] bg-gradient-to-tr from-sky-600 via-cyan-500 to-teal-400 flex items-center justify-center text-white font-serif font-black text-4xl shadow-xl">
                   A
                 </div>
               }
