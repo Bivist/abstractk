@@ -11,7 +11,7 @@ import { loadSettings, loadLikedPapers, loadFolders, loadHistory, loadLighthouse
 import { useAuth } from './hooks/useAuth';
 import { authEnabled } from './lib/supabase';
 import { pullCloud, pushCloud, mergeSnapshots, type UserSnapshot } from './utils/cloudSync';
-import { signOutUser } from './utils/auth';
+import { signOutUser, updateDisplayName } from './utils/auth';
 
 import { IntroSplash } from './components/IntroSplash';
 import { TopBar } from './components/TopBar';
@@ -848,6 +848,8 @@ export default function App() {
             langDict={langDict}
             authEnabled={authEnabled}
             userEmail={auth.user?.email ?? null}
+            userDisplayName={(auth.user?.user_metadata?.display_name as string | undefined) || (auth.user?.user_metadata?.full_name as string | undefined) || (auth.user?.user_metadata?.name as string | undefined) || null}
+            onUpdateDisplayName={updateDisplayName}
             syncStatus={syncStatus}
             onOpenAuth={() => setIsAuthOpen(true)}
             onSignOut={handleSignOut}
