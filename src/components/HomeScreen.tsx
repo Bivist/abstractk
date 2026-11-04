@@ -39,7 +39,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const beamDistanceMiles = (currentBeamPower * 0.24).toFixed(1);
 
   return (
-    <div className="flex-1 min-h-0 h-full overflow-y-auto overscroll-contain px-4 py-4 space-y-3.5 max-w-lg mx-auto w-full select-none pb-8">
+    <div className="flex-1 min-h-0 h-full overflow-y-auto overscroll-contain px-4 py-4 space-y-3.5 max-w-6xl mx-auto w-full select-none pb-8">
       {/* 1. Hero Banner matching reference image (Image 6) */}
       <div className="relative rounded-[28px] p-5 sm:p-6 text-white overflow-hidden shadow-lg shadow-sky-900/15 bg-gradient-to-br from-[#0284c7] via-[#0284c7] to-[#0ea5e9]">
         {/* Soft radial glow watermark */}
