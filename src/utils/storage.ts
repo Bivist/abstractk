@@ -39,7 +39,8 @@ export function sanitizeSettings(raw: unknown, defaults: SettingsState): Setting
     translate: typeof raw.translate === 'boolean' ? raw.translate : defaults.translate,
     sound: typeof raw.sound === 'boolean' ? raw.sound : defaults.sound,
     lang: raw.lang === 'en' || raw.lang === 'tr' ? raw.lang : defaults.lang,
-    reelsMode: typeof raw.reelsMode === 'boolean' ? raw.reelsMode : defaults.reelsMode
+    reelsMode: typeof raw.reelsMode === 'boolean' ? raw.reelsMode : defaults.reelsMode,
+    displayMode: raw.displayMode === 'mobile' || raw.displayMode === 'desktop' || raw.displayMode === 'auto' ? raw.displayMode : defaults.displayMode
   };
 }
 
