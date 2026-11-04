@@ -232,7 +232,7 @@ export const DiscoverReels: React.FC<DiscoverReelsProps> = ({
             transition={{ type: "spring", damping: 26, stiffness: 280, mass: 0.8 }}
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}
-            className="flex-1 relative m-3 mt-12 mb-3 bg-white/95 dark:bg-[#071828]/95 backdrop-blur-md border border-[#c5dfe9] dark:border-[#0d2f45] rounded-3xl p-5 sm:p-6 shadow-xl flex flex-col justify-between touch-none overflow-hidden"
+            className="flex-1 relative m-3 mt-12 mb-3 mx-auto w-[calc(100%-1.5rem)] max-w-4xl bg-white/95 dark:bg-[#071828]/95 backdrop-blur-md border border-[#c5dfe9] dark:border-[#0d2f45] rounded-3xl p-5 sm:p-8 shadow-xl flex flex-col justify-between touch-none overflow-hidden"
           >
             {/* Top Reel Header Tags */}
             <div className="flex items-center gap-2 flex-wrap z-10">
