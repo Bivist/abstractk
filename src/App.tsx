@@ -42,7 +42,8 @@ const DEFAULT_SETTINGS: SettingsState = {
   translate: false,
   sound: true,
   lang: 'tr',
-  reelsMode: false
+  reelsMode: false,
+  displayMode: 'auto'
 };
 
 /** Bu cihazdaki yerel verinin hangi hesaba ait olduğunu tutar (girişte birleştirme / bulut öncelikli kararı için). */
@@ -75,6 +76,14 @@ export default function App() {
 
   // Settings State with LocalStorage persistence
   const [settings, setSettings] = useState<SettingsState>(() => loadSettings(DEFAULT_SETTINGS));
+  const [wideViewport, setWideViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches);
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 900px)');
+    const update = () => setWideViewport(media.matches);
+    update(); media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  const desktopMode = settings.displayMode === 'desktop' || (settings.displayMode === 'auto' && wideViewport);
 
   // Fener Nöbeti (Lighthouse Watch Streak & Daily Reading Goal) State
   const [lighthouseWatch, setLighthouseWatch] = useState<LighthouseWatchState>(() => loadLighthouseWatch());
@@ -736,7 +745,7 @@ export default function App() {
   const polarClass = isPolarNight ? 'polar-night-active' : '';
 
   return (
-    <div className={`flex flex-col h-[100dvh] w-full max-w-[520px] mx-auto bg-[#eef7fb] dark:bg-[#020f1a] text-[#0a2540] dark:text-[#e0f4ff] relative overflow-hidden transition-colors duration-300 ocean-ambient-bg ${eggClass} ${polarClass}`}>
+    <div className={`flex h-[100dvh] w-full ${desktopMode ? "max-w-none flex-col" : "max-w-[520px] mx-auto flex-col"} bg-[#eef7fb] dark:bg-[#020f1a] text-[#0a2540] dark:text-[#e0f4ff] relative overflow-hidden transition-colors duration-300 ocean-ambient-bg ${eggClass} ${polarClass}`}>
       {/* SEO: <head> etiketleri (görsel çıktısı yok). Değerler index.html ile aynıdır. */}
       <Helmet>
         <title>Abstract — Bilimi Kaydırarak Keşfet</title>
@@ -764,15 +773,18 @@ export default function App() {
       )}
 
       {/* Top Application Bar */}
+      <div className="shrink-0">
       <TopBar
         onGoHome={() => setCurrentTab('home')}
         isDark={isDark}
         onToggleTheme={handleToggleTheme}
         reelsMode={currentTab === 'disc' && settings.reelsMode}
       />
+      </div>
 
+      <div className={desktopMode ? "flex flex-1 min-h-0 min-w-0 flex-row-reverse" : "flex flex-1 min-h-0 min-w-0 flex-col"}>
       {/* Main Content Area */}
-      <main className="flex-1 min-h-0 relative overflow-hidden flex flex-col">
+      <main className={desktopMode ? "flex-1 min-w-0 min-h-0 relative overflow-hidden flex flex-col max-w-[1600px] w-full mx-auto" : "flex-1 min-h-0 relative overflow-hidden flex flex-col"}>
         {currentTab === 'home' && (
           <HomeScreen
             onExplore={() => setCurrentTab('disc')}
@@ -925,13 +937,9 @@ export default function App() {
         </div>
       )}
 
-      {/* Bottom Navigation Tabs */}
-      <BottomNav
-        currentTab={currentTab}
-        onSelectTab={setCurrentTab}
-        langDict={langDict}
-        likesCount={likedPapers.length}
-      />
+      {/* Duyarlı gezinme */}
+      <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} langDict={langDict} likesCount={likedPapers.length} desktop={desktopMode} />
+      </div>
 
       {/* Filter Bottom Sheet */}
       <FilterSheet
