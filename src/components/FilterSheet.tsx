@@ -146,7 +146,7 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
         from: years.from,
         to: years.to,
         authorId: authorRes.id,
-        aName: authorRes.name || "",
+        aName: isEggKeyword ? authorInput.trim() : (authorRes.name || authorInput.trim()),
         journalId: journalRes.id,
         jName: journalRes.name || ""
       };
