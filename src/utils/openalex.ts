@@ -334,16 +334,16 @@ export async function resolveEntity(kind: "authors" | "sources", query: string):
     // Tek bir arama sonucunu körlemesine seçmek, benzer isimli başka yazar/dergileri
     // eşleştirebiliyordu. Birkaç adayı getirip önce tam, sonra tekil eşleşme ara.
     const res = await fetch(
-      `${API}/${kind}?search=${encodeURIComponent(requested)}&per_page=25&select=id,display_name`
+      `${API}/${kind}?search=${encodeURIComponent(requested)}&per-page=25&select=id,display_name`
     );
     if (!res.ok) return { id: "", name: null };
 
     const json = await res.json();
     const candidates: Array<{ id: string; display_name: string }> = json.results || [];
-    const wanted = normalizeString(requested).replace(/[^a-z0-9 ]/g, " ").replace(/\\s+/g, " ").trim();
+    const wanted = normalizeString(requested).replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
     const normalized = candidates.map(item => ({
       item,
-      name: normalizeString(item.display_name || "").replace(/[^a-z0-9 ]/g, " ").replace(/\\s+/g, " ").trim()
+      name: normalizeString(item.display_name || "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim()
     }));
 
     const exact = normalized.find(candidate => candidate.name === wanted);
