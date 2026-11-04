@@ -88,6 +88,52 @@ export async function updateDisplayName(displayName: string): Promise<AuthResult
     : { ok: true, message: 'Görünen adın güncellendi.' };
 }
 
+/** Fotoğrafı 320px'e küçültüp JPEG olarak kullanıcının özel klasörüne yükler. */
+export async function uploadAvatar(file: File): Promise<AuthResult> {
+  if (!supabase) return { ok: false, message: 'Profil fotoğrafı yüklenemiyor.' };
+  if (!file.type.startsWith('image/')) return { ok: false, message: 'Lütfen bir görsel dosyası seç.' };
+  if (file.size > 8 * 1024 * 1024) return { ok: false, message: 'Fotoğraf en fazla 8 MB olabilir.' };
+  try {
+    const image = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(1, 320 / Math.max(image.width, image.height));
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Görsel işlenemedi.');
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    image.close();
+    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('Sıkıştırma başarısız.')), 'image/jpeg', 0.8));
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { ok: false, message: 'Önce hesabına giriş yapmalısın.' };
+    const path = `${user.id}/avatar.jpg`;
+    const { error } = await supabase.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg', upsert: true, cacheControl: '3600' });
+    if (error) throw error;
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    const { error: metaError } = await supabase.auth.updateUser({ data: { avatar_url: `${data.publicUrl}?v=${Date.now()}` } });
+    if (metaError) throw metaError;
+    return { ok: true, message: 'Profil fotoğrafın güncellendi.' };
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    return { ok: false, message: 'Fotoğraf yüklenemedi. Supabase depolama ayarlarını kontrol et.' };
+  }
+}
+
+export async function removeAvatar(): Promise<AuthResult> {
+  if (!supabase) return { ok: false, message: 'Profil güncellenemiyor.' };
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { ok: false, message: 'Önce hesabına giriş yapmalısın.' };
+    const { error } = await supabase.storage.from('avatars').remove([`${user.id}/avatar.jpg`]);
+    if (error) throw error;
+    const { error: metaError } = await supabase.auth.updateUser({ data: { avatar_url: null } });
+    if (metaError) throw metaError;
+    return { ok: true, message: 'Profil fotoğrafın kaldırıldı.' };
+  } catch {
+    return { ok: false, message: 'Fotoğraf kaldırılamadı. Tekrar dene.' };
+  }
+}
+
 export async function signOutUser(): Promise<void> {
   if (!supabase) return;
   await supabase.auth.signOut({ scope: 'local' }); // yalnızca bu cihaz; diğer cihazlar açık kalır
