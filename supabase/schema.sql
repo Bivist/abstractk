@@ -29,3 +29,23 @@ create policy "user_data_update_own" on public.user_data
 drop policy if exists "user_data_delete_own" on public.user_data;
 create policy "user_data_delete_own" on public.user_data
   for delete to authenticated using (auth.uid() = user_id);
+
+
+-- Profil fotoğrafları: herkese açık okuma, yalnızca kullanıcı kendi klasörüne yazabilir.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', true, 8388608, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update set public = true, file_size_limit = 8388608,
+  allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp'];
+
+drop policy if exists "avatar_public_read" on storage.objects;
+create policy "avatar_public_read" on storage.objects for select using (bucket_id = 'avatars');
+drop policy if exists "avatar_insert_own_folder" on storage.objects;
+create policy "avatar_insert_own_folder" on storage.objects for insert to authenticated
+with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+drop policy if exists "avatar_update_own_folder" on storage.objects;
+create policy "avatar_update_own_folder" on storage.objects for update to authenticated
+using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text)
+with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+drop policy if exists "avatar_delete_own_folder" on storage.objects;
+create policy "avatar_delete_own_folder" on storage.objects for delete to authenticated
+using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
