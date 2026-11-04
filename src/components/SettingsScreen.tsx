@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SettingsState } from '../types';
-import { Smartphone, Trash2, LogIn, LogOut, UserRound, Cloud, Save } from 'lucide-react';
+import { Smartphone, Monitor, Trash2, LogIn, LogOut, UserRound, Cloud, Save, Camera, X } from 'lucide-react';
 
 interface SettingsScreenProps {
   settings: SettingsState;
@@ -12,6 +12,9 @@ interface SettingsScreenProps {
   authEnabled?: boolean;
   userEmail?: string | null;
   userDisplayName?: string | null;
+  userAvatarUrl?: string | null;
+  onUploadAvatar?: (file: File) => Promise<{ ok: boolean; message?: string }>;
+  onRemoveAvatar?: () => Promise<{ ok: boolean; message?: string }>;
   onUpdateDisplayName?: (name: string) => Promise<{ ok: boolean; message?: string }>;
   syncStatus?: 'idle' | 'syncing' | 'synced' | 'error';
   onOpenAuth?: () => void;
@@ -27,6 +30,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   authEnabled = false,
   userEmail = null,
   userDisplayName = null,
+  userAvatarUrl = null,
+  onUploadAvatar,
+  onRemoveAvatar,
   onUpdateDisplayName,
   syncStatus = 'idle',
   onOpenAuth,
@@ -34,6 +40,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 }) => {
   const [displayName, setDisplayName] = useState(userDisplayName || '');
   const [nameBusy, setNameBusy] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
   const [nameMessage, setNameMessage] = useState<string | null>(null);
   useEffect(() => { setDisplayName(userDisplayName || ''); }, [userDisplayName]);
   const saveDisplayName = async () => {
@@ -52,7 +60,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     : (langDict.sync_ok || 'Verilerin hesabında yedekleniyor');
 
   return (
-    <div className="flex-1 overflow-y-auto no-scrollbar p-4 max-w-lg mx-auto w-full select-none pb-12">
+    <div className="flex-1 overflow-y-auto no-scrollbar p-4 max-w-5xl mx-auto w-full select-none pb-12">
       {/* ── HESAP ── */}
       {authEnabled && (
         <div className="mb-5">
@@ -63,8 +71,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             {userEmail ? (
               <div className="p-4 space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-cyan-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-sky-600/20">
-                    <UserRound className="w-5 h-5" />
+                  <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-tr from-sky-600 to-cyan-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-sky-600/20 border-2 border-white dark:border-[#0d2f45]">
+                    {userAvatarUrl ? <img src={userAvatarUrl} alt="Profil fotoğrafı" className="w-full h-full object-cover" /> : <UserRound className="w-7 h-7" />}
                   </div>
                   <div className="min-w-0">
                     <span className="text-sm font-bold text-[#0a2540] dark:text-[#e0f4ff] block truncate">{userDisplayName || userEmail}</span>
@@ -74,6 +82,25 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                     </span>
                   </div>
                 </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-sky-700 text-white text-xs font-bold cursor-pointer">
+                    <Camera className="w-4 h-4" /> {userAvatarUrl ? 'Fotoğrafı değiştir' : 'Fotoğraf ekle'}
+                    <input type="file" accept="image/*" className="sr-only" disabled={avatarBusy} onChange={async e => {
+                      const file = e.target.files?.[0]; e.currentTarget.value = '';
+                      if (!file || !onUploadAvatar) return;
+                      setAvatarBusy(true); setAvatarMessage(null);
+                      try { const result = await onUploadAvatar(file); setAvatarMessage(result.message || (result.ok ? 'Kaydedildi.' : 'Yüklenemedi.')); }
+                      finally { setAvatarBusy(false); }
+                    }} />
+                  </label>
+                  {userAvatarUrl && <button type="button" disabled={avatarBusy} onClick={async () => {
+                    if (!onRemoveAvatar) return; setAvatarBusy(true); setAvatarMessage(null);
+                    try { const result = await onRemoveAvatar(); setAvatarMessage(result.message || (result.ok ? 'Kaldırıldı.' : 'Kaldırılamadı.')); }
+                    finally { setAvatarBusy(false); }
+                  }} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-[#c5dfe9] dark:border-[#0d2f45] text-xs font-semibold text-[#4a7a96] dark:text-[#5fa8c8] disabled:opacity-50"><X className="w-4 h-4" /> Kaldır</button>}
+                  {avatarBusy && <span className="text-xs text-sky-600">Yükleniyor…</span>}
+                </div>
+                {avatarMessage && <p role="status" className="text-[11px] text-[#4a7a96] dark:text-[#5fa8c8]">{avatarMessage}</p>}
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold text-[#4a7a96] dark:text-[#5fa8c8]">Görünen ad</label>
                   <div className="flex gap-2">
@@ -123,6 +150,22 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* ── GÖRÜNÜM ── */}
+      <div className="mb-5">
+        <span className="text-[11px] font-bold tracking-wider uppercase text-[#4a7a96] dark:text-[#5fa8c8] mb-2 block">Görünüm</span>
+        <div className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-2xl p-2 shadow-sm">
+          <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#dff0f7] dark:bg-[#0d2236] rounded-xl">
+            {([{id:'auto',label:'Otomatik',icon:<Smartphone className="w-4 h-4"/>},{id:'mobile',label:'Mobil',icon:<Smartphone className="w-4 h-4"/>},{id:'desktop',label:'Masaüstü',icon:<Monitor className="w-4 h-4"/>}] as const).map(mode => (
+              <button key={mode.id} type="button" onClick={() => onUpdateSettings(prev => ({...prev, displayMode:mode.id}))}
+                className={`py-2 px-1 text-[11px] font-semibold rounded-lg flex flex-col items-center gap-1 transition-all ${settings.displayMode === mode.id ? 'bg-white dark:bg-[#071828] text-[#0369a1] dark:text-[#38bdf8] shadow-sm' : 'text-[#4a7a96] dark:text-[#5fa8c8]'}`}>
+                {mode.icon}{mode.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-[#4a7a96] dark:text-[#5fa8c8] px-2 pt-2">Otomatik mod ekranına göre uygun düzeni seçer. Tercihin hesabınla eşitlenir.</p>
+        </div>
+      </div>
 
       {/* ── OKUMA DENEYİMİ (Reading Experience) ── */}
       <div className="mb-5">
