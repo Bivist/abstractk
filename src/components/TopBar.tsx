@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AppIcon } from './AppIcon';
 
 interface TopBarProps {
@@ -6,14 +6,24 @@ interface TopBarProps {
   isDark: boolean;
   onToggleTheme: () => void;
   reelsMode?: boolean;
+  avatarUrl?: string | null;
+  showAvatar?: boolean;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
   onGoHome,
   isDark,
   onToggleTheme,
-  reelsMode = false
+  reelsMode = false,
+  avatarUrl = null,
+  showAvatar = true
 }) => {
+  const [avatarExpanded, setAvatarExpanded] = useState(false);
+  const [avatarAnimation, setAvatarAnimation] = useState<'grow' | 'shrink'>('grow');
+  const toggleAvatar = () => {
+    setAvatarAnimation(avatarExpanded ? 'shrink' : 'grow');
+    setAvatarExpanded(value => !value);
+  };
   return (
     <header className="relative z-20 flex items-center justify-between px-5 py-2 bg-white dark:bg-[#071828] border-b border-[#c5dfe9]/60 dark:border-[#0d2f45] shadow-sm shadow-sky-950/5">
       {/* Brand & Logo Zone */}
@@ -23,12 +33,12 @@ export const TopBar: React.FC<TopBarProps> = ({
         className="flex items-center gap-3 text-left group focus-visible:outline-2 focus-visible:outline-sky-600 rounded-xl transition-transform active:scale-95"
         title="Ana Sayfa"
       >
-        {/* Squircle logo container matching reference */}
-        <div className="w-14 h-14 rounded-2xl bg-[#f0f8fc] dark:bg-sky-950/50 border border-[#bde0f2] dark:border-sky-800 flex items-center justify-center p-1 shadow-sm">
+        {/* Logo: büyütülmüş, çerçevesiz */}
+        <div className="w-[68px] h-[68px] flex items-center justify-center shrink-0">
           <AppIcon
             name="logo"
-            size={44}
-            className="w-11 h-11 object-contain"
+            size={64}
+            className="w-16 h-16 object-contain scale-[1.12]"
             alt="Abstract Logo"
             fallback={
               <svg viewBox="0 0 40 40" className="w-11 h-11 fill-none" xmlns="http://www.w3.org/2000/svg">
@@ -50,6 +60,18 @@ export const TopBar: React.FC<TopBarProps> = ({
           )}
         </div>
       </button>
+
+      {showAvatar && avatarUrl && (
+        <button
+          type="button"
+          onClick={toggleAvatar}
+          aria-label={avatarExpanded ? 'Profil fotoğrafını küçült' : 'Profil fotoğrafını büyüt'}
+          aria-expanded={avatarExpanded}
+          className={`profile-avatar-trigger ${avatarExpanded ? 'is-expanded' : ''} ${avatarAnimation === 'grow' ? 'avatar-grow' : 'avatar-shrink'}`}
+        >
+          <img src={avatarUrl} alt="Profil fotoğrafın" className="profile-avatar-image" />
+        </button>
+      )}
 
       {/* Right Controls: Circular Dark Navy Lighthouse Button */}
       <div className="flex items-center gap-2">
