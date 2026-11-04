@@ -331,21 +331,32 @@ export async function resolveEntity(kind: "authors" | "sources", query: string):
   if (!requested) return { id: "", name: "" };
 
   try {
-    // Tek bir arama sonucunu körlemesine seçmek, benzer isimli başka yazar/dergileri
-    // eşleştirebiliyordu. Birkaç adayı getirip önce tam, sonra tekil eşleşme ara.
+    const perPage = kind === "authors" ? 100 : 25;
     const res = await fetch(
-      `${API}/${kind}?search=${encodeURIComponent(requested)}&per-page=25&select=id,display_name`
+      `${API}/${kind}?search=${encodeURIComponent(requested)}&per-page=${perPage}&select=id,display_name`
     );
     if (!res.ok) return { id: "", name: null };
 
     const json = await res.json();
     const candidates: Array<{ id: string; display_name: string }> = json.results || [];
-    const wanted = normalizeString(requested).replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+    if (kind === "authors") {
+      // Yazar araması tek bir kişiyi çözümlememeli. "Ahmet" gibi kısmi sorgularda
+      // OpenAlex'in eşleşen yazarlarının tamamını OR filtresiyle birlikte kullan.
+      const ids = [...new Set(candidates
+        .filter(item => item.id && item.display_name)
+        .map(item => item.id.split("/").pop())
+        .filter((id): id is string => Boolean(id)))];
+      return ids.length
+        ? { id: ids.join("|"), name: requested }
+        : { id: "", name: null };
+    }
+
+    // Dergide yanlış bir kaynağa sessizce yönelmemek için tam/tekil eşleşme kullan.
+    const wanted = normalizeString(requested).replace(/[^a-z0-9 ]/g, " ").replace(/\\s+/g, " ").trim();
     const normalized = candidates.map(item => ({
       item,
-      name: normalizeString(item.display_name || "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim()
+      name: normalizeString(item.display_name || "").replace(/[^a-z0-9 ]/g, " ").replace(/\\s+/g, " ").trim()
     }));
-
     const exact = normalized.find(candidate => candidate.name === wanted);
     const partial = normalized.filter(candidate =>
       candidate.name.includes(wanted) || wanted.includes(candidate.name)
