@@ -11,7 +11,7 @@ import { loadSettings, loadLikedPapers, loadFolders, loadHistory, loadLighthouse
 import { useAuth } from './hooks/useAuth';
 import { authEnabled } from './lib/supabase';
 import { pullCloud, pushCloud, mergeSnapshots, type UserSnapshot } from './utils/cloudSync';
-import { signOutUser, updateDisplayName } from './utils/auth';
+import { signOutUser, updateDisplayName, uploadAvatar, removeAvatar } from './utils/auth';
 import { trackEvent } from './utils/analytics';
 
 import { IntroSplash } from './components/IntroSplash';
@@ -893,6 +893,9 @@ export default function App() {
             authEnabled={authEnabled}
             userEmail={auth.user?.email ?? null}
             userDisplayName={(auth.user?.user_metadata?.display_name as string | undefined) || (auth.user?.user_metadata?.full_name as string | undefined) || (auth.user?.user_metadata?.name as string | undefined) || null}
+            userAvatarUrl={(auth.user?.user_metadata?.avatar_url as string | undefined) || null}
+            onUploadAvatar={uploadAvatar}
+            onRemoveAvatar={removeAvatar}
             onUpdateDisplayName={updateDisplayName}
             syncStatus={syncStatus}
             onOpenAuth={() => setIsAuthOpen(true)}
