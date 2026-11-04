@@ -130,69 +130,89 @@ export interface SearchTier {
   label?: string;
 }
 
+function combinations<T>(items: T[], size: number): T[][] {
+  const result: T[][] = [];
+  const visit = (start: number, chosen: T[]) => {
+    if (chosen.length === size) {
+      result.push([...chosen]);
+      return;
+    }
+    for (let i = start; i <= items.length - (size - chosen.length); i++) {
+      chosen.push(items[i]);
+      visit(i + 1, chosen);
+      chosen.pop();
+    }
+  };
+  visit(0, []);
+  return result;
+}
+
 export function buildSearchTiers(filter: FilterState): SearchTier[] {
   const baseParts = getBaseFilter(filter);
-  const eff = getEffectiveNodes(filter.sel);
-  const groupMap = new Map<TaxonomyNode, TaxonomyNode[]>();
+  const effective = getEffectiveNodes(filter.sel);
+  const groupsByRoot = new Map<TaxonomyNode, TaxonomyNode[]>();
 
-  eff.forEach(node => {
+  effective.forEach(node => {
     const root = node.root || node;
-    if (!groupMap.has(root)) groupMap.set(root, []);
-    groupMap.get(root)!.push(node);
+    if (!groupsByRoot.has(root)) groupsByRoot.set(root, []);
+    groupsByRoot.get(root)!.push(node);
   });
 
-  const groups = [...groupMap.values()];
+  const groups = [...groupsByRoot.values()];
   if (!groups.length) {
     return [{ fs: [baseParts.join(",")], kind: "any" }];
   }
 
-  const soloFilters = groups
-    .map(nodes => generateAlternatives(nodes, true).map(a => buildFilterString(baseParts, a, false)))
-    .flat()
-    .slice(0, 8);
+  const labels = groups.map(nodes =>
+    nodes.length > 1 ? nodes.map(node => node.label).join(" + ") : nodes[0].label
+  );
+  const alternatives = groups.map(nodes => generateAlternatives(nodes, false));
 
-  if (groups.length === 1) {
-    return [{ fs: soloFilters, kind: "one", label: groups[0][0].label }];
-  }
+  const makeTier = (indices: number[]): SearchTier | null => {
+    let combinationsForQuery: TierQuery[][] = [[]];
 
-  const groupLabel = (nodes: TaxonomyNode[]) =>
-    nodes.length > 1 ? nodes[0].label + " +" + (nodes.length - 1) : nodes[0].label;
+    for (const index of indices) {
+      const options = alternatives[index];
+      if (!options.length) return null;
+      combinationsForQuery = combinationsForQuery.flatMap(existing =>
+        options.map(option => [...existing, option])
+      );
+    }
 
-  const altsPerGroup = groups.map(nodes => generateAlternatives(nodes, false));
-  const labels = groups.map(groupLabel);
-  const n = groups.length;
-  const allIndices = [...Array(n).keys()];
+    const uniqueFilters = [...new Set(combinationsForQuery.map(series =>
+      buildFilterString(
+        baseParts,
+        {
+          c: series.flatMap(item => item.c),
+          q: series.flatMap(item => item.q)
+        },
+        true
+      )
+    ))];
 
-  const makeCrossTier = (indices: number[], kind: "all" | "part"): SearchTier => {
-    let comb: TierQuery[][] = [[]];
-    indices.forEach(idx => {
-      comb = comb.flatMap(x => altsPerGroup[idx].map(a => [...x, a]));
-    });
+    if (!uniqueFilters.length) return null;
+    // Bir alt kümedeki farklı taksonomi sorguları için makul bir istek üst sınırı.
+    // Alt kümelerin kendisi atlanmaz; yalnızca aynı kümenin alternatif sorguları sınırlandırılır.
     return {
-      fs: comb.slice(0, 8).map(series =>
-        buildFilterString(
-          baseParts,
-          {
-            c: series.flatMap(a => a.c),
-            q: series.flatMap(a => a.q)
-          },
-          true
-        )
-      ),
-      kind,
-      label: indices.map(i => labels[i]).join(" × ")
+      fs: uniqueFilters.slice(0, 12),
+      kind: indices.length === groups.length ? "all" : indices.length === 1 ? "one" : "part",
+      label: indices.map(index => labels[index]).join(" × ")
     };
   };
 
-  const tiers: SearchTier[] = [makeCrossTier(allIndices, "all")];
-  if (n > 2) {
-    const partials = allIndices.map(i => makeCrossTier(allIndices.filter(j => j !== i), "part").fs).flat().slice(0, 8);
-    tiers.push({ fs: partials, kind: "part", label: labels.join(" × ") });
+  const tiers: SearchTier[] = [];
+  // Önce bütün seçili alanların kesişimi; sonuç yoksa birer alan eksilterek
+  // tüm olası alt kümeleri büyükten küçüğe dener. Böylece 2, 3 veya daha fazla
+  // alan seçimi aynı kuralla ele alınır; hiçbir tekil alan erken aşamada atlanmaz.
+  for (let size = groups.length; size >= 1; size--) {
+    for (const subset of combinations(groups.map((_, index) => index), size)) {
+      const tier = makeTier(subset);
+      if (tier) tiers.push(tier);
+    }
   }
-  tiers.push({ fs: soloFilters, kind: "one", label: labels.join(" · ") });
-  return tiers;
-}
 
+  return tiers.length ? tiers : [{ fs: [baseParts.join(",")], kind: "any" }];
+}
 export async function fetchWorks(filterStr: string, count: number): Promise<any[]> {
   const seed = Math.floor(Math.random() * 1e6);
   let res = await fetch(`${API}/works?filter=${filterStr}&sample=${count}&seed=${seed}&per_page=${count}&select=${SEL}`);
