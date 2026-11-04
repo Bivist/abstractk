@@ -9,13 +9,15 @@ interface BottomNavProps {
   onSelectTab: (tab: TabId) => void;
   langDict: Record<string, string>;
   likesCount: number;
+  desktop?: boolean;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   currentTab,
   onSelectTab,
   langDict,
-  likesCount
+  likesCount,
+  desktop = false
 }) => {
   // Lighthouse SVG Icon for "Ana sayfa" matching reference image
   const LighthouseIcon = ({ active }: { active: boolean }) => (
@@ -93,7 +95,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <nav className="relative z-20 bg-white dark:bg-[#071828] px-3 pb-2 pt-2 shadow-[0_-6px_20px_rgba(2,132,199,0.06)] border-t border-[#c5dfe9]/40 dark:border-[#0d2f45]">
+    <nav className={desktop ? "relative z-20 w-60 shrink-0 bg-white dark:bg-[#071828] px-3 py-5 border-r border-[#c5dfe9]/40 dark:border-[#0d2f45] overflow-y-auto" : "relative z-20 bg-white dark:bg-[#071828] px-3 pb-2 pt-2 shadow-[0_-6px_20px_rgba(2,132,199,0.06)] border-t border-[#c5dfe9]/40 dark:border-[#0d2f45]"}>
       {/* Gentle Oceanic Wavy Top Edge Contour */}
       <div className="absolute -top-[7px] left-0 right-0 h-[8px] pointer-events-none overflow-hidden leading-none">
         <svg
@@ -105,7 +107,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         </svg>
       </div>
 
-      <div className="flex items-center justify-around max-w-md mx-auto">
+      <div className={desktop ? "flex flex-col gap-2" : "flex items-center justify-around max-w-md mx-auto"}>
         {tabs.map((tab) => {
           const isActive = currentTab === tab.id;
           return (
@@ -114,14 +116,14 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               type="button"
               onClick={() => onSelectTab(tab.id)}
               data-tour={`nav-${tab.id}`}
-              className="relative flex-1 py-1 px-1 flex flex-col items-center justify-center gap-1 min-h-[50px] transition-all group focus-visible:outline-hidden"
+              className={desktop ? "relative w-full py-3 px-4 flex flex-row items-center justify-start gap-3 min-h-[48px] rounded-xl transition-all group focus-visible:outline-hidden" : "relative flex-1 py-1 px-1 flex flex-col items-center justify-center gap-1 min-h-[50px] transition-all group focus-visible:outline-hidden"}
             >
               {/* Minimal Smooth Indicator Pill for Active Tab */}
               {isActive && (
                 <motion.div
                   layoutId="activeNavIndicator"
                   transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                  className="absolute inset-0 mx-1 my-0.5 rounded-2xl bg-[#dff0f7] dark:bg-[#0c2d44]"
+                  className={desktop ? "absolute inset-0 rounded-xl bg-[#dff0f7] dark:bg-[#0c2d44]" : "absolute inset-0 mx-1 my-0.5 rounded-2xl bg-[#dff0f7] dark:bg-[#0c2d44]"}
                 />
               )}
 
@@ -144,7 +146,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
               {/* Tab Label */}
               <span
-                className={`relative z-10 text-[11px] transition-all duration-200 leading-tight ${
+                className={`${desktop ? "relative z-10 text-sm transition-all duration-200 leading-tight" : "relative z-10 text-[11px] transition-all duration-200 leading-tight"} ${
                   isActive
                     ? 'text-[#0284c7] dark:text-[#38bdf8] font-bold'
                     : 'text-[#527993] dark:text-[#7bb0cc] font-medium'
