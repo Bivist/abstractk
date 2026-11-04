@@ -497,7 +497,7 @@ export default function App() {
       }
 
       let added = 0;
-      for (let guard = 0; !added && guard < 6; guard++) {
+      for (let guard = 0; !added && guard < tiersRef.current.length + 1; guard++) {
         const tier = tiersRef.current[tierIndexRef.current];
         if (!tier) break;
         const count = tier.fs.length > 1 ? Math.max(6, Math.ceil(24 / tier.fs.length)) : 24;
@@ -522,6 +522,11 @@ export default function App() {
         if (addedCount > 0) {
           added = addedCount;
           shownInTierRef.current += addedCount;
+          if (tier.kind === 'part') {
+            setNotice(`Seçtiğin alanların tamamında ortak yayın bulunamadı. Şu anda ortak yayın bulunan şu alan kombinasyonunun makaleleri gösteriliyor: “${tier.label}”.`);
+          } else if (tier.kind === 'one' && tiersRef.current.some((candidate: any) => candidate.kind === 'all' || candidate.kind === 'part')) {
+            setNotice(`Seçtiğin alanların tamamında ortak yayın bulunamadı. Şu anda yayın bulunan “${tier.label}” alanındaki makaleler gösteriliyor.`);
+          }
           setQueue(prev => [...prev, ...papers]);
           break;
         }
@@ -529,15 +534,17 @@ export default function App() {
         if (tierIndexRef.current < tiersRef.current.length - 1) {
           // Bir üst kademede (ortak yayınlar) sonuç kalmadı -> kullanıcıyı bilgilendir
           if (tier.kind === 'all' || tier.kind === 'part') {
-            const labels = tier.label ? `“${tier.label}”` : 'Seçilen alanların';
-            const nextKind = tiersRef.current[tierIndexRef.current + 1]?.kind;
+            const nextTier = tiersRef.current[tierIndexRef.current + 1];
+            const nextKind = nextTier?.kind;
             const fallbackText = nextKind === 'part'
-              ? 'Bunun yerine bu alanların bir kısmının ortak olduğu makaleler gösterilecek.'
-              : 'Bu nedenle seçilen alanlarla ilgili makaleler ayrı ayrı gösterilecek.';
+              ? `Daha küçük alan kombinasyonları deneniyor. Sonraki kombinasyon: “${nextTier.label}”.`
+              : nextKind === 'one'
+              ? 'Birden fazla alanın ortak yayını bulunamadı; şimdi her seçili alan ayrı ayrı taranacak.'
+              : 'Seçilen alanlarda uygun yayın bulunamadı.';
             setNotice(
-              shownInTierRef.current > 0
-                ? `${labels} alanlarının ortak yayınları bitti. ${fallbackText}`
-                : `${labels} alanlarının ortak yayını bulunamadı. ${fallbackText}`
+              tier.kind === 'all'
+                ? `Seçtiğin tüm alanların ortak yayınları bulunamadı. ${fallbackText}`
+                : `“${tier.label}” kombinasyonunda uygun yayın bulunamadı. ${fallbackText}`
             );
           }
           tierIndexRef.current++;
