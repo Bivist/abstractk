@@ -42,7 +42,14 @@ export const DiscoverReels: React.FC<DiscoverReelsProps> = ({
   const controls = useAnimation();
   const touchStartRef = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
   const lastTapRef = useRef<number>(0);
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+    };
+  }, []);
 
   const currentPaper = queue[currentIndex];
   const isLiked = currentPaper ? likedPapers.some(p => p.id === currentPaper.id) : false;
@@ -79,6 +86,8 @@ export const DiscoverReels: React.FC<DiscoverReelsProps> = ({
 
   // Touch & Pointer Gesture Handling
   const handlePointerDown = (e: React.PointerEvent) => {
+    // Buton ve bağlantıların kendi eylemleri kart hareketi olarak algılanmasın.
+    if ((e.target as HTMLElement).closest('button, a')) return;
     SFX.init();
     touchStartRef.current = {
       x: e.clientX,
@@ -89,17 +98,20 @@ export const DiscoverReels: React.FC<DiscoverReelsProps> = ({
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('button, a')) return;
     const deltaX = e.clientX - touchStartRef.current.x;
     const deltaY = e.clientY - touchStartRef.current.y;
-    const deltaTime = Date.now() - touchStartRef.current.time;
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
 
-    // Double-tap detection for quick like
-    if (absX < 8 && absY < 8) {
+    // Küçük dokunuşlar tık kabul edilir; 10 px üzeri hareketler kaydırma sayılır.
+    if (absX < 10 && absY < 10) {
       const now = Date.now();
-      if (now - lastTapRef.current < 300) {
-        // Double tap occurred!
+      if (now - lastTapRef.current < 280) {
+        if (singleTapTimerRef.current) {
+          clearTimeout(singleTapTimerRef.current);
+          singleTapTimerRef.current = null;
+        }
         if (containerRef.current) {
           const rect = containerRef.current.getBoundingClientRect();
           setDoubleTapHeart({
@@ -109,28 +121,30 @@ export const DiscoverReels: React.FC<DiscoverReelsProps> = ({
           setTimeout(() => setDoubleTapHeart(null), 800);
         }
         handleLike();
+      } else {
+        // Tek dokunuş detayları açar. Kısa bekleme çift dokunuşla beğenmeyi korur.
+        singleTapTimerRef.current = setTimeout(() => {
+          if (currentPaper) onOpenDetails(currentPaper);
+          singleTapTimerRef.current = null;
+        }, 280);
       }
       lastTapRef.current = now;
       return;
     }
 
-    // Determine primary swipe vector
+    // Hareket başladıysa bekleyen tek tık iptal edilir; dikey/yatay hareket kaydırma olarak kalır.
+    if (singleTapTimerRef.current) {
+      clearTimeout(singleTapTimerRef.current);
+      singleTapTimerRef.current = null;
+    }
+    lastTapRef.current = 0;
+
     if (absY > absX && absY > 45) {
-      // VERTICAL SWIPE:
-      // The user specifically requested: "instagram reelslarındaki gibi makaleleri aşağı kaydırarak geçeceğiz"
-      // Swiping down (deltaY > 45) transitions to next paper.
-      // Also allow swiping up (deltaY < -45) so both directions feel natural to users.
-      if (deltaY > 45 || deltaY < -45) {
-        goToNext();
-      }
+      goToNext();
     } else if (absX > absY && absX > 50) {
-      // HORIZONTAL SWIPE:
-      // "eğer beğenilen olursa sağa kaydıracak eğer detaylı bilgi isterse sola kaydıracak"
       if (deltaX > 50) {
-        // SWIPE RIGHT -> LIKE
         handleLike();
       } else if (deltaX < -50 && currentPaper) {
-        // SWIPE LEFT -> OPEN DETAILS
         SFX.up();
         onOpenDetails(currentPaper);
       }
