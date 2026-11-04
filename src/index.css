@@ -225,3 +225,63 @@ body {
   color: var(--ink) !important;
 }
 
+
+
+/* ── Header logo: no frame, larger visual mark ── */
+header button.group > div:first-child {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+header button.group > div:first-child img {
+  width: 64px !important;
+  height: 64px !important;
+  transform: scale(1.12);
+  filter: drop-shadow(0 3px 5px rgba(2, 44, 66, .16));
+}
+
+/* ── Centered profile avatar (hidden on Settings) ── */
+.profile-avatar-trigger {
+  position:absolute; left:50%; top:50%; z-index:30;
+  width:38px; height:38px; padding:2px;
+  transform:translate(-50%,-50%);
+  border-radius:999px; border:2px solid rgba(56,189,248,.72);
+  background:linear-gradient(145deg,#e0f7ff,#0c4a6e);
+  box-shadow:0 3px 13px rgba(2,132,199,.25),0 0 0 3px rgba(56,189,248,.09);
+  cursor:pointer; overflow:visible; outline-offset:4px;
+  transition:width .42s cubic-bezier(.2,.8,.2,1),height .42s cubic-bezier(.2,.8,.2,1),box-shadow .3s ease;
+}
+.profile-avatar-image {width:100%;height:100%;display:block;object-fit:cover;border-radius:inherit}
+.profile-avatar-trigger.is-expanded {
+  width:112px;height:112px; top:calc(50% + 39px);
+  border-width:3px; box-shadow:0 14px 40px rgba(0,0,0,.35),0 0 0 7px rgba(56,189,248,.15);
+  background:#0c4a6e;
+}
+.profile-avatar-trigger.avatar-grow {animation:profileGrow .48s cubic-bezier(.16,1,.3,1)}
+.profile-avatar-trigger.avatar-shrink {animation:profileShrink .38s cubic-bezier(.4,0,.7,.2)}
+@keyframes profileGrow {0%{filter:brightness(.8);transform:translate(-50%,-50%) scale(.72)}65%{filter:brightness(1.12);transform:translate(-50%,-50%) scale(1.12)}100%{filter:brightness(1);transform:translate(-50%,-50%) scale(1)}}
+@keyframes profileShrink {0%{filter:brightness(1.15);transform:translate(-50%,-50%) scale(1.08)}45%{transform:translate(-50%,-50%) scale(.88) rotate(-7deg)}100%{filter:brightness(1);transform:translate(-50%,-50%) scale(1)}}
+.profile-avatar-trigger.is-expanded.avatar-grow {animation-name:profileGrowExpanded}
+.profile-avatar-trigger.is-expanded.avatar-shrink {animation-name:profileShrinkExpanded}
+@keyframes profileGrowExpanded {0%{transform:translate(-50%,-50%) scale(.45);opacity:.55}70%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+@keyframes profileShrinkExpanded {0%{transform:translate(-50%,-50%) scale(1)}55%{transform:translate(-50%,-50%) scale(.78) rotate(8deg)}100%{transform:translate(-50%,-50%) scale(1)}}
+@media(max-width:420px){.profile-avatar-trigger.is-expanded{width:88px;height:88px;top:calc(50% + 34px)}}
+
+/* ── Stronger depth cues for the dark discovery-card stack ── */
+.dark .discover-card--behind {
+  background:linear-gradient(145deg,#12364c 0%,#0b2639 100%) !important;
+  border:1px solid rgba(92,190,225,.58) !important;
+  box-shadow:0 12px 30px rgba(0,0,0,.42),inset 0 1px 0 rgba(174,230,250,.14) !important;
+  opacity:.78 !important;
+  transform:scale(.925) translateY(19px) !important;
+}
+.dark .discover-card--front {
+  background:linear-gradient(155deg,#0d2b40 0%,#071828 76%) !important;
+  border:1.5px solid rgba(107,205,237,.72) !important;
+  box-shadow:0 20px 48px rgba(0,0,0,.48),0 0 0 1px rgba(56,189,248,.12),inset 0 1px 0 rgba(190,238,255,.13) !important;
+}
+.dark .discover-card--front h3 {text-shadow:0 1px 12px rgba(56,189,248,.10)}
+@media(prefers-reduced-motion:reduce){
+  .profile-avatar-trigger,.profile-avatar-trigger * {animation:none!important;transition:none!important}
+}
