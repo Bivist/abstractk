@@ -144,7 +144,7 @@ export const DiscoverClassic: React.FC<DiscoverClassicProps> = ({
         {/* Behind Card */}
         {behindPaper && (
           <div
-            className="absolute inset-0 bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-3xl p-5 flex flex-col gap-3 shadow-md pointer-events-none transition-transform duration-200"
+            className="absolute inset-0 mx-auto w-full max-w-4xl bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-3xl p-5 sm:p-7 flex flex-col gap-3 shadow-md pointer-events-none transition-transform duration-200"
             style={{ transform: "scale(0.95) translateY(12px)", opacity: 0.45 }}
           >
             <div className="flex items-center gap-1.5">
