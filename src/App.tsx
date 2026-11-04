@@ -779,6 +779,8 @@ export default function App() {
         isDark={isDark}
         onToggleTheme={handleToggleTheme}
         reelsMode={currentTab === 'disc' && settings.reelsMode}
+        avatarUrl={(auth.user?.user_metadata?.avatar_url as string | undefined) || null}
+        showAvatar={currentTab !== 'sets'}
       />
       </div>
 
