@@ -17,6 +17,7 @@ interface DiscoverClassicProps {
   hasMore: boolean;
   onResetFilter?: () => void;
   onSharePaper?: (paper: Paper) => void;
+  recommendationActive?: boolean;
 }
 
 export const DiscoverClassic: React.FC<DiscoverClassicProps> = ({
@@ -29,7 +30,8 @@ export const DiscoverClassic: React.FC<DiscoverClassicProps> = ({
   isTranslating,
   langDict,
   onResetFilter,
-  onSharePaper
+  onSharePaper,
+  recommendationActive = false
 }) => {
   const topPaper = queue[0];
   const behindPaper = queue[1];
@@ -92,6 +94,7 @@ export const DiscoverClassic: React.FC<DiscoverClassicProps> = ({
       {/* Top filter chip bar */}
       <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-[#071828] border-b border-[#c5dfe9] dark:border-[#0d2f45] shrink-0">
         <div className="flex-1 overflow-x-auto no-scrollbar flex items-center gap-1.5 py-0.5">
+          {recommendationActive && <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300 whitespace-nowrap"><Sparkles className="w-3 h-3" /> Sana özel</span>}
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#dbeafe] text-[#0369a1] dark:bg-[#0c2d44] dark:text-[#7dd3fc] whitespace-nowrap">
             <Sparkles className="w-3 h-3" />
             {filterSummary || langDict.sum_default || "Tüm alanlar · rastgele"}
