@@ -18,6 +18,7 @@ interface DiscoverReelsProps {
   langDict: Record<string, string>;
   onResetFilter?: () => void;
   onSharePaper?: (paper: Paper) => void;
+  recommendationActive?: boolean;
 }
 
 export const DiscoverReels: React.FC<DiscoverReelsProps> = ({
@@ -32,7 +33,8 @@ export const DiscoverReels: React.FC<DiscoverReelsProps> = ({
   isTranslating,
   langDict,
   onResetFilter,
-  onSharePaper
+  onSharePaper,
+  recommendationActive = false
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [heartBurst, setHeartBurst] = useState(false);
@@ -162,6 +164,7 @@ export const DiscoverReels: React.FC<DiscoverReelsProps> = ({
       {/* Top Floating Filter Banner */}
       <div className="absolute top-2 left-3 right-3 z-30 flex items-center justify-between pointer-events-auto">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-[#071828]/85 backdrop-blur-md border border-[#c5dfe9]/80 dark:border-[#0d2f45] text-[#0369a1] dark:text-[#38bdf8] shadow-sm">
+          {recommendationActive && <span className="inline-flex items-center gap-1 mr-1"><Sparkles className="w-3 h-3" /> Sana özel ·</span>}
           <Sparkles className="w-3.5 h-3.5 text-cyan-500 animate-pulse" />
           <span className="truncate max-w-[170px]">{filterSummary || langDict.sum_default || "Tüm alanlar"}</span>
         </span>
