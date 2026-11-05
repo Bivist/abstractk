@@ -953,8 +953,9 @@ export default function App() {
 
       {/* Duyarlı gezinme */}
       <BottomNav currentTab={currentTab} onSelectTab={(tab) => {
-        if (tab === "dashboard" && currentTab !== "dashboard" && !showTour) {
+        if (tab === "dashboard" && currentTab !== "dashboard") {
           setCurrentTab("dashboard");
+          setShowTour(false);
           setShowSeyirTour(true);
         } else {
           setCurrentTab(tab);
