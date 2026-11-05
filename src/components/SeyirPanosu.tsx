@@ -40,8 +40,13 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
 
   useEffect(() => {
     const openMapForTour = () => setActiveView('chart');
+    const openSummaryForTour = () => setActiveView('sensor');
     window.addEventListener('abstract:seyir-tour-map', openMapForTour);
-    return () => window.removeEventListener('abstract:seyir-tour-map', openMapForTour);
+    window.addEventListener('abstract:seyir-tour-summary', openSummaryForTour);
+    return () => {
+      window.removeEventListener('abstract:seyir-tour-map', openMapForTour);
+      window.removeEventListener('abstract:seyir-tour-summary', openSummaryForTour);
+    };
   }, []);
 
   // Combined pool of papers (from likes + history)
