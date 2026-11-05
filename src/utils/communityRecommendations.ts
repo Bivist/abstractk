@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 import { Paper, ReadingHistoryItem } from '../types';
 
 /**
- * Kullanıcı açıkça izin verdiyse yalnızca makale kimliklerini topluluk profiline yazar.
+ * Giriş yapan kullanıcının makale kimliklerini ve konu/alan ilgi terimlerini topluluk profiline yazar.
  * Profil tablosu RLS ile kullanıcıya özel; diğer kullanıcıların kayıtları doğrudan okunamaz.
  */
 function buildInterestTerms(liked: Paper[], history: ReadingHistoryItem[]): string[] {
