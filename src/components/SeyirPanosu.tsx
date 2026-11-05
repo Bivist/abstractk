@@ -194,7 +194,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
         /* Okuma özeti */
         <div className="flex-1 min-h-0 h-full overflow-y-auto overscroll-contain px-4 py-4 space-y-4 max-w-lg mx-auto w-full pb-10">
           {/* 1. Telemetry Top Status Header */}
-          <div className="relative rounded-[26px] p-4.5 bg-gradient-to-br from-[#0284c7] via-[#0284c7] to-[#0ea5e9] text-white shadow-lg shadow-sky-950/15 overflow-hidden">
+          <div data-tour="seyir-overview" className="relative rounded-[26px] p-4.5 bg-gradient-to-br from-[#0284c7] via-[#0284c7] to-[#0ea5e9] text-white shadow-lg shadow-sky-950/15 overflow-hidden">
             {/* Atmospheric sonar ping concentric circles */}
             <div className="absolute -right-8 -top-8 w-44 h-44 rounded-full border border-white/15 pointer-events-none" />
             <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full border border-white/20 pointer-events-none" />
@@ -284,7 +284,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
           </section>
 
           {/* 4. Son Son 7 Günün Okuma Aktivitesi & Okuma Trendi (Reading Velocity) */}
-          <section className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-[24px] p-4 shadow-xs">
+          <section data-tour="seyir-activity" className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-[24px] p-4 shadow-xs">
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-500">
@@ -367,7 +367,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
           </div>
 
           {/* 6. Sonar Yankıları & Anahtar Kavramlar (Keywords) */}
-          <section className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-[24px] p-4 shadow-xs">
+          <section data-tour="seyir-topics" className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-[24px] p-4 shadow-xs">
             <div className="flex items-center gap-2 mb-2.5">
               <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
                 <Radio className="w-4 h-4 animate-pulse" />
@@ -400,7 +400,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
           </section>
 
           {/* Yakında: okuma derinliği */}
-          <section className="relative overflow-hidden rounded-[24px] border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white p-5 grayscale">
+          <section data-tour="seyir-depth" className="relative overflow-hidden rounded-[24px] border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white p-5 grayscale">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="font-serif text-base font-bold">Okuma Derinliği</h3>
