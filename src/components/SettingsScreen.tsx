@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SettingsState } from '../types';
-import { Smartphone, Monitor, Trash2, LogIn, LogOut, UserRound, Cloud, Save, Camera, X, Users } from 'lucide-react';
+import { Smartphone, Monitor, Trash2, LogIn, LogOut, UserRound, Cloud, Save, Camera, X } from 'lucide-react';
 
 interface SettingsScreenProps {
   settings: SettingsState;
@@ -150,29 +150,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
         </div>
       )}
-
-      {/* ── TOPLULUK ÖNERİLERİ ── */}
-      <div className="mb-5">
-        <span className="text-[11px] font-bold tracking-wider uppercase text-[#4a7a96] dark:text-[#5fa8c8] mb-2 block">Kişiselleştirme ve gizlilik</span>
-        <div className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-2xl p-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0"><Users className="w-5 h-5" /></div>
-            <div className="min-w-0 flex-1">
-              <span className="text-sm font-bold text-[#0a2540] dark:text-[#e0f4ff] block">Topluluk önerilerine katıl</span>
-              <p className="text-xs text-[#4a7a96] dark:text-[#5fa8c8] mt-1 leading-relaxed">
-                Açarsan beğendiğin ve okuduğun makalelerin yalnızca yayın kimlikleri, benzer bilimsel ilgi alanlarına sahip kullanıcılarla eşleştirme yapmak için güvenli profiline gönderilir. Adın, e-posta adresin ve makale başlıkların bu eşleştirme tablosuna gönderilmez. İstediğin zaman kapatabilirsin.
-              </p>
-              {!userEmail && <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2">Bu özellik için hesabına giriş yapmalısın.</p>}
-            </div>
-            <label className="relative inline-flex items-center shrink-0 ">
-              <input type="checkbox" checked={!!settings.communityRecommendations} disabled={!userEmail}
-                onChange={e => onUpdateSettings(prev => ({ ...prev, communityRecommendations: e.target.checked }))}
-                className="sr-only peer" />
-              <div className="w-11 h-6 bg-[#c5dfe9] dark:bg-[#0d2f45] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0369a1] peer-disabled:opacity-40"></div>
-            </label>
-          </div>
-        </div>
-      </div>
 
       {/* ── GÖRÜNÜM ── */}
       <div className="mb-5">
