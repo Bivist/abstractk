@@ -102,6 +102,18 @@ const SEYIR_STEPS: TourStep[] = [
   },
   {
     tab: 'dashboard',
+    target: 'seyir-map-tab',
+    tr: { title: 'Makale Haritası', text: 'Bu sekme, kaydettiğin makaleleri ortak konularına göre birbirine bağlayarak görmeni sağlar. Şimdi haritayı birlikte inceleyelim.' },
+    en: { title: 'Paper Map', text: 'This view connects your saved papers by shared topics. Let’s take a look at the map.' }
+  },
+  {
+    tab: 'dashboard',
+    target: 'seyir-map-content',
+    tr: { title: 'Makaleler arasındaki bağlantılar', text: 'Her nokta kaydettiğin bir makaleyi temsil eder. Noktalara dokunarak makale bilgilerini açabilir, yakınlaştırıp uzaklaştırabilir ve alanlara göre filtreleyebilirsin. Haritanın görünümü de uygulamanın gece/gündüz temasına uyum sağlar.' },
+    en: { title: 'Connections between papers', text: 'Each point represents a saved paper. Select a point to view its details, zoom and pan the map, or filter by field. The map also follows the app’s day/night theme.' }
+  },
+  {
+    tab: 'dashboard',
     target: 'seyir-depth',
     tr: { title: 'Yakında', text: 'Okuma Derinliği bölümü üzerinde çalışılıyor. Yeni özellik hazır olduğunda burada açılacak.' },
     en: { title: 'Coming soon', text: 'The Reading Depth feature is still in development and will appear here when ready.' }
@@ -133,7 +145,11 @@ export const OnboardingTour: React.FC<Props> = ({ lang, onSetTab, onClose, mode 
   // Adım değişince doğru sekmeye geç
   useEffect(() => {
     if (step.tab) onSetTab(step.tab);
-  }, [idx]);
+    // Makale haritası adımına geçildiğinde Seyir içindeki ilgili görünümü aç.
+    if (mode === 'seyir' && idx === 5) {
+      window.dispatchEvent(new CustomEvent('abstract:seyir-tour-map'));
+    }
+  }, [idx, mode]);
 
   // Hedef elemanı bul (sekme geçişi sonrası görünmesi için kısa süre dener) ve konumunu takip et
   const measure = useCallback(() => {
