@@ -46,7 +46,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   lang: 'tr',
   reelsMode: false,
   displayMode: 'auto',
-  communityRecommendations: false
+  communityRecommendations: true
 };
 
 /** Bu cihazdaki yerel verinin hangi hesaba ait olduğunu tutar (girişte birleştirme / bulut öncelikli kararı için). */
@@ -161,7 +161,7 @@ export default function App() {
   likedProfileRef.current = likedPapers;
   historyProfileRef.current = readingHistory;
   const communityEnabledRef = useRef(false);
-  communityEnabledRef.current = Boolean(settings.communityRecommendations && auth.user);
+  communityEnabledRef.current = Boolean(auth.user);
   const communityUserRef = useRef<string | null>(null);
   communityUserRef.current = auth.user?.id || null;
 
@@ -290,15 +290,15 @@ export default function App() {
     SFX.setEnabled(settings.sound);
   }, [settings]);
 
-  // Topluluk önerileri yalnızca kullanıcının açık izniyle eşitlenir.
+  // Giriş yapan kullanıcıların topluluk öneri profili otomatik eşitlenir.
   useEffect(() => {
     if (!auth.user || !supabase) return;
     const timer = window.setTimeout(() => {
-      syncCommunityProfile(likedPapers, readingHistory, settings.communityRecommendations)
+      syncCommunityProfile(likedPapers, readingHistory, true)
         .catch(error => console.warn('Topluluk profili eşitlenemedi:', error));
     }, 1200);
     return () => window.clearTimeout(timer);
-  }, [auth.user?.id, likedPapers, readingHistory, settings.communityRecommendations]);
+  }, [auth.user?.id, likedPapers, readingHistory]);
 
   // Save Likes
   useEffect(() => {
