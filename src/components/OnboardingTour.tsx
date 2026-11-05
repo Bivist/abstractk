@@ -142,23 +142,49 @@ export const OnboardingTour: React.FC<Props> = ({ lang, onSetTab, onClose, mode 
     const el = document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`);
     if (!el) { setRect(null); return; }
     const r = el.getBoundingClientRect();
-    setRect(r.width && r.height ? r : null);
+    // Hedef ekrandan çıktıysa açıklama kutusunu hedefe sabitleme.
+    const visible = r.bottom > 0 && r.top < window.innerHeight;
+    setRect(r.width && r.height && visible ? r : null);
   }, [step.target]);
 
   useLayoutEffect(() => {
     setRect(null);
+
+    // Seyir ekranı kendi içinde kaydırılır. Her adımda hedefi bu kaydırılabilir
+    // alanın görünür bölümüne al; aksi hâlde alttaki adımlar ekranda kalmaz.
+    let scrollTimer: ReturnType<typeof setTimeout> | undefined;
+    let measureTimer: ReturnType<typeof setTimeout> | undefined;
+    if (step.target) {
+      const el = document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        scrollTimer = setTimeout(measure, 420);
+      }
+    }
+
     measure();
     let tries = 0;
-    const timer = setInterval(() => {
+    const timer = window.setInterval(() => {
       measure();
-      if (++tries > 12) clearInterval(timer);
+      if (++tries > 16) window.clearInterval(timer);
     }, 120);
+
+    // Kullanıcı tur açıkken sayfayı elle kaydırırsa vurguyu ve açıklama
+    // kutusunu yeni konuma göre güncelle.
+    const scrollable = document.querySelector<HTMLElement>('.overflow-y-auto');
+    scrollable?.addEventListener('scroll', measure, { passive: true });
+    window.addEventListener('scroll', measure, true);
     window.addEventListener('resize', measure);
+
     return () => {
-      clearInterval(timer);
+      window.clearInterval(timer);
+      if (scrollTimer) window.clearTimeout(scrollTimer);
+      if (measureTimer) window.clearTimeout(measureTimer);
+      scrollable?.removeEventListener('scroll', measure);
+      window.removeEventListener('scroll', measure, true);
       window.removeEventListener('resize', measure);
     };
-  }, [idx, measure]);
+  }, [idx, measure, step.target]);
 
   const next = () => (isLast ? onClose() : setIdx(i => i + 1));
   const back = () => setIdx(i => Math.max(0, i - 1));
