@@ -115,24 +115,50 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
       .sort((a, b) => b.count - a.count);
   }, [readingHistory, likedPapers, calculatedDepthMeters]);
 
-  // Son 7 Günün Okuma Aktivitesi (7-day activity simulation based on streak & daily goals)
-  const weekDays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-  const weekData = useMemo(() => {
-    const todayIndex = new Date().getDay(); // 0 is Sunday
-    const adjustedToday = todayIndex === 0 ? 6 : todayIndex - 1;
-
-    return weekDays.map((day, idx) => {
-      if (idx === adjustedToday) {
-        return { day, count: lighthouseWatch.todayReadCount, isToday: true };
+  // Okuma temposu yalnızca gerçek, zaman damgalı okuma geçmişinden hesaplanır.
+  const [activityRange, setActivityRange] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('7d');
+  const activityData = useMemo(() => {
+    const now = new Date();
+    const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const start = startOfDay(now);
+    const history = readingHistory.filter(item => Number.isFinite(item.timestamp) && item.timestamp > 0);
+    const buckets: { key: string; label: string; count: number; isToday?: boolean }[] = [];
+    if (activityRange === '7d' || activityRange === '30d') {
+      const days = activityRange === '7d' ? 7 : 30;
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(start);
+        date.setDate(start.getDate() - i);
+        const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        buckets.push({ key, label: activityRange === '7d'
+          ? date.toLocaleDateString('tr-TR', { weekday: 'short' })
+          : String(date.getDate()), count: 0, isToday: i === 0 });
       }
-      if (idx < adjustedToday) {
-        // Prior days in streak
-        const pseudoCount = Math.max(1, Math.min(8, (idx * 3 + 2) % 6 + (lighthouseWatch.streakDays > 1 ? 2 : 1)));
-        return { day, count: pseudoCount, isToday: false };
+      const counts = new Map(buckets.map(bucket => [bucket.key, bucket]));
+      history.forEach(item => {
+        const date = new Date(item.timestamp);
+        const bucket = counts.get(`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`);
+        if (bucket) bucket.count++;
+      });
+    } else {
+      const monthCount = activityRange === '90d' ? 3 : activityRange === '1y' ? 12 : Math.max(1,
+        (now.getFullYear() - Math.min(...history.map(item => new Date(item.timestamp).getFullYear()), now.getFullYear())) * 12 +
+        now.getMonth() - Math.min(...history.map(item => new Date(item.timestamp).getMonth()), now.getMonth()) + 1);
+      const count = Math.min(monthCount, 120);
+      for (let i = count - 1; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${date.getFullYear()}-${date.getMonth()}`;
+        buckets.push({ key, label: date.toLocaleDateString('tr-TR', { month: 'short' }), count: 0, isToday: i === 0 });
       }
-      return { day, count: 0, isToday: false };
-    });
-  }, [lighthouseWatch.todayReadCount, lighthouseWatch.streakDays]);
+      const counts = new Map(buckets.map(bucket => [bucket.key, bucket]));
+      history.forEach(item => {
+        const date = new Date(item.timestamp);
+        const bucket = counts.get(`${date.getFullYear()}-${date.getMonth()}`);
+        if (bucket) bucket.count++;
+      });
+    }
+    const total = buckets.reduce((sum, bucket) => sum + bucket.count, 0);
+    return { buckets, total, average: buckets.length ? total / buckets.length : 0 };
+  }, [readingHistory, activityRange]);
 
   // Aggregate Key Concepts (Kavram Bulutu / Sonar Yankıları)
   const topKeywords = useMemo(() => {
@@ -303,7 +329,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
             </div>
           </section>
 
-          {/* 4. Son Son 7 Günün Okuma Aktivitesi & Okuma Trendi (Reading Velocity) */}
+          {/* 4. Gerçek okuma geçmişinden dönemsel okuma temposu */}
           <section data-tour="seyir-activity" className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-[24px] p-4 shadow-xs">
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
@@ -311,52 +337,49 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
                   <TrendingUp className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-serif text-base font-bold text-[#0a2540] dark:text-[#f0f9ff]">
-                    7 Günlük Seyir Temposu
-                  </h3>
-                  <p className="text-[11px] text-[#527993] dark:text-[#7bb0cc]">
-                    Günlere göre okuma sayın
-                  </p>
+                  <h3 className="font-serif text-base font-bold text-[#0a2540] dark:text-[#f0f9ff]">Okuma Tempon</h3>
+                  <p className="text-[11px] text-[#527993] dark:text-[#7bb0cc]">Gerçek okuma kayıtlarına göre</p>
                 </div>
               </div>
-
               <div className="text-right">
-                <span className="text-[11px] font-bold text-[#0284c7] dark:text-[#38bdf8] font-mono">
-                  {(totalReads / 7).toFixed(1)} makale/gün
-                </span>
+                <span className="text-[11px] font-bold text-[#0284c7] dark:text-[#38bdf8] font-mono">{activityData.total} makale</span>
+                <p className="text-[10px] text-[#527993] dark:text-[#7bb0cc]">{activityData.average.toFixed(1)} / dönem</p>
               </div>
             </div>
-
-            {/* 7-Day Bar Sparkline */}
-            <div className="flex items-end justify-between gap-2 pt-3 pb-1 border-t border-sky-100 dark:border-sky-950">
-              {weekData.map((d, i) => {
-                const maxVal = Math.max(...weekData.map(w => w.count), 5);
-                const barHeight = Math.max(12, Math.round((d.count / maxVal) * 60));
-
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {([
+                ['7d', '7 gün'], ['30d', '30 gün'], ['90d', '3 ay'], ['1y', '1 yıl'], ['all', 'Tümü']
+              ] as const).map(([value, label]) => (
+                <button key={value} type="button" onClick={() => setActivityRange(value)}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors ${activityRange === value
+                    ? 'bg-sky-600 text-white border-sky-600'
+                    : 'bg-sky-50 dark:bg-sky-950/50 text-[#527993] dark:text-[#7bb0cc] border-sky-200 dark:border-sky-900'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className={`flex items-end gap-1.5 pt-3 pb-1 border-t border-sky-100 dark:border-sky-950 ${activityRange === '7d' ? 'justify-between' : 'overflow-x-auto'}`}>
+              {activityData.buckets.map(bucket => {
+                const maxVal = Math.max(...activityData.buckets.map(item => item.count), 1);
+                const barHeight = bucket.count ? Math.max(5, Math.round((bucket.count / maxVal) * 58)) : 2;
                 return (
-                  <div key={d.day} className="flex-1 flex flex-col items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-[#527993] dark:text-[#7bb0cc] font-mono">
-                      {d.count}
-                    </span>
+                  <div key={bucket.key} title={`${bucket.label}: ${bucket.count} makale`}
+                    className={`flex flex-col items-center gap-1.5 ${activityRange === '7d' ? 'flex-1 min-w-0' : 'min-w-[18px] flex-1'}`}>
+                    <span className="text-[9px] font-bold text-[#527993] dark:text-[#7bb0cc] font-mono">{bucket.count || ''}</span>
                     <div className="w-full max-w-[28px] h-[64px] bg-sky-100/70 dark:bg-sky-950/60 rounded-lg flex items-end p-0.5 overflow-hidden">
-                      <div
-                        className={`w-full rounded-md transition-all duration-500 ${
-                          d.isToday
-                            ? 'bg-gradient-to-t from-[#0284c7] to-[#06b6d4] shadow-xs shadow-sky-500/40'
-                            : d.count > 0
-                            ? 'bg-[#0284c7]/50 dark:bg-[#38bdf8]/40'
-                            : 'bg-transparent'
-                        }`}
-                        style={{ height: `${barHeight}px` }}
-                      />
+                      <div className={`w-full rounded-md transition-all duration-500 ${bucket.isToday
+                        ? 'bg-gradient-to-t from-[#0284c7] to-[#06b6d4]'
+                        : 'bg-[#0284c7]/50 dark:bg-[#38bdf8]/40'}`}
+                        style={{ height: `${barHeight}px` }} />
                     </div>
-                    <span className={`text-[10px] font-medium ${d.isToday ? 'font-bold text-[#0284c7] dark:text-[#38bdf8]' : 'text-[#527993] dark:text-[#7bb0cc]'}`}>
-                      {d.day}
-                    </span>
+                    <span className="text-[9px] font-medium text-[#527993] dark:text-[#7bb0cc]">{bucket.label}</span>
                   </div>
                 );
               })}
             </div>
+            {!activityData.total && (
+              <p className="text-center text-xs text-[#527993] dark:text-[#7bb0cc] py-3">Bu dönemde henüz okuma kaydı bulunmuyor.</p>
+            )}
           </section>
 
           {/* 5. Akademik Atıf & Etki Barometresi (Citation Barometer) */}
@@ -377,11 +400,12 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
               <span className="text-[10px] font-bold text-[#527993] dark:text-[#7bb0cc] uppercase tracking-wider block">
                 Öne Çıkan Makalen
               </span>
-              <div className="text-base sm:text-lg font-black text-[#0a2540] dark:text-[#f0f9ff] truncate mt-0.5">
-                {likedPapers[0]?.title || 'Derin Deniz Biyo-ışığı'}
-              </div>
+              <button type="button" disabled={!likedPapers[0]} onClick={() => likedPapers[0] && onOpenDetails(likedPapers[0])}
+                className="w-full text-left text-base sm:text-lg font-black text-[#0a2540] dark:text-[#f0f9ff] truncate mt-0.5 hover:text-[#0284c7] dark:hover:text-[#38bdf8] disabled:cursor-default">
+                {likedPapers[0]?.title || 'Henüz öne çıkan makale yok'}
+              </button>
               <p className="text-[10px] text-[#527993] dark:text-[#7bb0cc] mt-1">
-                Kaydettiklerin arasından bir makale
+                {likedPapers[0] ? 'Makaleyi açmak için başlığına dokun.' : 'Bir makaleyi kaydettiğinde burada görünecek.'}
               </p>
             </div>
           </div>
