@@ -565,7 +565,28 @@ export default function App() {
             try { communityIds = await getCommunityRecommendationIds(); }
             catch (communityError) { console.warn('Topluluk önerileri alınamadı:', communityError); }
           }
-          const personalizedPapers = rankPapersForUser(papers, likedProfileRef.current, historyProfileRef.current, communityIds);
+          // Toplulukta benzer ilgi alanlarına sahip kullanıcıların beğendiği makaleleri,
+          // mevcut arama havuzunda yoksa OpenAlex'ten ayrıca getir. Dar filtreler varken filtreleri delme.
+          let communityPapers: Paper[] = [];
+          const activeFilter = filterRef.current;
+          const hasNarrowFilter = Boolean(activeFilter && (
+            activeFilter.sel.size > 0 || activeFilter.from || activeFilter.to ||
+            activeFilter.authorId || activeFilter.journalId || activeFilter.aName || activeFilter.jName
+          ));
+          if (communityIds.length && !hasNarrowFilter) {
+            const existingIds = new Set(papers.map(paper => paper.id));
+            const shortIds = communityIds
+              .map(id => String(id).split('/').pop() || '')
+              .filter(id => /^W\\d{3,15}$/.test(id) && !existingIds.has(`https://openalex.org/${id}`))
+              .slice(0, 12);
+            const fetched = await Promise.allSettled(shortIds.map(id => fetchWorkById(id)));
+            communityPapers = fetched
+              .filter((result): result is PromiseFulfilledResult<Paper | null> => result.status === 'fulfilled')
+              .map(result => result.value)
+              .filter((paper): paper is Paper => Boolean(paper && paper.abs.length >= 75 && !existingIds.has(paper.id)));
+          }
+          const combinedPapers = [...papers, ...communityPapers];
+          const personalizedPapers = rankPapersForUser(combinedPapers, likedProfileRef.current, historyProfileRef.current, communityIds);
           setQueue(prev => [...prev, ...personalizedPapers]);
           break;
         }
