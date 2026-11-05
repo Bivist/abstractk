@@ -65,6 +65,7 @@ export default function App() {
 
   // İlk kullanım turu (yalnızca ilk açılışta; Ayarlar'dan tekrar başlatılabilir)
   const [showTour, setShowTour] = useState<boolean>(false);
+  const [showSeyirTour, setShowSeyirTour] = useState<boolean>(false);
   const finishTour = useCallback(() => {
     try { localStorage.setItem('abs_tour_done', '1'); } catch {}
     setShowTour(false);
@@ -915,6 +916,9 @@ export default function App() {
       {showTour && !showSplash && !gateOpen && (
         <OnboardingTour lang={settings.lang || 'tr'} onSetTab={setCurrentTab} onClose={finishTour} />
       )}
+      {showSeyirTour && !showTour && !showSplash && !gateOpen && currentTab === 'dashboard' && (
+        <OnboardingTour mode="seyir" lang={settings.lang || 'tr'} onSetTab={setCurrentTab} onClose={() => setShowSeyirTour(false)} />
+      )}
 
       {/* Easter Egg: Sperm Whale (Kaşalot) Tail Splash */}
       <KasalotTailSplash
@@ -948,7 +952,14 @@ export default function App() {
       )}
 
       {/* Duyarlı gezinme */}
-      <BottomNav currentTab={currentTab} onSelectTab={setCurrentTab} langDict={langDict} likesCount={likedPapers.length} desktop={desktopMode} />
+      <BottomNav currentTab={currentTab} onSelectTab={(tab) => {
+        if (tab === "dashboard" && currentTab !== "dashboard" && !showTour) {
+          setCurrentTab("dashboard");
+          setShowSeyirTour(true);
+        } else {
+          setCurrentTab(tab);
+        }
+      }} langDict={langDict} likesCount={likedPapers.length} desktop={desktopMode} />
       </div>
 
       {/* Filter Bottom Sheet */}
