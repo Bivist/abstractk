@@ -875,6 +875,18 @@ export default function App() {
             lighthouseWatch={lighthouseWatch}
             onOpenDetails={(p) => setDetailPaper(p)}
             langDict={langDict}
+            onSearchKeyword={async (keyword) => {
+              const query = encodeURIComponent(keyword);
+              try {
+                const raw = await fetchWorks(`has_abstract:true,type:article,language:en,title_and_abstract.search:${query}`, 24);
+                const { papers } = parseWorksToPapers(raw, new Set<string>(), { fs: [], kind: 'any' });
+                setQueue(papers);
+                setCurrentTab('disc');
+                if (!papers.length) setNotice(`“${keyword}” konusu için makale bulunamadı.`);
+              } catch {
+                setNotice('Makaleler yüklenemedi. Lütfen tekrar dene.');
+              }
+            }}
           />
         )}
 
