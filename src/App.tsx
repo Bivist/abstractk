@@ -577,7 +577,7 @@ export default function App() {
             const existingIds = new Set(papers.map(paper => paper.id));
             const shortIds = communityIds
               .map(id => String(id).split('/').pop() || '')
-              .filter(id => /^W\\d{3,15}$/.test(id) && !existingIds.has(`https://openalex.org/${id}`))
+              .filter(id => /^W\d{3,15}$/.test(id) && !existingIds.has(`https://openalex.org/${id}`))
               .slice(0, 12);
             const fetched = await Promise.allSettled(shortIds.map(id => fetchWorkById(id)));
             communityPapers = fetched
