@@ -917,7 +917,7 @@ export default function App() {
         <OnboardingTour lang={settings.lang || 'tr'} onSetTab={setCurrentTab} onClose={finishTour} />
       )}
       {showSeyirTour && !showTour && !showSplash && !gateOpen && currentTab === 'dashboard' && (
-        <OnboardingTour mode="seyir" lang={settings.lang || 'tr'} onSetTab={setCurrentTab} onClose={() => setShowSeyirTour(false)} />
+        <OnboardingTour mode="seyir" lang={settings.lang || 'tr'} onSetTab={setCurrentTab} onClose={() => { try { localStorage.setItem("abs_seyir_tour_done", "1"); } catch {} setShowSeyirTour(false); }} />
       )}
 
       {/* Easter Egg: Sperm Whale (Kaşalot) Tail Splash */}
@@ -956,7 +956,9 @@ export default function App() {
         if (tab === "dashboard" && currentTab !== "dashboard") {
           setCurrentTab("dashboard");
           setShowTour(false);
-          setShowSeyirTour(true);
+          let seyirTourDone = false;
+          try { seyirTourDone = localStorage.getItem("abs_seyir_tour_done") === "1"; } catch {}
+          setShowSeyirTour(!seyirTourDone);
         } else {
           setCurrentTab(tab);
         }
