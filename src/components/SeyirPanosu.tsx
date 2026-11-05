@@ -140,9 +140,12 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
         if (bucket) bucket.count++;
       });
     } else {
+      const earliestTimestamp = history.length
+        ? Math.min(...history.map(item => item.timestamp))
+        : now.getTime();
+      const earliest = new Date(earliestTimestamp);
       const monthCount = activityRange === '90d' ? 3 : activityRange === '1y' ? 12 : Math.max(1,
-        (now.getFullYear() - Math.min(...history.map(item => new Date(item.timestamp).getFullYear()), now.getFullYear())) * 12 +
-        now.getMonth() - Math.min(...history.map(item => new Date(item.timestamp).getMonth()), now.getMonth()) + 1);
+        (now.getFullYear() - earliest.getFullYear()) * 12 + now.getMonth() - earliest.getMonth() + 1);
       const count = Math.min(monthCount, 120);
       for (let i = count - 1; i >= 0; i--) {
         const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
