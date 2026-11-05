@@ -146,7 +146,7 @@ export const OnboardingTour: React.FC<Props> = ({ lang, onSetTab, onClose, mode 
   useEffect(() => {
     if (step.tab) onSetTab(step.tab);
     // Makale haritası adımına geçildiğinde Seyir içindeki ilgili görünümü aç.
-    if (mode === 'seyir' && idx === 5) {
+    if (mode === 'seyir' && idx === 3) {
       window.dispatchEvent(new CustomEvent('abstract:seyir-tour-map'));
     }
   }, [idx, mode]);
