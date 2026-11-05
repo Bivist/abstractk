@@ -92,8 +92,8 @@ as $$
     select other.user_id, other.liked_paper_ids,
       (
         select count(*)::bigint
-        from unnest(other.liked_paper_ids) liked_id
-        where liked_id = any(mine.liked_paper_ids || mine.viewed_paper_ids)
+        from unnest(other.liked_paper_ids || other.viewed_paper_ids) other_id
+        where other_id = any(mine.liked_paper_ids || mine.viewed_paper_ids)
       ) as overlap
     from public.community_interest_profiles other
     cross join mine
