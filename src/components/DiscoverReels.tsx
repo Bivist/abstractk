@@ -215,7 +215,7 @@ export const DiscoverReels: React.FC<DiscoverReelsProps> = ({
             <BioluminescentAnglerfish
               onOpenFilter={onOpenFilter}
               onReset={onResetFilter}
-              message="Akış modunda başka makale kalmadı. Fenerbalığı karanlıkta parıldıyor."
+              message="Kaydırılacak makale bulunamadı."
             />
           </div>
         )
