@@ -108,16 +108,30 @@ export default function App() {
   }, [readingHistory]);
 
   const trackPaperRead = useCallback((paper?: Paper) => {
-    setLighthouseWatch(prev => {
-      const newToday = prev.todayReadCount + 1;
-      const beam = Math.min(100, Math.round((newToday / Math.max(prev.dailyGoal, 1)) * 100));
-      return {
-        ...prev,
-        todayReadCount: newToday,
-        totalReadCount: prev.totalReadCount + 1,
-        beamPower: beam
-      };
-    });
+    const now = Date.now();
+    const today = new Date(now);
+    const sameDay = (timestamp: number) => {
+      const date = new Date(timestamp);
+      return date.getFullYear() === today.getFullYear() &&
+        date.getMonth() === today.getMonth() &&
+        date.getDate() === today.getDate();
+    };
+    const alreadyCountedToday = Boolean(paper && readingHistory.some(item =>
+      item.paperId === paper.id && sameDay(item.timestamp)
+    ));
+
+    if (!alreadyCountedToday) {
+      setLighthouseWatch(prev => {
+        const newToday = prev.todayReadCount + 1;
+        const beam = Math.min(100, Math.round((newToday / Math.max(prev.dailyGoal, 1)) * 100));
+        return {
+          ...prev,
+          todayReadCount: newToday,
+          totalReadCount: prev.totalReadCount + 1,
+          beamPower: beam
+        };
+      });
+    }
 
     if (paper) {
       setReadingHistory(prev => {
@@ -148,7 +162,7 @@ export default function App() {
         return [entry, ...prev].slice(0, 1000);
       });
     }
-  }, []);
+  }, [readingHistory]);
 
   const handleUpdateDailyGoal = useCallback((goal: number) => {
     setLighthouseWatch(prev => {
