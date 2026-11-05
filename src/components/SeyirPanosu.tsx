@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Paper, LighthouseWatchState, ReadingHistoryItem } from '../types';
 import { SeyirHaritasi } from './SeyirHaritasi';
 import { 
@@ -23,6 +23,7 @@ interface SeyirPanosuProps {
   onOpenDetails: (paper: Paper) => void;
   langDict: Record<string, string>;
   onSearchKeyword: (keyword: string) => void;
+  isDark: boolean;
 }
 
 export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
@@ -31,10 +32,17 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
   lighthouseWatch,
   onOpenDetails,
   langDict,
-  onSearchKeyword
+  onSearchKeyword,
+  isDark
 }) => {
   // Alt görünüm: okuma özeti veya makale bağlantı haritası.
   const [activeView, setActiveView] = useState<'sensor' | 'chart'>('sensor');
+
+  useEffect(() => {
+    const openMapForTour = () => setActiveView('chart');
+    window.addEventListener('abstract:seyir-tour-map', openMapForTour);
+    return () => window.removeEventListener('abstract:seyir-tour-map', openMapForTour);
+  }, []);
 
   // Combined pool of papers (from likes + history)
   const allKnownPapers = useMemo(() => {
@@ -141,8 +149,11 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
 
   // Total citations of explored papers
   const totalCitesExplored = useMemo(() => {
-    const base = likedPapers.reduce((acc, p) => acc + (p.cites || 0), 0);
-    return base > 0 ? base : 1240;
+    const unique = new Map(likedPapers.map(p => [p.id, p]));
+    return Array.from(unique.values()).reduce((acc, p) => {
+      const citations = Number(p.cites);
+      return acc + (Number.isFinite(citations) && citations > 0 ? citations : 0);
+    }, 0);
   }, [likedPapers]);
 
   return (
@@ -166,6 +177,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
             </button>
             <button
               type="button"
+              data-tour="seyir-map-tab"
               onClick={() => setActiveView('chart')}
               className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 ${
                 activeView === 'chart'
@@ -184,11 +196,14 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
       {activeView === 'chart' ? (
         /* Makale bağlantı haritası */
         <div className="flex-1 min-h-0 h-full flex flex-col">
+          <div data-tour="seyir-map-content" className="flex-1 min-h-0 h-full flex flex-col">
           <SeyirHaritasi
             papers={allKnownPapers}
+            isDark={isDark}
             onOpenDetails={onOpenDetails}
             langDict={langDict}
           />
+          </div>
         </div>
       ) : (
         /* Okuma özeti */
@@ -346,10 +361,10 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
                 Kaydettiğin Makalelerin Atıfları
               </span>
               <div className="text-xl sm:text-2xl font-black text-[#0284c7] dark:text-[#38bdf8] font-mono mt-0.5">
-                {totalCitesExplored.toLocaleString()}+
+                {totalCitesExplored.toLocaleString()}
               </div>
               <p className="text-[10px] text-[#527993] dark:text-[#7bb0cc] mt-1">
-                Kaydettiğin makalelerin aldığı toplam atıf
+                Kaydettiğin makalelerin OpenAlex verilerine göre toplam atıf sayısı
               </p>
             </div>
 
