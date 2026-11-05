@@ -121,20 +121,31 @@ export default function App() {
 
     if (paper) {
       setReadingHistory(prev => {
-        const exists = prev.some(item => item.paperId === paper.id);
-        if (exists) return prev;
-        return [
-          {
-            paperId: paper.id,
-            title: paper.title,
-            field: paper.field || 'Genel Bilim',
-            sub: paper.sub,
-            kw: paper.kw || [],
-            cites: paper.cites || 0,
-            timestamp: Date.now()
-          },
-          ...prev.slice(0, 49) // Keep 50 most recent records
-        ];
+        const now = Date.now();
+        const today = new Date(now);
+        const sameDay = (timestamp: number) => {
+          const date = new Date(timestamp);
+          return date.getFullYear() === today.getFullYear() &&
+            date.getMonth() === today.getMonth() &&
+            date.getDate() === today.getDate();
+        };
+        // Aynı makale aynı gün içinde tekrar açılırsa tek günlük kayıt tut;
+        // farklı günlerdeki okumalar ayrı ayrı sayılır.
+        const existingIndex = prev.findIndex(item => item.paperId === paper.id && sameDay(item.timestamp));
+        const entry = {
+          paperId: paper.id,
+          title: paper.title,
+          field: paper.field || 'Genel Bilim',
+          sub: paper.sub,
+          kw: paper.kw || [],
+          cites: paper.cites || 0,
+          timestamp: now
+        };
+        if (existingIndex >= 0) {
+          return [entry, ...prev.filter((_, index) => index !== existingIndex)];
+        }
+        // Uzun dönem grafikler için son 1000 günlük okuma olayını sakla.
+        return [entry, ...prev].slice(0, 1000);
       });
     }
   }, []);
