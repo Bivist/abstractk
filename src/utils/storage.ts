@@ -95,7 +95,7 @@ export function sanitizeHistory(raw: unknown): ReadingHistoryItem[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter(h => isObj(h) && isStr(h.paperId) && isStr(h.title))
-    .slice(0, 50)
+    .slice(0, 1000)
     .map(h => ({
       paperId: h.paperId,
       title: h.title,
