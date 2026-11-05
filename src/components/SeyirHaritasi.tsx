@@ -6,6 +6,7 @@ interface SeyirHaritasiProps {
   papers: Paper[];
   onOpenDetails: (paper: Paper) => void;
   langDict: Record<string, string>;
+  isDark: boolean;
 }
 
 interface StarNode {
@@ -45,10 +46,15 @@ const FIELD_PALETTES: Record<string, { color: string; glow: string; sector: stri
 export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
   papers,
   onOpenDetails,
-  langDict
+  langDict,
+  isDark
 }) => {
   // Chart visual style: 'night' (Gece Gökyüzü Takımyıldızı) vs 'portolan' (Eski Portolan Deniz Haritası)
-  const [chartTheme, setChartTheme] = useState<'night' | 'portolan'>('night');
+  const [chartTheme, setChartTheme] = useState<'night' | 'portolan'>(isDark ? 'night' : 'portolan');
+
+  useEffect(() => {
+    setChartTheme(isDark ? 'night' : 'portolan');
+  }, [isDark]);
   const [selectedStar, setSelectedStar] = useState<StarNode | null>(null);
   const [filterField, setFilterField] = useState<string>('all');
 
@@ -283,18 +289,18 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
   }, [selectedStar, edges]);
 
   return (
-    <div className="flex flex-col h-full w-full select-none relative overflow-hidden bg-[#030d18] text-white">
+    <div className={chartTheme === "night" ? "flex flex-col h-full w-full select-none relative overflow-hidden bg-[#030d18] text-white transition-colors duration-500" : "flex flex-col h-full w-full select-none relative overflow-hidden bg-[#f5edda] text-[#3f2d1b] transition-colors duration-500"}>
       {/* Top Header Bar & Controls */}
-      <div className="relative z-20 flex flex-wrap items-center justify-between gap-2 p-3 bg-[#030d18]/90 backdrop-blur-md border-b border-sky-900/50">
+      <div className={chartTheme === "night" ? "relative z-20 flex flex-wrap items-center justify-between gap-2 p-3 bg-[#030d18]/90 backdrop-blur-md border-b border-sky-900/50" : "relative z-20 flex flex-wrap items-center justify-between gap-2 p-3 bg-[#f3e8cf]/95 backdrop-blur-md border-b border-amber-800/30"}>
         <div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
-            <h3 className="font-serif text-sm sm:text-base font-bold text-sky-100 flex items-center gap-1.5">
+            <h3 className={chartTheme === "night" ? "font-serif text-sm sm:text-base font-bold text-sky-100 flex items-center gap-1.5" : "font-serif text-sm sm:text-base font-bold text-[#4b351e] flex items-center gap-1.5"}>
               <span>Seyir Haritası</span>
               <span className="text-[11px] font-sans font-normal text-sky-400/80">· Bilgi Ağı</span>
             </h3>
           </div>
-          <p className="text-[10px] text-sky-300/70">
+          <p className={chartTheme === "night" ? "text-[10px] text-sky-300/70" : "text-[10px] text-[#795b36]"}>
             {displayPapers.length} Yıldız Düğümü · {edges.length} Takımyıldız Hattı
           </p>
         </div>
@@ -302,7 +308,7 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
         {/* Style Switcher & Zoom Controls */}
         <div className="flex items-center gap-1.5">
           {/* Theme mode toggle: Constellation Night vs Portolan Chart */}
-          <div className="inline-flex bg-sky-950/80 p-0.5 rounded-lg border border-sky-800/60 text-xs">
+          <div className={chartTheme === "night" ? "inline-flex bg-sky-950/80 p-0.5 rounded-lg border border-sky-800/60 text-xs" : "inline-flex bg-[#e8d7b6] p-0.5 rounded-lg border border-amber-800/40 text-xs"}>
             <button
               type="button"
               onClick={() => setChartTheme('night')}
@@ -362,7 +368,7 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
       </div>
 
       {/* Quick Discipline Filter Bar */}
-      <div className="relative z-20 px-3 py-1.5 bg-[#041220]/80 backdrop-blur-xs border-b border-sky-950 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-[11px]">
+      <div className={chartTheme === "night" ? "relative z-20 px-3 py-1.5 bg-[#041220]/80 backdrop-blur-xs border-b border-sky-950 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-[11px]" : "relative z-20 px-3 py-1.5 bg-[#ead9b8]/95 backdrop-blur-xs border-b border-amber-900/30 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-[11px]"}>
         <button
           type="button"
           onClick={() => setFilterField('all')}
@@ -587,7 +593,7 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
 
         {/* Empty state hint if user has few papers */}
         {papers.length === 0 && (
-          <div className="absolute top-3 left-3 right-3 sm:left-auto sm:right-3 sm:w-72 bg-sky-950/85 backdrop-blur-md border border-cyan-500/40 rounded-xl p-2.5 text-xs text-sky-200 pointer-events-none shadow-lg">
+          <div className={chartTheme === "night" ? "absolute top-3 left-3 right-3 sm:left-auto sm:right-3 sm:w-72 bg-sky-950/85 backdrop-blur-md border border-cyan-500/40 rounded-xl p-2.5 text-xs text-sky-200 pointer-events-none shadow-lg" : "absolute top-3 left-3 right-3 sm:left-auto sm:right-3 sm:w-72 bg-[#f7edda]/95 backdrop-blur-md border border-amber-700/40 rounded-xl p-2.5 text-xs text-[#574027] pointer-events-none shadow-lg"}>
             <div className="flex items-center gap-1.5 font-bold text-cyan-300 mb-0.5">
               <Info className="w-3.5 h-3.5" />
               <span>Örnek Keşif Haritası</span>
@@ -599,7 +605,7 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
 
       {/* Selected Star Details Card (Nautical Constellation Preview Sheet) */}
       {selectedStar && (
-        <div className="relative z-30 p-3 sm:p-4 bg-[#041424]/95 backdrop-blur-lg border-t border-sky-800/60 shadow-2xl animate-in slide-in-from-bottom-4 duration-200">
+        <div className={chartTheme === "night" ? "relative z-30 p-3 sm:p-4 bg-[#041424]/95 backdrop-blur-lg border-t border-sky-800/60 shadow-2xl animate-in slide-in-from-bottom-4 duration-200" : "relative z-30 p-3 sm:p-4 bg-[#f3e8cf]/98 backdrop-blur-lg border-t border-amber-800/40 shadow-2xl animate-in slide-in-from-bottom-4 duration-200"}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
@@ -615,11 +621,11 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
                 </span>
               </div>
 
-              <h4 className="font-serif text-sm sm:text-base font-bold text-white line-clamp-2 leading-snug">
+              <h4 className={chartTheme === "night" ? "font-serif text-sm sm:text-base font-bold text-white line-clamp-2 leading-snug" : "font-serif text-sm sm:text-base font-bold text-[#3f2d1b] line-clamp-2 leading-snug"}>
                 {selectedStar.paper.title}
               </h4>
 
-              <div className="flex items-center gap-2 text-xs text-sky-300/80 mt-1">
+              <div className={chartTheme === "night" ? "flex items-center gap-2 text-xs text-sky-300/80 mt-1" : "flex items-center gap-2 text-xs text-[#795b36] mt-1"}>
                 <span className="truncate">{selectedStar.paper.authors}</span>
                 <span>·</span>
                 <span>{selectedStar.paper.year}</span>
