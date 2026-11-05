@@ -102,7 +102,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
       .sort((a, b) => b.count - a.count);
   }, [readingHistory, likedPapers, calculatedDepthMeters]);
 
-  // Son 7 Günlük Seyir Temposu (7-day activity simulation based on streak & daily goals)
+  // Son 7 Günün Okuma Aktivitesi (7-day activity simulation based on streak & daily goals)
   const weekDays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
   const weekData = useMemo(() => {
     const todayIndex = new Date().getDay(); // 0 is Sunday
@@ -182,7 +182,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
 
       {/* Main Body */}
       {activeView === 'chart' ? (
-        /* Seyir Haritası (Constellation & Network View) */
+        /* Makale bağlantı haritası */
         <div className="flex-1 min-h-0 h-full flex flex-col">
           <SeyirHaritasi
             papers={allKnownPapers}
@@ -249,7 +249,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
                 </div>
                 <div>
                   <h3 className="font-serif text-base font-bold text-[#0a2540] dark:text-[#f0f9ff]">
-                    Disiplin Derinleşme Dağılımı
+                    İlgi Alanların
                   </h3>
                   <p className="text-[11px] text-[#527993] dark:text-[#7bb0cc]">
                     Hangi akademik alanlarda ne kadar odaklandığınız
@@ -283,7 +283,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
             </div>
           </section>
 
-          {/* 4. Son 7 Günlük Seyir Temposu & Okuma Trendi (Reading Velocity) */}
+          {/* 4. Son Son 7 Günün Okuma Aktivitesi & Okuma Trendi (Reading Velocity) */}
           <section className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-[24px] p-4 shadow-xs">
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
@@ -295,7 +295,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
                     7 Günlük Seyir Temposu
                   </h3>
                   <p className="text-[11px] text-[#527993] dark:text-[#7bb0cc]">
-                    Haftalık okuma hızı ve seyrüsefer grafiği
+                    Günlere göre okuma sayın
                   </p>
                 </div>
               </div>
@@ -343,25 +343,25 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-[22px] p-3.5 shadow-xs">
               <span className="text-[10px] font-bold text-[#527993] dark:text-[#7bb0cc] uppercase tracking-wider block">
-                Atıf Etkileşimi
+                Kaydettiğin Makalelerin Atıfları
               </span>
               <div className="text-xl sm:text-2xl font-black text-[#0284c7] dark:text-[#38bdf8] font-mono mt-0.5">
                 {totalCitesExplored.toLocaleString()}+
               </div>
               <p className="text-[10px] text-[#527993] dark:text-[#7bb0cc] mt-1">
-                Taranan literatür atıf ağırlığı
+                Kaydettiğin makalelerin aldığı toplam atıf
               </p>
             </div>
 
             <div className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-[22px] p-3.5 shadow-xs">
               <span className="text-[10px] font-bold text-[#527993] dark:text-[#7bb0cc] uppercase tracking-wider block">
-                Kutup Yıldızı
+                Öne Çıkan Makalen
               </span>
               <div className="text-base sm:text-lg font-black text-[#0a2540] dark:text-[#f0f9ff] truncate mt-0.5">
                 {likedPapers[0]?.title || 'Derin Deniz Biyo-ışığı'}
               </div>
               <p className="text-[10px] text-[#527993] dark:text-[#7bb0cc] mt-1">
-                En yüksek atıflı başucu makalesi
+                Kaydettiklerin arasından bir makale
               </p>
             </div>
           </div>
