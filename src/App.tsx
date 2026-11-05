@@ -13,6 +13,7 @@ import { authEnabled } from './lib/supabase';
 import { pullCloud, pushCloud, mergeSnapshots, type UserSnapshot } from './utils/cloudSync';
 import { signOutUser, updateDisplayName, uploadAvatar, removeAvatar } from './utils/auth';
 import { trackEvent } from './utils/analytics';
+import { rankPapersForUser } from './utils/recommendations';
 
 import { IntroSplash } from './components/IntroSplash';
 import { TopBar } from './components/TopBar';
@@ -151,6 +152,12 @@ export default function App() {
   const [likedPapers, setLikedPapers] = useState<Paper[]>(() => loadLikedPapers());
 
   const [folders, setFolders] = useState<Record<string, string[]>>(() => loadFolders());
+
+  // En güncel kişisel ilgi profilini arama callback'inde kullan.
+  const likedProfileRef = useRef(likedPapers);
+  const historyProfileRef = useRef(readingHistory);
+  likedProfileRef.current = likedPapers;
+  historyProfileRef.current = readingHistory;
 
   // Paper Queue & Pagination state
   const [queue, setQueue] = useState<Paper[]>([]);
@@ -537,7 +544,8 @@ export default function App() {
           } else if (tier.kind === 'one' && tiersRef.current.some((candidate: any) => candidate.kind === 'all' || candidate.kind === 'part')) {
             setNotice(`Seçtiğin alanların tamamında ortak yayın bulunamadı. Şu anda yayın bulunan “${tier.label}” alanındaki makaleler gösteriliyor.`);
           }
-          setQueue(prev => [...prev, ...papers]);
+          const personalizedPapers = rankPapersForUser(papers, likedProfileRef.current, historyProfileRef.current);
+          setQueue(prev => [...prev, ...personalizedPapers]);
           break;
         }
 
@@ -621,7 +629,7 @@ export default function App() {
     if (!queue.length) return;
     registerSwipeForSpeedCheck();
     const paper = queue[0];
-    trackPaperRead();
+    trackPaperRead(paper);
     if (dir > 0) {
       // LIKE
       SFX.right();
@@ -642,7 +650,7 @@ export default function App() {
   // Like Paper Handler (Reels mode & Buttons)
   const handleLikePaper = (paper: Paper) => {
     registerSwipeForSpeedCheck();
-    trackPaperRead();
+    trackPaperRead(paper);
     if (!likedPapers.some(p => p.id === paper.id)) {
       trackEvent('paper_liked', { paper_id: paper.id, source: 'reels' });
       setLikedPapers(prev => [paper, ...prev]);
@@ -820,6 +828,7 @@ export default function App() {
               langDict={langDict}
               onResetFilter={handleResetFilter}
               onSharePaper={handleSharePaper}
+              recommendationActive={likedPapers.length > 0 || readingHistory.length > 0}
             />
           ) : (
             <DiscoverClassic
@@ -837,6 +846,7 @@ export default function App() {
               hasMore={queue.length > 0}
               onResetFilter={handleResetFilter}
               onSharePaper={handleSharePaper}
+              recommendationActive={likedPapers.length > 0 || readingHistory.length > 0}
             />
           )
         )}
