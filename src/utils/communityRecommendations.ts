@@ -8,7 +8,7 @@ import { Paper, ReadingHistoryItem } from '../types';
 function buildInterestTerms(liked: Paper[], history: ReadingHistoryItem[]): string[] {
   const terms = new Set<string>();
   const add = (prefix: string, value?: string) => {
-    const normalized = String(value || '').toLocaleLowerCase('tr').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/ı/g, 'i').replace(/[^a-z0-9]+/g, ' ').trim();
+    const normalized = String(value || '').toLocaleLowerCase('tr').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').replace(/[^a-z0-9]+/g, ' ').trim();
     if (normalized.length >= 3) terms.add(`${prefix}:${normalized}`);
   };
   liked.forEach(paper => {
@@ -19,7 +19,7 @@ function buildInterestTerms(liked: Paper[], history: ReadingHistoryItem[]): stri
   history.forEach(item => {
     add('field', item.field); add('sub', item.sub);
     (item.kw || []).forEach(value => add('keyword', value));
-    String(item.title || '').split(/[^\\p{L}\\p{N}]+/u).filter(value => value.length >= 5).slice(0, 12).forEach(value => add('title', value));
+    String(item.title || '').split(/[^\p{L}\p{N}]+/u).filter(value => value.length >= 5).slice(0, 12).forEach(value => add('title', value));
   });
   return Array.from(terms).slice(0, 300);
 }
