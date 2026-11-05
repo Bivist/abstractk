@@ -41,7 +41,7 @@ export function sanitizeSettings(raw: unknown, defaults: SettingsState): Setting
     lang: raw.lang === 'en' || raw.lang === 'tr' ? raw.lang : defaults.lang,
     reelsMode: typeof raw.reelsMode === 'boolean' ? raw.reelsMode : defaults.reelsMode,
     displayMode: raw.displayMode === 'mobile' || raw.displayMode === 'desktop' || raw.displayMode === 'auto' ? raw.displayMode : defaults.displayMode,
-    communityRecommendations: typeof raw.communityRecommendations === 'boolean' ? raw.communityRecommendations : defaults.communityRecommendations
+    communityRecommendations: true
   };
 }
 
