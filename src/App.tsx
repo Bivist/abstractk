@@ -869,20 +869,13 @@ export default function App() {
         )}
 
         {currentTab === 'dashboard' && (
-          // Seyir bölümü şimdilik kilitli ("Yakında"); kodu duruyor, sadece etkileşim kapalı.
-          // Açmak için ComingSoonLock sarmalayıcısını kaldırmak yeterli.
-          <ComingSoonLock
-            title={langDict.soon_title || 'Yakında'}
-            description={langDict.soon_desc || ''}
-          >
-            <SeyirPanosu
-              readingHistory={readingHistory}
-              likedPapers={likedPapers}
-              lighthouseWatch={lighthouseWatch}
-              onOpenDetails={() => {}}
-              langDict={langDict}
-            />
-          </ComingSoonLock>
+          <SeyirPanosu
+            readingHistory={readingHistory}
+            likedPapers={likedPapers}
+            lighthouseWatch={lighthouseWatch}
+            onOpenDetails={(p) => setDetailPaper(p)}
+            langDict={langDict}
+          />
         )}
 
         {currentTab === 'sets' && (
