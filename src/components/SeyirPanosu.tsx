@@ -22,6 +22,7 @@ interface SeyirPanosuProps {
   lighthouseWatch: LighthouseWatchState;
   onOpenDetails: (paper: Paper) => void;
   langDict: Record<string, string>;
+  onSearchKeyword: (keyword: string) => void;
 }
 
 export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
@@ -29,9 +30,10 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
   likedPapers,
   lighthouseWatch,
   onOpenDetails,
-  langDict
+  langDict,
+  onSearchKeyword
 }) => {
-  // Sub-view toggle: 'sensor' (Sensör & Derinlik Panosu) vs 'chart' (Seyir Haritası - Takımyıldız Ağı)
+  // Alt görünüm: okuma özeti veya makale bağlantı haritası.
   const [activeView, setActiveView] = useState<'sensor' | 'chart'>('sensor');
 
   // Combined pool of papers (from likes + history)
@@ -160,7 +162,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
               }`}
             >
               <Activity className="w-3.5 h-3.5" />
-              <span>Sensör Panosu</span>
+              <span>Okuma Özeti</span>
             </button>
             <button
               type="button"
@@ -172,7 +174,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
-              <span>Seyir Haritası (Ağ)</span>
+              <span>Makale Haritası</span>
             </button>
           </div>
         </div>
@@ -189,7 +191,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
           />
         </div>
       ) : (
-        /* Sensör & Derinlik Panosu (Sensor Dashboard) */
+        /* Okuma özeti */
         <div className="flex-1 min-h-0 h-full overflow-y-auto overscroll-contain px-4 py-4 space-y-4 max-w-lg mx-auto w-full pb-10">
           {/* 1. Telemetry Top Status Header */}
           <div className="relative rounded-[26px] p-4.5 bg-gradient-to-br from-[#0284c7] via-[#0284c7] to-[#0ea5e9] text-white shadow-lg shadow-sky-950/15 overflow-hidden">
@@ -203,7 +205,7 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
                   <span className="text-[11px] font-mono tracking-wider uppercase text-sky-100 font-bold">
-                    SENSÖRLER ÇALIŞIYOR · SEKTÖR AKTİF
+                    OKUMA DURUMUN
                   </span>
                 </div>
                 <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-[11px] font-bold text-white">
@@ -213,92 +215,30 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
               </div>
 
               <h2 className="font-serif text-xl sm:text-2xl font-black tracking-tight leading-tight">
-                Kişisel Seyir &amp; Derinlik Panosu
+                Okuma Yolculuğun
               </h2>
               <p className="text-xs text-sky-100/90 mt-1 max-w-[34ch]">
-                Akademik okuma temponuz, fener menziliniz ve disiplin derinleşme telemetrisi.
+                Okuma alışkanlıklarını ve ilgi alanlarını burada görebilirsin.
               </p>
 
-              {/* Sensor Quick Stats Strip */}
+              {/* Kısa okuma özeti */}
               <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-white/20 text-center">
                 <div className="bg-white/10 rounded-xl p-2 backdrop-blur-xs">
-                  <span className="block text-[10px] text-sky-100 uppercase tracking-tight">Okuma Sayısı</span>
+                  <span className="block text-[10px] text-sky-100 uppercase tracking-tight">Okunan</span>
                   <b className="text-base sm:text-lg font-black">{totalReads}</b>
                 </div>
                 <div className="bg-white/10 rounded-xl p-2 backdrop-blur-xs">
-                  <span className="block text-[10px] text-sky-100 uppercase tracking-tight">Işık Menzili</span>
-                  <b className="text-base sm:text-lg font-black">{beamDistanceMiles} Mil</b>
+                  <span className="block text-[10px] text-sky-100 uppercase tracking-tight">Kaydedilen</span>
+                  <b className="text-base sm:text-lg font-black">{likedPapers.length}</b>
                 </div>
                 <div className="bg-white/10 rounded-xl p-2 backdrop-blur-xs">
-                  <span className="block text-[10px] text-sky-100 uppercase tracking-tight">Fener Gücü</span>
-                  <b className="text-base sm:text-lg font-black">%{beamPower}</b>
+                  <span className="block text-[10px] text-sky-100 uppercase tracking-tight">Günlük Seri</span>
+                  <b className="text-base sm:text-lg font-black">{lighthouseWatch.streakDays} gün</b>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 2. Batimetrik Derinlik Sensörü (Ocean Depth Sensor Gauge) */}
-          <section className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-[24px] p-4 shadow-xs">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
-                  <Waves className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-serif text-base font-bold text-[#0a2540] dark:text-[#f0f9ff]">
-                    Batimetrik Derinleşme Seviyesi
-                  </h3>
-                  <p className="text-[11px] text-[#527993] dark:text-[#7bb0cc]">
-                    Bilimsel literatürde ulaşılan hidrostatik derinlik
-                  </p>
-                </div>
-              </div>
-
-              {/* Depth Zone Tag */}
-              <div className={`px-2.5 py-1 rounded-full border text-[11px] font-bold ${depthZone.badge} ${depthZone.color}`}>
-                {depthZone.name}
-              </div>
-            </div>
-
-            {/* Depth Telemetry Meter */}
-            <div className="bg-gradient-to-r from-sky-50 to-cyan-50 dark:from-[#051422] dark:to-[#081d30] border border-sky-200/60 dark:border-sky-900/40 rounded-2xl p-3.5 mb-2">
-              <div className="flex items-end justify-between mb-1.5">
-                <div>
-                  <span className="text-[10px] text-[#527993] dark:text-[#7bb0cc] uppercase tracking-wider font-mono">
-                    HİDROSTATİK DERİNLİK
-                  </span>
-                  <div className="text-2xl sm:text-3xl font-black text-[#0284c7] dark:text-[#38bdf8] font-mono leading-none mt-0.5">
-                    {calculatedDepthMeters.toLocaleString()} <span className="text-sm font-sans font-bold">Metre</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-[#527993] dark:text-[#7bb0cc] uppercase tracking-wider font-mono">
-                    HİDROSTATİK BASINÇ
-                  </span>
-                  <div className="text-sm font-bold text-[#0a2540] dark:text-[#f0f9ff] font-mono">
-                    ~{(calculatedDepthMeters * 0.1).toFixed(0)} Bar
-                  </div>
-                </div>
-              </div>
-
-              {/* Depth Meter Visual Bar */}
-              <div className="relative w-full h-3 rounded-full bg-sky-200/50 dark:bg-sky-950/80 p-0.5 overflow-hidden border border-sky-300/40 dark:border-sky-800/40">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#0284c7] via-[#06b6d4] to-[#38bdf8] shadow-[0_0_12px_rgba(56,189,248,0.7)] transition-all duration-700 relative"
-                  style={{ width: `${Math.min(100, Math.max(12, (calculatedDepthMeters / 5000) * 100))}%` }}
-                >
-                  <span className="absolute right-0 top-0 bottom-0 w-2.5 bg-white/90 rounded-full blur-[1px] animate-pulse" />
-                </div>
-              </div>
-
-              <div className="flex justify-between text-[10px] text-[#527993] dark:text-[#7bb0cc] mt-1.5 font-mono">
-                <span>0m (Yüzey)</span>
-                <span>200m (Mezo)</span>
-                <span>1000m (Bati)</span>
-                <span>4000m+ (Abisal)</span>
-              </div>
-            </div>
-          </section>
 
           {/* 3. Disiplin Derinleşme Göstergeleri (Discipline Depth Breakdown) */}
           <section className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-[24px] p-4 shadow-xs">
@@ -434,17 +374,19 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
               </div>
               <div>
                 <h3 className="font-serif text-base font-bold text-[#0a2540] dark:text-[#f0f9ff]">
-                  Sonar Yankıları (Odak Kavramlar)
+                  Öne Çıkan Konular
                 </h3>
                 <p className="text-[11px] text-[#527993] dark:text-[#7bb0cc]">
-                  En çok taranan bilimsel kavramlar
+                  İlgini çeken konulara dokunarak ilgili makaleleri keşfet.
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-1.5 pt-1">
               {topKeywords.map(([kw, score]) => (
-                <div
+                <button
+                  type="button"
+                  onClick={() => onSearchKeyword(kw)}
                   key={kw}
                   className="px-2.5 py-1 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200/60 dark:border-sky-900/50 text-xs font-medium text-[#0a2540] dark:text-[#e0f4ff] flex items-center gap-1.5"
                 >
@@ -452,10 +394,77 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
                   <span className="text-[10px] text-[#0284c7] dark:text-[#38bdf8] font-bold font-mono">
                     +{score}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </section>
+
+          {/* Yakında: okuma derinliği */}
+          <section className="relative overflow-hidden bg-white dark:bg-black border border-black dark:border-white rounded-[24px] p-4 shadow-xs grayscale opacity-90">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
+                  <Waves className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-base font-bold text-[#0a2540] dark:text-[#f0f9ff]">
+                    Okuma Derinliği
+                  </h3>
+                  <p className="text-[11px] text-[#527993] dark:text-[#7bb0cc]">
+                    Okuma yolculuğunun bir sonraki aşaması
+                  </p>
+                </div>
+              </div>
+
+              {/* Depth Zone Tag */}
+              <div className={`px-2.5 py-1 rounded-full border text-[11px] font-bold ${depthZone.badge} ${depthZone.color}`}>
+                Yakında
+              </div>
+            </div>
+
+            {/* Depth Telemetry Meter */}
+            <div className="bg-gradient-to-r from-sky-50 to-cyan-50 dark:from-[#051422] dark:to-[#081d30] border border-sky-200/60 dark:border-sky-900/40 rounded-2xl p-3.5 mb-2">
+              <div className="flex items-end justify-between mb-1.5">
+                <div>
+                  <span className="text-[10px] text-[#527993] dark:text-[#7bb0cc] uppercase tracking-wider font-mono">
+                    DERİNLİK SEVİYESİ
+                  </span>
+                  <div className="text-2xl sm:text-3xl font-black text-[#0284c7] dark:text-[#38bdf8] font-mono leading-none mt-0.5">
+                    {calculatedDepthMeters.toLocaleString()} <span className="text-sm font-sans font-bold">Metre</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-[#527993] dark:text-[#7bb0cc] uppercase tracking-wider font-mono">
+                    
+                  </span>
+                  <div className="text-sm font-bold text-[#0a2540] dark:text-[#f0f9ff] font-mono">
+                    
+                  </div>
+                </div>
+              </div>
+
+              {/* Depth Meter Visual Bar */}
+              <div className="relative w-full h-3 rounded-full bg-sky-200/50 dark:bg-sky-950/80 p-0.5 overflow-hidden border border-sky-300/40 dark:border-sky-800/40">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-[#0284c7] via-[#06b6d4] to-[#38bdf8] shadow-[0_0_12px_rgba(56,189,248,0.7)] transition-all duration-700 relative"
+                  style={{ width: `${Math.min(100, Math.max(12, (calculatedDepthMeters / 5000) * 100))}%` }}
+                >
+                  <span className="absolute right-0 top-0 bottom-0 w-2.5 bg-white/90 rounded-full blur-[1px] animate-pulse" />
+                </div>
+              </div>
+
+              <div className="flex justify-between text-[10px] text-[#527993] dark:text-[#7bb0cc] mt-1.5 font-mono">
+                <span>0m (Yüzey)</span>
+                <span>200m (Mezo)</span>
+                <span>1000m (Bati)</span>
+                <span>4000m+ (Abisal)</span>
+              </div>
+            </div>
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/55 dark:bg-black/65 backdrop-blur-[2px]">
+              <span className="rounded-full border border-black dark:border-white bg-white dark:bg-black text-black dark:text-white px-5 py-2 text-sm font-bold tracking-wide">Yakında</span>
+            </div>
+          </section>
+
 
           {/* Sitenin En Altındaki Telif & İmza Yazısı */}
           <footer className="pt-2 pb-6 text-center border-t border-[#c5dfe9]/40 dark:border-[#0d2f45]/40">
