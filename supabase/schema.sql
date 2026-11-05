@@ -51,7 +51,7 @@ create policy "avatar_delete_own_folder" on storage.objects for delete to authen
 using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
 
 
--- Topluluk önerileri: yalnızca kullanıcı açıkça katılmayı seçerse makale kimlikleri tutulur.
+-- Topluluk önerileri: giriş yapan kullanıcıların makale etkileşimleri ve genel ilgi terimleri eşleştirme için tutulur.
 -- Diğer kullanıcıların profilleri istemci tarafından doğrudan okunamaz.
 create table if not exists public.community_interest_profiles (
   user_id uuid primary key references auth.users (id) on delete cascade,
