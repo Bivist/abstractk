@@ -876,6 +876,7 @@ export default function App() {
             lighthouseWatch={lighthouseWatch}
             onOpenDetails={(p) => setDetailPaper(p)}
             langDict={langDict}
+            isDark={isDark}
             onSearchKeyword={async (keyword) => {
               const query = encodeURIComponent(keyword);
               try {
