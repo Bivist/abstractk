@@ -400,71 +400,18 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
           </section>
 
           {/* Yakında: okuma derinliği */}
-          <section className="relative overflow-hidden bg-white dark:bg-black border border-black dark:border-white rounded-[24px] p-4 shadow-xs grayscale opacity-90">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
-                  <Waves className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-serif text-base font-bold text-[#0a2540] dark:text-[#f0f9ff]">
-                    Okuma Derinliği
-                  </h3>
-                  <p className="text-[11px] text-[#527993] dark:text-[#7bb0cc]">
-                    Okuma yolculuğunun bir sonraki aşaması
-                  </p>
-                </div>
+          <section className="relative overflow-hidden rounded-[24px] border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white p-5 grayscale">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-serif text-base font-bold">Okuma Derinliği</h3>
+                <p className="text-xs mt-1 text-black/65 dark:text-white/65">Yeni bir gelişim alanı yakında burada olacak.</p>
               </div>
-
-              {/* Depth Zone Tag */}
-              <div className={`px-2.5 py-1 rounded-full border text-[11px] font-bold ${depthZone.badge} ${depthZone.color}`}>
-                Yakında
-              </div>
+              <span className="shrink-0 rounded-full border border-black dark:border-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider">Yakında</span>
             </div>
-
-            {/* Depth Telemetry Meter */}
-            <div className="bg-gradient-to-r from-sky-50 to-cyan-50 dark:from-[#051422] dark:to-[#081d30] border border-sky-200/60 dark:border-sky-900/40 rounded-2xl p-3.5 mb-2">
-              <div className="flex items-end justify-between mb-1.5">
-                <div>
-                  <span className="text-[10px] text-[#527993] dark:text-[#7bb0cc] uppercase tracking-wider font-mono">
-                    DERİNLİK SEVİYESİ
-                  </span>
-                  <div className="text-2xl sm:text-3xl font-black text-[#0284c7] dark:text-[#38bdf8] font-mono leading-none mt-0.5">
-                    {calculatedDepthMeters.toLocaleString()} <span className="text-sm font-sans font-bold">Metre</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-[#527993] dark:text-[#7bb0cc] uppercase tracking-wider font-mono">
-                    
-                  </span>
-                  <div className="text-sm font-bold text-[#0a2540] dark:text-[#f0f9ff] font-mono">
-                    
-                  </div>
-                </div>
-              </div>
-
-              {/* Depth Meter Visual Bar */}
-              <div className="relative w-full h-3 rounded-full bg-sky-200/50 dark:bg-sky-950/80 p-0.5 overflow-hidden border border-sky-300/40 dark:border-sky-800/40">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-[#0284c7] via-[#06b6d4] to-[#38bdf8] shadow-[0_0_12px_rgba(56,189,248,0.7)] transition-all duration-700 relative"
-                  style={{ width: `${Math.min(100, Math.max(12, (calculatedDepthMeters / 5000) * 100))}%` }}
-                >
-                  <span className="absolute right-0 top-0 bottom-0 w-2.5 bg-white/90 rounded-full blur-[1px] animate-pulse" />
-                </div>
-              </div>
-
-              <div className="flex justify-between text-[10px] text-[#527993] dark:text-[#7bb0cc] mt-1.5 font-mono">
-                <span>0m (Yüzey)</span>
-                <span>200m (Mezo)</span>
-                <span>1000m (Bati)</span>
-                <span>4000m+ (Abisal)</span>
-              </div>
-            </div>
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/55 dark:bg-black/65 backdrop-blur-[2px]">
-              <span className="rounded-full border border-black dark:border-white bg-white dark:bg-black text-black dark:text-white px-5 py-2 text-sm font-bold tracking-wide">Yakında</span>
+            <div className="mt-4 h-1.5 rounded-full bg-black/10 dark:bg-white/15 overflow-hidden">
+              <div className="h-full w-1/3 bg-black dark:bg-white" />
             </div>
           </section>
-
 
           {/* Sitenin En Altındaki Telif & İmza Yazısı */}
           <footer className="pt-2 pb-6 text-center border-t border-[#c5dfe9]/40 dark:border-[#0d2f45]/40">
