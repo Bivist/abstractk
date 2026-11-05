@@ -48,6 +48,8 @@ export interface SettingsState {
   lang: 'tr' | 'en';
   reelsMode: boolean; // Akış modu (dikey kaydırma)
   displayMode: 'auto' | 'mobile' | 'desktop';
+  /** Kullanıcı açıkça izin verirse anonim topluluk önerilerine katılır. */
+  communityRecommendations: boolean;
 }
 
 export interface LighthouseWatchState {
