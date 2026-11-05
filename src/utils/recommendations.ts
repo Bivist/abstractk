@@ -34,10 +34,11 @@ function score(paper: Paper, profile: Map<string, number>, interacted: Set<strin
 }
 
 /** Kişisel ilgi profili: beğeniler + makale ayrıntısı açılmış okuma geçmişi. */
-export function rankPapersForUser(papers: Paper[], liked: Paper[], history: ReadingHistoryItem[]): Paper[] {
+export function rankPapersForUser(papers: Paper[], liked: Paper[], history: ReadingHistoryItem[], communityIds: string[] = []): Paper[] {
   if (!papers.length || (!liked.length && !history.length)) return papers;
   const profile = new Map<string, number>();
   const interacted = new Set<string>();
+  const community = new Set(communityIds);
   liked.forEach(paper => {
     interacted.add(paper.id);
     learn(paper, 3.2, profile);
@@ -46,7 +47,7 @@ export function rankPapersForUser(papers: Paper[], liked: Paper[], history: Read
     interacted.add(item.paperId);
     learn({ field: item.field, sub: item.sub, kw: item.kw || [], tp: [] }, 1.35, profile);
   });
-  return papers.map((paper, index) => ({ paper, index, score: score(paper, profile, interacted) }))
+  return papers.map((paper, index) => ({ paper, index, score: score(paper, profile, interacted) + (community.has(paper.id) ? 35 : 0) }))
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map(item => item.paper);
 }
