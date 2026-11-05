@@ -65,8 +65,8 @@ const STEPS: TourStep[] = [
   {
     tab: 'likes',
     target: 'nav-dashboard',
-    tr: { title: 'Seyir (yakında)', text: 'Okuma istatistiklerin ve bilgi haritan burada olacak. Şimdilik kilitli; yakında açılacak.' },
-    en: { title: 'Voyage (coming soon)', text: 'Your reading stats and knowledge map will live here. It is locked for now and opens soon.' }
+    tr: { title: 'Seyir', text: 'Okuma alışkanlıklarını, ilgi alanlarını ve makaleler arasındaki bağlantıları burada takip edebilirsin. Seyir düğmesine dokunursan bu bölüme özel kısa bir tur da başlayacak.' },
+    en: { title: 'Voyage', text: 'Explore your reading habits, interests and connections between papers here. Tap the Voyage button to start a separate guided tour of this section.' }
   },
   {
     tab: 'sets',
@@ -81,22 +81,51 @@ const STEPS: TourStep[] = [
   }
 ];
 
+const SEYIR_STEPS: TourStep[] = [
+  {
+    tab: 'dashboard',
+    target: 'seyir-overview',
+    tr: { title: 'Seyir’e hoş geldin', text: 'Burası okuma alışkanlıklarını ve akademik keşiflerini takip edebileceğin kişisel alanın.' },
+    en: { title: 'Welcome to Voyage', text: 'This is your personal space to follow your reading habits and academic discoveries.' }
+  },
+  {
+    tab: 'dashboard',
+    target: 'seyir-activity',
+    tr: { title: 'Okuma aktiviten', text: 'Son günlerde ne kadar makale okuduğunu ve düzenini buradan görebilirsin.' },
+    en: { title: 'Reading activity', text: 'See how many papers you have read recently and follow your routine here.' }
+  },
+  {
+    tab: 'dashboard',
+    target: 'seyir-topics',
+    tr: { title: 'Öne çıkan konular', text: 'İlgini çeken bir konuya dokun. Abstract o konuyla ilgili makaleleri Keşfet bölümünde arayacak.' },
+    en: { title: 'Topics you explore', text: 'Tap a topic and Abstract will find related papers in the Explore section.' }
+  },
+  {
+    tab: 'dashboard',
+    target: 'seyir-depth',
+    tr: { title: 'Yakında', text: 'Okuma Derinliği bölümü üzerinde çalışılıyor. Yeni özellik hazır olduğunda burada açılacak.' },
+    en: { title: 'Coming soon', text: 'The Reading Depth feature is still in development and will appear here when ready.' }
+  }
+];
+
 interface Props {
   lang: 'tr' | 'en';
   onSetTab: (tab: TabId) => void;
   onClose: () => void;
+  mode?: 'general' | 'seyir';
 }
 
 const PAD = 6;
 const TIP_W = 300;
 
-export const OnboardingTour: React.FC<Props> = ({ lang, onSetTab, onClose }) => {
+export const OnboardingTour: React.FC<Props> = ({ lang, onSetTab, onClose, mode = 'general' }) => {
   const [idx, setIdx] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
-  const step = STEPS[idx];
+  const activeSteps = mode === 'seyir' ? SEYIR_STEPS : STEPS;
+  const step = activeSteps[idx];
   const t = step[lang] || step.tr;
-  const isLast = idx === STEPS.length - 1;
+  const isLast = idx === activeSteps.length - 1;
   const L = lang === 'en'
     ? { skip: 'Skip tour', next: 'Next', back: 'Back', done: 'Finish' }
     : { skip: 'Turu geç', next: 'İleri', back: 'Geri', done: 'Bitir' };
@@ -151,7 +180,7 @@ export const OnboardingTour: React.FC<Props> = ({ lang, onSetTab, onClose }) => 
   return (
     <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label="Uygulama turu">
       {/* Tıklamaları engelleyen katman */}
-      <div className="absolute inset-0" onClick={(e) => e.stopPropagation()} />
+      <div className="absolute inset-0 pointer-events-none" />
 
       {/* Karartma + vurgulu alan */}
       {rect ? (
@@ -171,13 +200,13 @@ export const OnboardingTour: React.FC<Props> = ({ lang, onSetTab, onClose }) => 
 
       {/* Açıklama kutusu */}
       <div
-        className="absolute rounded-2xl bg-white dark:bg-[#071828] text-[#0a2540] dark:text-[#e0f4ff] border border-sky-200 dark:border-sky-800 shadow-2xl p-4"
+        className="absolute pointer-events-auto rounded-2xl bg-white dark:bg-[#071828] text-[#0a2540] dark:text-[#e0f4ff] border border-sky-200 dark:border-sky-800 shadow-2xl p-4"
         style={tipStyle}
       >
         <div className="flex items-start justify-between gap-2 mb-1">
           <h4 className="font-serif text-base font-bold">{t.title}</h4>
           <span className="text-[10px] font-semibold text-[#4a7a96] dark:text-[#5fa8c8] tabular-nums shrink-0 mt-1">
-            {idx + 1}/{STEPS.length}
+            {idx + 1}/{activeSteps.length}
           </span>
         </div>
         <p className="text-xs leading-relaxed text-[#35607a] dark:text-[#9ccce6]">{t.text}</p>
