@@ -1,7 +1,7 @@
 import React from 'react';
 import { TabId } from '../types';
 import { AppIcon } from './AppIcon';
-import { Compass, Heart, Settings, Lock } from 'lucide-react';
+import { Compass, Heart, Settings } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface BottomNavProps {
@@ -153,7 +153,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 }`}
               >
                 {langDict[tab.labelKey]}
-                {tab.id === 'dashboard' && <Lock className="inline w-2.5 h-2.5 ml-0.5 -mt-0.5 opacity-70" />}
               </span>
             </button>
           );
