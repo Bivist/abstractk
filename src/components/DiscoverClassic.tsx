@@ -136,7 +136,7 @@ export const DiscoverClassic: React.FC<DiscoverClassicProps> = ({
             <BioluminescentAnglerfish
               onOpenFilter={onOpenFilter}
               onReset={onResetFilter}
-              message="Kaydırılacak makale kalmadı. Fenerbalığı biyo-lüminesans ışığıyla karanlıkta süzülüyor."
+              message="Kaydırılacak makale bulunamadı."
             />
           )
         )}
