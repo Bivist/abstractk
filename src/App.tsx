@@ -9,11 +9,12 @@ import { exportPapersToPrint } from './utils/export';
 import { sharePaper, readSharedIdFromLocation, clearSharedParam } from './utils/share';
 import { loadSettings, loadLikedPapers, loadFolders, loadHistory, loadLighthouseWatch, freshLighthouseWatch } from './utils/storage';
 import { useAuth } from './hooks/useAuth';
-import { authEnabled } from './lib/supabase';
+import { authEnabled, supabase } from './lib/supabase';
 import { pullCloud, pushCloud, mergeSnapshots, type UserSnapshot } from './utils/cloudSync';
 import { signOutUser, updateDisplayName, uploadAvatar, removeAvatar } from './utils/auth';
 import { trackEvent } from './utils/analytics';
 import { rankPapersForUser } from './utils/recommendations';
+import { syncCommunityProfile, getCommunityRecommendationIds } from './utils/communityRecommendations';
 
 import { IntroSplash } from './components/IntroSplash';
 import { TopBar } from './components/TopBar';
@@ -44,7 +45,8 @@ const DEFAULT_SETTINGS: SettingsState = {
   sound: true,
   lang: 'tr',
   reelsMode: false,
-  displayMode: 'auto'
+  displayMode: 'auto',
+  communityRecommendations: false
 };
 
 /** Bu cihazdaki yerel verinin hangi hesaba ait olduğunu tutar (girişte birleştirme / bulut öncelikli kararı için). */
@@ -158,6 +160,10 @@ export default function App() {
   const historyProfileRef = useRef(readingHistory);
   likedProfileRef.current = likedPapers;
   historyProfileRef.current = readingHistory;
+  const communityEnabledRef = useRef(false);
+  communityEnabledRef.current = Boolean(settings.communityRecommendations && auth.user);
+  const communityUserRef = useRef<string | null>(null);
+  communityUserRef.current = auth.user?.id || null;
 
   // Paper Queue & Pagination state
   const [queue, setQueue] = useState<Paper[]>([]);
@@ -283,6 +289,16 @@ export default function App() {
     } catch {}
     SFX.setEnabled(settings.sound);
   }, [settings]);
+
+  // Topluluk önerileri yalnızca kullanıcının açık izniyle eşitlenir.
+  useEffect(() => {
+    if (!auth.user || !supabase) return;
+    const timer = window.setTimeout(() => {
+      syncCommunityProfile(likedPapers, readingHistory, settings.communityRecommendations)
+        .catch(error => console.warn('Topluluk profili eşitlenemedi:', error));
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [auth.user?.id, likedPapers, readingHistory, settings.communityRecommendations]);
 
   // Save Likes
   useEffect(() => {
@@ -544,7 +560,12 @@ export default function App() {
           } else if (tier.kind === 'one' && tiersRef.current.some((candidate: any) => candidate.kind === 'all' || candidate.kind === 'part')) {
             setNotice(`Seçtiğin alanların tamamında ortak yayın bulunamadı. Şu anda yayın bulunan “${tier.label}” alanındaki makaleler gösteriliyor.`);
           }
-          const personalizedPapers = rankPapersForUser(papers, likedProfileRef.current, historyProfileRef.current);
+          let communityIds: string[] = [];
+          if (communityEnabledRef.current) {
+            try { communityIds = await getCommunityRecommendationIds(); }
+            catch (communityError) { console.warn('Topluluk önerileri alınamadı:', communityError); }
+          }
+          const personalizedPapers = rankPapersForUser(papers, likedProfileRef.current, historyProfileRef.current, communityIds);
           setQueue(prev => [...prev, ...personalizedPapers]);
           break;
         }
