@@ -149,6 +149,9 @@ export const OnboardingTour: React.FC<Props> = ({ lang, onSetTab, onClose, mode 
     if (mode === 'seyir' && idx === 3) {
       window.dispatchEvent(new CustomEvent('abstract:seyir-tour-map'));
     }
+    if (mode === 'seyir' && idx === 5) {
+      window.dispatchEvent(new CustomEvent('abstract:seyir-tour-summary'));
+    }
   }, [idx, mode]);
 
   // Hedef elemanı bul (sekme geçişi sonrası görünmesi için kısa süre dener) ve konumunu takip et
