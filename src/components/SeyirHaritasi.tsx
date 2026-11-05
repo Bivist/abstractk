@@ -315,7 +315,7 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
               className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1 ${
                 chartTheme === 'night'
                   ? 'bg-sky-500 text-white shadow-xs'
-                  : 'text-sky-300 hover:text-white'
+                  : (chartTheme === 'night' ? 'text-sky-300 hover:text-white' : 'text-[#72532e] hover:text-[#24190e]')
               }`}
               title="Gece Gökyüzü Takımyıldızı"
             >
@@ -338,11 +338,11 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
           </div>
 
           {/* Zoom In/Out/Reset */}
-          <div className="inline-flex bg-sky-950/80 p-0.5 rounded-lg border border-sky-800/60 text-xs">
+          <div className={chartTheme === "night" ? "inline-flex bg-sky-950/80 p-0.5 rounded-lg border border-sky-800/60 text-xs" : "inline-flex bg-[#e8d7b6] p-0.5 rounded-lg border border-amber-800/40 text-xs"}>
             <button
               type="button"
               onClick={() => setZoom(z => Math.min(1.8, z + 0.15))}
-              className="p-1 hover:text-cyan-300 transition-colors"
+              className={chartTheme === "night" ? "p-1 text-sky-200 hover:text-cyan-300 transition-colors" : "p-1 text-[#654a2b] hover:text-[#a16207] transition-colors"}
               title="Yakınlaştır"
             >
               <ZoomIn className="w-3.5 h-3.5" />
@@ -375,7 +375,7 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
           className={`px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap transition-colors ${
             filterField === 'all'
               ? 'bg-cyan-500 text-white'
-              : 'text-sky-300 hover:text-white bg-sky-950/50'
+              : (chartTheme === 'night' ? 'text-sky-300 hover:text-white bg-sky-950/50' : 'text-[#72532e] hover:text-[#24190e] bg-[#dfc99f]')
           }`}
         >
           Tüm Takımyıldız ({starNodes.length})
@@ -406,7 +406,7 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
         className={`flex-1 relative cursor-grab active:cursor-grabbing overflow-hidden ${
           chartTheme === 'night'
             ? 'bg-radial-[at_50%_40%] from-[#081e36] via-[#030e1c] to-[#02070e]'
-            : 'bg-[#18130c]'
+            : 'bg-[#eadfc7]'
         }`}
       >
         {/* Background Atmosphere: Twinkling celestial stars or Portolan parchment lines */}
@@ -639,7 +639,7 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
             <button
               type="button"
               onClick={() => setSelectedStar(null)}
-              className="p-1 rounded-lg text-sky-400 hover:text-white hover:bg-sky-900/40 text-xs"
+              className={chartTheme === "night" ? "p-1 rounded-lg text-sky-400 hover:text-white hover:bg-sky-900/40 text-xs" : "p-1 rounded-lg text-[#795b36] hover:text-[#24190e] hover:bg-amber-900/10 text-xs"}
               title="Kapat"
             >
               ✕
