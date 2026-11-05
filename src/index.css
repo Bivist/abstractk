@@ -285,3 +285,47 @@ header button.group > div:first-child img {
 @media(prefers-reduced-motion:reduce){
   .profile-avatar-trigger,.profile-avatar-trigger * {animation:none!important;transition:none!important}
 }
+
+
+/* ── Anglerfish empty state: uploaded SVG + restrained swimming motion ── */
+.angler-empty-state {
+  background:
+    radial-gradient(ellipse at 50% 34%, rgba(56,189,248,.12), transparent 42%),
+    linear-gradient(160deg, #f0f8fb 0%, #e6f1f6 58%, #f6f9fb 100%);
+}
+.dark .angler-empty-state {
+  background:
+    radial-gradient(ellipse at 50% 34%, rgba(14,116,144,.24), transparent 44%),
+    linear-gradient(160deg, #071d2c 0%, #061725 58%, #081b2b 100%);
+}
+.angler-water-glow {
+  position:absolute; width:min(75%,420px); aspect-ratio:1; border-radius:50%;
+  background:radial-gradient(circle,rgba(56,189,248,.11),rgba(14,116,144,.045) 48%,transparent 72%);
+  filter:blur(12px); pointer-events:none;
+  animation:anglerWaterPulse 5s ease-in-out infinite alternate;
+}
+.angler-fish-wrap {filter:drop-shadow(0 13px 20px rgba(14,116,144,.12))}
+.angler-fish-image {
+  filter:drop-shadow(0 0 8px rgba(103,205,225,.22));
+  transform-origin:50% 55%;
+}
+.dark .angler-fish-image {
+  filter:drop-shadow(0 0 12px rgba(103,205,225,.38)) drop-shadow(0 12px 18px rgba(0,0,0,.25));
+}
+.angler-lure-glow {
+  position:absolute; width:44px; height:44px; top:12%; left:15%;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.95) 0%,rgba(103,232,249,.7) 20%,rgba(34,211,238,.22) 48%,transparent 75%);
+  filter:blur(3px); animation:anglerLurePulse 2.3s ease-in-out infinite;
+}
+@keyframes anglerLurePulse {
+  0%,100% {transform:scale(.82);opacity:.62}
+  50% {transform:scale(1.22);opacity:1}
+}
+@keyframes anglerWaterPulse {
+  from {transform:scale(.92);opacity:.65}
+  to {transform:scale(1.08);opacity:1}
+}
+@media(prefers-reduced-motion:reduce) {
+  .angler-water-glow,.angler-lure-glow {animation:none!important}
+}
