@@ -388,7 +388,7 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
             className={`px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap transition-colors ${
               filterField === f
                 ? 'bg-cyan-500 text-white'
-                : 'text-sky-300 hover:text-white bg-sky-950/50'
+                : (chartTheme === 'night' ? 'text-sky-300 hover:text-white bg-sky-950/50' : 'text-[#72532e] hover:text-[#24190e] bg-[#dfc99f]')
             }`}
           >
             {f}
