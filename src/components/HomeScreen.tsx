@@ -313,7 +313,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <span className="flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5 text-[#06b6d4]" />
               <span>Kişisel Seyir Panosu &amp; Bilgi Haritası</span>
-              <span className="ml-1 px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-[9px] font-bold uppercase tracking-wide">Yakında</span>
+              <span className="ml-1 px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold uppercase tracking-wide">Açık</span>
             </span>
             <ChevronRight className="w-3.5 h-3.5 opacity-60 group-hover:translate-x-0.5 transition-transform" />
           </button>
