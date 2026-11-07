@@ -118,20 +118,31 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               data-tour={`nav-${tab.id}`}
               className={desktop ? "relative w-full py-3 px-4 flex flex-row items-center justify-start gap-3 min-h-[48px] rounded-xl transition-all group focus-visible:outline-hidden" : "relative flex-1 py-1 px-1 flex flex-col items-center justify-center gap-1 min-h-[50px] transition-all group focus-visible:outline-hidden"}
             >
-              {/* Minimal Smooth Indicator Pill for Active Tab */}
+              {/* Aktif sekme: masaüstünde sakin vurgu, mobilde su damlası formu */}
               {isActive && (
                 <motion.div
                   layoutId="activeNavIndicator"
-                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                  className={desktop ? "absolute inset-0 rounded-xl bg-[#dff0f7] dark:bg-[#0c2d44]" : "absolute inset-0 mx-1 my-0.5 rounded-2xl bg-[#dff0f7] dark:bg-[#0c2d44]"}
-                />
+                  transition={{ type: 'spring', stiffness: 360, damping: 26, mass: 0.72 }}
+                  className={desktop
+                    ? "absolute inset-0 rounded-xl bg-[#dff0f7] dark:bg-[#0c2d44]"
+                    : "absolute left-1/2 top-[-5px] h-[43px] w-[48px] -translate-x-1/2 rounded-[52%_48%_56%_44%/43%_46%_54%_57%] bg-gradient-to-br from-[#c8effb] via-[#dff5fb] to-[#b9e5f3] shadow-[0_5px_14px_rgba(2,132,199,0.16),inset_0_1px_3px_rgba(255,255,255,0.9)] dark:from-[#104563] dark:via-[#0c354e] dark:to-[#08283e] dark:shadow-[0_5px_16px_rgba(0,0,0,0.24),inset_0_1px_3px_rgba(125,211,252,0.18)]"}
+                  style={!desktop ? { transformOrigin: '50% 55%' } : undefined}
+                >
+                  {!desktop && (
+                    <span className="absolute left-[9px] top-[6px] h-[10px] w-[17px] rotate-[-28deg] rounded-full bg-white/55 blur-[1px] dark:bg-cyan-100/15" />
+                  )}
+                </motion.div>
               )}
 
-              {/* Icon Container with subtle scale transition */}
-              <div
-                className={`relative z-10 transition-transform duration-200 ${
+              {/* Seçili ikon hafifçe yükselerek öne gelir */}
+              <motion.div
+                animate={isActive
+                  ? { y: desktop ? 0 : -5, scale: desktop ? 1.05 : 1.16 }
+                  : { y: 0, scale: 1 }}
+                transition={{ type: 'spring', stiffness: 420, damping: 23 }}
+                className={`relative z-10 ${
                   isActive
-                    ? 'text-[#0284c7] dark:text-[#38bdf8] scale-105'
+                    ? 'text-[#0284c7] dark:text-[#38bdf8]'
                     : 'text-[#527993] dark:text-[#7bb0cc] group-hover:text-[#0284c7] dark:group-hover:text-[#38bdf8]'
                 }`}
               >
