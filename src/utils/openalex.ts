@@ -330,6 +330,16 @@ export async function resolveEntity(kind: "authors" | "sources", query: string):
   const requested = query.trim();
   if (!requested) return { id: "", name: "" };
 
+  if (kind === "authors") {
+    const names = Array.from(new Set(requested.split(/[;,\\n]+/).map(name => name.trim()).filter(Boolean)));
+    if (names.length > 1) {
+      const resolved = await Promise.all(names.map(name => resolveEntity("authors", name)));
+      const ids = Array.from(new Set(resolved.flatMap(item => item.id ? item.id.split("|") : [])));
+      if (resolved.some(item => !item.id)) return { id: "", name: null };
+      return ids.length ? { id: ids.join("|"), name: resolved.map(item => item.name || "").join(", ") } : { id: "", name: null };
+    }
+  }
+
   try {
     const perPage = kind === "authors" ? 100 : 25;
     const res = await fetch(
