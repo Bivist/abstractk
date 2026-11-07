@@ -153,7 +153,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                   alt={tab.labelKey}
                   fallback={tab.renderIcon(isActive)}
                 />
-              </div>
+              </motion.div>
 
               {/* Tab Label */}
               <span
