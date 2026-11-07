@@ -446,9 +446,10 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
               type="text"
               value={authorInput}
               onChange={(e) => handleAuthorChange(e.target.value)}
-              placeholder="Örn. Daniel Pauly"
+              placeholder="Yazar adları (virgülle ayır)"
               className="w-full px-3 py-2 bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-xl text-xs sm:text-sm focus:outline-none focus:border-sky-600"
             />
+            <p className="mt-1 text-[10px] text-[#527993] dark:text-[#7bb0cc]">Birden fazla yazarı virgül veya noktalı virgülle ayırabilirsin.</p>
           </div>
 
           <div>
