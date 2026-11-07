@@ -755,8 +755,18 @@ export default function App() {
   };
 
   // Likes Management Handlers
-  const handleRemoveLike = (index: number) => {
-    setLikedPapers(prev => prev.filter((_, i) => i !== index));
+  const handleRemoveLike = (paperId: string) => {
+    setLikedPapers(prev => prev.filter(paper => paper.id !== paperId));
+    setFolders(prev => { const next = { ...prev }; delete next[paperId]; return next; });
+    setSelectedLikeIds(prev => { const next = new Set(prev); next.delete(paperId); return next; });
+  };
+
+  const handleRemoveSelectedLikes = () => {
+    if (!selectedLikeIds.size) return;
+    const ids = new Set(selectedLikeIds);
+    setLikedPapers(prev => prev.filter(paper => !ids.has(paper.id)));
+    setFolders(prev => { const next = { ...prev }; ids.forEach(id => delete next[id]); return next; });
+    setSelectedLikeIds(new Set());
   };
 
   const handleMoveUp = (index: number) => {
@@ -927,6 +937,7 @@ export default function App() {
             selectedIds={selectedLikeIds}
             onToggleSelect={handleToggleSelectLike}
             onClearSelection={() => setSelectedLikeIds(new Set())}
+            onRemoveSelected={handleRemoveSelectedLikes}
             onOpenNewFolder={() => {
               setFolderActionType('create');
               setIsFolderSheetOpen(true);
@@ -1110,6 +1121,9 @@ export default function App() {
         onCreateFolder={(name) => {
           if (folderActionType === 'assign') {
             handleAssignFolder(name);
+          } else {
+            setFolders(prev => ({ ...prev, __folder_names__: Array.from(new Set([...(prev.__folder_names__ || []), name])) }));
+            setActiveFolderTab(name);
           }
         }}
         langDict={langDict}
