@@ -176,15 +176,15 @@ export const LikesScreen: React.FC<LikesScreenProps> = ({
           displayedPapers.map((paper, idx) => {
             const isSelected = selectedIds.has(paper.id);
             const paperFolders = folders[paper.id] || [];
-            let touchStartX = 0;
-
             return (
               <div
                 key={paper.id}
-                onTouchStart={(event) => { touchStartX = event.touches[0]?.clientX || 0; }}
+                onTouchStart={(event) => { event.currentTarget.dataset.touchStartX = String(event.touches[0]?.clientX || 0); }}
                 onTouchEnd={(event) => {
+                  const startX = Number(event.currentTarget.dataset.touchStartX || 0);
                   const endX = event.changedTouches[0]?.clientX || 0;
-                  if (touchStartX - endX > 85) onRemoveLike(paper.id);
+                  if (startX - endX > 85) onRemoveLike(paper.id);
+                  delete event.currentTarget.dataset.touchStartX;
                 }}
                 className={`relative p-3.5 rounded-2xl bg-white dark:bg-[#071828] border transition-all ${
                   isSelected
