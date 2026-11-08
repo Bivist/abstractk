@@ -205,6 +205,7 @@ export default function App() {
   const genRef = useRef<number>(0);
   const loadingRef = useRef<boolean>(false);
   const shownInTierRef = useRef<number>(0);
+  const tierPageRef = useRef<number>(1);
   const filterRef = useRef<FilterState | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -581,16 +582,19 @@ export default function App() {
         tiersRef.current = buildSearchTiers(filterRef.current!);
         tierIndexRef.current = 0;
         shownInTierRef.current = 0;
+        tierPageRef.current = 1;
       }
 
       let added = 0;
-      for (let guard = 0; !added && guard < tiersRef.current.length + 1; guard++) {
+      // Her coğrafi eş ad ve metin sorgusu sayfa sayfa taranır. Boş/tekrarlı
+      // ilk sayfa, sonraki sayfalardaki uygun yayınları erken kesmemelidir.
+      for (let guard = 0; !added && guard < tiersRef.current.length * 4 + 4; guard++) {
         const tier = tiersRef.current[tierIndexRef.current];
         if (!tier) break;
         const count = tier.fs.length > 1 ? Math.max(6, Math.ceil(24 / tier.fs.length)) : 24;
 
         const results = await Promise.allSettled(
-          tier.fs.map((f: string) => fetchWorks(f, count))
+          tier.fs.map((f: string) => fetchWorks(f, count, tierPageRef.current))
         );
 
         if (thisGen !== genRef.current) return;
@@ -606,6 +610,7 @@ export default function App() {
           .sort(() => Math.random() - 0.5);
 
         const { papers, addedCount } = parseWorksToPapers(combinedRaw, seenIdsRef.current, tier);
+        tierPageRef.current += 1;
         if (addedCount > 0) {
           added = addedCount;
           shownInTierRef.current += addedCount;
@@ -663,6 +668,7 @@ export default function App() {
           }
           tierIndexRef.current++;
           shownInTierRef.current = 0;
+          tierPageRef.current = 1;
         } else {
           break;
         }
@@ -689,6 +695,7 @@ export default function App() {
     tiersRef.current = buildSearchTiers(active);
     tierIndexRef.current = 0;
     shownInTierRef.current = 0;
+    tierPageRef.current = 1;
     fetchMorePapers();
   }, [fetchMorePapers]);
 
