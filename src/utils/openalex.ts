@@ -236,21 +236,29 @@ export function buildSearchTiers(filter: FilterState): SearchTier[] {
 }
 export async function fetchWorks(filterStr: string, count: number): Promise<any[]> {
   const seed = Math.floor(Math.random() * 1e6);
-  // Arama ifadesini eski filter=...search sözdizimiyle göndermek yerine
-  // OpenAlex'in güncel search.title_and_abstract parametresine taşı.
-  // Böylece hem coğrafi arama hem taksonomi metin sorguları başlık/özetle sınırlı kalır.
-  const searchMatch = filterStr.match(/(?:^|,)title_and_abstract\.search:([^,]*)/);
-  const requestFilter = searchMatch
-    ? filterStr.replace(/,?title_and_abstract\.search:[^,]*/, "").replace(/^,|,$/g, "")
+  // Metin tabanlı filtreleri OpenAlex'in güncel search.title_and_abstract
+  // parametresinde birleştir. Coğrafi arama ve alan sorguları birlikte AND çalışır.
+  const searchTerms = Array.from(
+    filterStr.matchAll(/(?:^|,)title_and_abstract\.search:([^,]*)/g),
+    match => {
+      try { return decodeURIComponent(match[1]); }
+      catch { return match[1]; }
+    }
+  );
+  const requestFilter = searchTerms.length
+    ? filterStr.replace(/,?title_and_abstract\.search:[^,]*/g, "").replace(/^,|,$/g, "")
     : filterStr;
-  const searchParam = searchMatch ? "&search.title_and_abstract=" + searchMatch[1] : "";
+  const combinedSearch = searchTerms.length > 1
+    ? searchTerms.map(term => "(" + term + ")").join(" AND ")
+    : searchTerms[0] || "";
+  const searchParam = combinedSearch
+    ? "&search.title_and_abstract=" + encodeURIComponent(combinedSearch)
+    : "";
   let res = await fetch(API + "/works?filter=" + requestFilter + searchParam + "&sample=" + count + "&seed=" + seed + "&per_page=" + count + "&select=" + SEL);
 
-  if (!res.ok && searchMatch) {
+  if (!res.ok && combinedSearch) {
     const page = 1 + Math.floor(Math.random() * 4);
-    let term = searchMatch[1];
-    try { term = decodeURIComponent(term); } catch { /* zaten düz metin */ }
-    res = await fetch(API + "/works?filter=" + requestFilter + "&search.title_and_abstract=" + encodeURIComponent(term) + "&page=" + page + "&per_page=" + count + "&select=" + SEL);
+    res = await fetch(API + "/works?filter=" + requestFilter + "&search.title_and_abstract=" + encodeURIComponent(combinedSearch) + "&page=" + page + "&per_page=" + count + "&select=" + SEL);
   }
 
   if (!res.ok) {
