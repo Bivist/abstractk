@@ -13,7 +13,8 @@ import {
   Layers, 
   TrendingUp, 
   CheckCircle2, 
-  Radio
+  Radio,
+  ChevronDown
 } from 'lucide-react';
 
 interface SeyirPanosuProps {
@@ -117,6 +118,8 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
 
   // Okuma temposu yalnızca gerçek, zaman damgalı okuma geçmişinden hesaplanır.
   const [activityRange, setActivityRange] = useState<'7d' | '30d' | '90d' | '1y' | 'all'>('7d');
+  const [depthDiveStarted, setDepthDiveStarted] = useState(false);
+  const [selectedDepthLayer, setSelectedDepthLayer] = useState<'surface' | 'twilight' | 'midnight' | 'abyss'>('surface');
   const activityData = useMemo(() => {
     const now = new Date();
     const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -446,18 +449,117 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
             </div>
           </section>
 
-          {/* Yakında: okuma derinliği */}
-          <section data-tour="seyir-depth" className="relative overflow-hidden rounded-[24px] border-2 border-black dark:border-white bg-white dark:bg-black text-black dark:text-white p-5 grayscale">
-            <div className="flex items-center justify-between gap-3">
+          {/* İnteraktif Okuma Derinliği: kişisel bilim dalışı */}
+          <section data-tour="seyir-depth" className="relative isolate overflow-hidden rounded-[26px] border border-cyan-300/30 dark:border-cyan-500/20 bg-[#061b2c] p-4 text-white shadow-[0_14px_38px_rgba(2,20,35,0.22)]">
+            <div className="pointer-events-none absolute inset-0 opacity-80">
+              <div className="absolute -right-12 -top-16 h-48 w-48 rounded-full bg-cyan-400/15 blur-3xl" />
+              <div className="absolute -bottom-20 -left-10 h-48 w-48 rounded-full bg-blue-600/20 blur-3xl" />
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/50 to-transparent" />
+            </div>
+
+            <div className="relative z-10 flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-serif text-base font-bold">Okuma Derinliği</h3>
-                <p className="text-xs mt-1 text-black/65 dark:text-white/65">Yeni bir gelişim alanı yakında burada olacak.</p>
+                <div className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-200">
+                  <Waves className="h-3.5 w-3.5" /> Kişisel keşif alanı
+                </div>
+                <h3 className="font-serif text-xl font-black tracking-tight">Okuma Derinliği</h3>
+                <p className="mt-1 max-w-[34ch] text-xs leading-relaxed text-sky-100/75">
+                  Her okuma seni okyanusun biraz daha derinine taşıyor. Dalışını başlat ve katmanları keşfet.
+                </p>
               </div>
-              <span className="shrink-0 rounded-full border border-black dark:border-white px-3 py-1.5 text-xs font-bold uppercase tracking-wider">Yakında</span>
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-cyan-200/25 bg-cyan-300/10 text-cyan-200">
+                <Compass className="h-6 w-6" />
+              </div>
             </div>
-            <div className="mt-4 h-1.5 rounded-full bg-black/10 dark:bg-white/15 overflow-hidden">
-              <div className="h-full w-1/3 bg-black dark:bg-white" />
+
+            <button
+              type="button"
+              onClick={() => setDepthDiveStarted(value => !value)}
+              aria-expanded={depthDiveStarted}
+              className="group relative mt-4 flex w-full items-center justify-between overflow-hidden rounded-2xl border border-cyan-200/25 bg-gradient-to-r from-cyan-500/20 to-blue-500/15 px-3.5 py-3 text-left transition-all duration-300 hover:border-cyan-100/50 hover:from-cyan-400/25 hover:to-blue-400/20 active:scale-[0.99]"
+            >
+              <span className="flex items-center gap-3">
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-300/15 text-cyan-200 transition-transform duration-500 ${depthDiveStarted ? 'rotate-[-18deg] scale-110' : 'group-hover:-translate-y-1'}`}>
+                  <Activity className="h-5 w-5" />
+                </span>
+                <span>
+                  <span className="block text-sm font-bold">{depthDiveStarted ? 'Dalış panelini kapat' : 'Derin dalışı başlat'}</span>
+                  <span className="mt-0.5 block text-[10px] text-sky-100/65">{depthDiveStarted ? 'Katmanları seçerek keşfet' : 'Kendi bilim derinliğini gör'}</span>
+                </span>
+              </span>
+              <span className={`text-cyan-200 transition-transform duration-300 ${depthDiveStarted ? 'rotate-180' : 'group-hover:translate-y-0.5'}`}>
+                <ChevronDown className="h-5 w-5" />
+              </span>
+            </button>
+
+            <div className="relative mt-4 overflow-hidden rounded-2xl border border-cyan-100/10 bg-gradient-to-b from-[#0b3852] via-[#082941] to-[#041523] p-3">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-cyan-200/10 to-transparent" />
+              <div className="absolute inset-x-0 top-[32%] border-t border-dashed border-cyan-100/10" />
+              <div className="absolute inset-x-0 top-[62%] border-t border-dashed border-cyan-100/10" />
+              <div className="relative flex items-center justify-between gap-2">
+                <div>
+                  <span className="block text-[9px] font-bold uppercase tracking-[0.18em] text-cyan-100/55">Ulaştığın derinlik</span>
+                  <strong className="mt-0.5 block font-mono text-2xl font-black text-white">{calculatedDepthMeters.toLocaleString('tr-TR')}<span className="ml-1 text-xs font-semibold text-cyan-100/70">m</span></strong>
+                  <span className={`mt-1 inline-flex rounded-full border px-2 py-1 text-[10px] font-bold ${depthZone.badge} ${depthZone.color}`}>{depthZone.name}</span>
+                </div>
+                <div className="relative flex h-[86px] w-[112px] items-center justify-center">
+                  <span className="absolute h-20 w-20 rounded-full border border-cyan-200/15 animate-ping" />
+                  <span className="absolute h-14 w-14 rounded-full border border-cyan-200/20" />
+                  <span className={`relative z-10 flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-100/30 bg-cyan-300/15 text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.22)] transition-transform duration-700 ${depthDiveStarted ? 'translate-y-5 rotate-[-8deg]' : 'animate-bounce'}`}>
+                    <Waves className="h-6 w-6" />
+                  </span>
+                  <span className="absolute bottom-0 right-1 text-[9px] font-mono text-cyan-100/45">SONAR</span>
+                </div>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-sky-400 to-indigo-400 transition-all duration-1000" style={{ width: `${Math.min(100, Math.max(3, (calculatedDepthMeters / 6000) * 100))}%` }} />
+              </div>
+              <div className="mt-1.5 flex justify-between text-[9px] font-medium text-cyan-100/45">
+                <span>Yüzey</span><span>6.000 m · Abis</span>
+              </div>
             </div>
+
+            {depthDiveStarted && (
+              <div className="relative z-10 mt-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-100/65">Okyanus katmanını seç</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ['surface', 'Güneşli yüzey', '0–200 m', 'Epipelajik', 'text-sky-200'],
+                    ['twilight', 'Alacakaranlık', '200–1.000 m', 'Mezopelajik', 'text-cyan-200'],
+                    ['midnight', 'Gece bölgesi', '1.000–4.000 m', 'Batipelajik', 'text-indigo-200'],
+                    ['abyss', 'Abis çukuru', '4.000 m+', 'Abisal & hadal', 'text-purple-200']
+                  ] as const).map(([id, label, range, scientific, tone]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setSelectedDepthLayer(id)}
+                      className={`rounded-xl border p-2.5 text-left transition-all duration-300 ${selectedDepthLayer === id ? 'border-cyan-200/60 bg-cyan-300/15 shadow-[0_0_18px_rgba(34,211,238,0.12)]' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.07]'}`}
+                    >
+                      <span className={`block text-xs font-bold ${tone}`}>{label}</span>
+                      <span className="mt-0.5 block text-[10px] text-sky-100/55">{range}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 rounded-xl border border-white/10 bg-black/15 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-white">
+                      {selectedDepthLayer === 'surface' ? 'Epipelajik bölge' : selectedDepthLayer === 'twilight' ? 'Mezopelajik bölge' : selectedDepthLayer === 'midnight' ? 'Batipelajik bölge' : 'Abisal & hadal bölge'}
+                    </span>
+                    <span className="text-[9px] font-mono uppercase tracking-wider text-cyan-200/60">Bilgi kartı</span>
+                  </div>
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-sky-100/75">
+                    {selectedDepthLayer === 'surface'
+                      ? 'Güneş ışığının ulaştığı katman. Fitoplankton fotosentez yapar; denizel besin ağlarının büyük bölümü burada başlar.'
+                      : selectedDepthLayer === 'twilight'
+                        ? 'Işığın hızla azaldığı alacakaranlık kuşağı. Dikey göç yapan canlılar ve ışık üretimi bu bölgede dikkat çeker.'
+                        : selectedDepthLayer === 'midnight'
+                          ? 'Güneş ışığının ulaşmadığı karanlık bölge. Soğuğa, yüksek basınca ve besin kıtlığına uyum sağlamış canlılara ev sahipliği yapar.'
+                          : 'Okyanusun en derin ve yüksek basınçlı ortamları. Hadal çukurlarında yaşam, olağanüstü çevresel koşullara uyumla sürer.'}
+                  </p>
+                </div>
+                <p className="mt-2 text-center text-[9px] text-cyan-100/40">Bu gösterge okuma etkinliğini temsili bir bilim dalışına dönüştürür; gerçek deniz derinliği ölçümü değildir.</p>
+              </div>
+            )}
           </section>
 
           {/* Sitenin En Altındaki Telif & İmza Yazısı */}
