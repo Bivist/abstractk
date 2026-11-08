@@ -66,7 +66,7 @@ export function getBaseFilter(f: FilterState): string[] {
   if (f.journalId) parts.push(`primary_location.source.id:${f.journalId}`);
   // Konumu yalnızca makalenin başlık/özet metninde ara; yazar kurum adresini
   // araştırma sahası gibi yorumlayıp yanlış pozitif üretme.
-  const geographicQuery = String(f.geographicQuery || "").trim().replace(/["\\\\]/g, " ").replace(/\\s+/g, " ").slice(0, 80);
+  const geographicQuery = String(f.geographicQuery || "").trim().replace(/["\\]/g, " ").replace(/\s+/g, " ").slice(0, 80);
   if (geographicQuery) {
     // Yaygın Türkçe bölge adları için İngilizce bilimsel kullanım karşılıklarını da ara.
     // Serbest metinli şehir/ilçe adlarında kullanıcının yazdığı ifade korunur.
@@ -239,22 +239,22 @@ export async function fetchWorks(filterStr: string, count: number): Promise<any[
   // Arama ifadesini eski filter=...search sözdizimiyle göndermek yerine
   // OpenAlex'in güncel search.title_and_abstract parametresine taşı.
   // Böylece hem coğrafi arama hem taksonomi metin sorguları başlık/özetle sınırlı kalır.
-  const searchMatch = filterStr.match(/(?:^|,)title_and_abstract\\.search:([^,]*)/);
+  const searchMatch = filterStr.match(/(?:^|,)title_and_abstract\.search:([^,]*)/);
   const requestFilter = searchMatch
-    ? filterStr.replace(/,?title_and_abstract\\.search:[^,]*/, "").replace(/^,|,$/g, "")
+    ? filterStr.replace(/,?title_and_abstract\.search:[^,]*/, "").replace(/^,|,$/g, "")
     : filterStr;
-  const searchParam = searchMatch ? `&search.title_and_abstract=${searchMatch[1]}` : "";
-  let res = await fetch(`${API}/works?filter=${requestFilter}${searchParam}&sample=${count}&seed=${seed}&per_page=${count}&select=${SEL}`);
+  const searchParam = searchMatch ? \`&search.title_and_abstract=\${searchMatch[1]}\` : "";
+  let res = await fetch(\`\${API}/works?filter=\${requestFilter}\${searchParam}&sample=\${count}&seed=\${seed}&per_page=\${count}&select=\${SEL}\`);
 
   if (!res.ok && searchMatch) {
     const page = 1 + Math.floor(Math.random() * 4);
     let term = searchMatch[1];
     try { term = decodeURIComponent(term); } catch { /* zaten düz metin */ }
-    res = await fetch(`${API}/works?filter=${requestFilter}&search.title_and_abstract=${encodeURIComponent(term)}&page=${page}&per_page=${count}&select=${SEL}`);
+    res = await fetch(\`\${API}/works?filter=\${requestFilter}&search.title_and_abstract=\${encodeURIComponent(term)}&page=\${page}&per_page=\${count}&select=\${SEL}\`);
   }
 
   if (!res.ok) {
-    throw new Error(`OpenAlex HTTP ${res.status}`);
+    throw new Error(\`OpenAlex HTTP \${res.status}\`);
   }
   const json = await res.json();
   return json.results || [];
