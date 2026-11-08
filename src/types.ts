@@ -29,6 +29,15 @@ export interface Paper {
   trP?: Promise<any>;
 }
 
+export interface PaperNote {
+  id: string;
+  paperId: string;
+  type: 'note' | 'quote' | 'question';
+  content: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface FilterState {
   sel: Set<string>;
   from: string;
