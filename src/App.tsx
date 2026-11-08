@@ -755,10 +755,22 @@ export default function App() {
   };
 
   // Likes Management Handlers
+  const [lastRemovedLike, setLastRemovedLike] = useState<{ paper: Paper; folderNames: string[]; wasSelected: boolean } | null>(null);
   const handleRemoveLike = (paperId: string) => {
-    setLikedPapers(prev => prev.filter(paper => paper.id !== paperId));
+    const paper = likedPapers.find(item => item.id === paperId);
+    if (paper) setLastRemovedLike({ paper, folderNames: folders[paperId] || [], wasSelected: selectedLikeIds.has(paperId) });
+    setLikedPapers(prev => prev.filter(item => item.id !== paperId));
     setFolders(prev => { const next = { ...prev }; delete next[paperId]; return next; });
     setSelectedLikeIds(prev => { const next = new Set(prev); next.delete(paperId); return next; });
+  };
+
+  const handleUndoRemoveLike = () => {
+    if (!lastRemovedLike) return;
+    const { paper, folderNames, wasSelected } = lastRemovedLike;
+    setLikedPapers(prev => prev.some(item => item.id === paper.id) ? prev : [paper, ...prev]);
+    if (folderNames.length) setFolders(prev => ({ ...prev, [paper.id]: folderNames }));
+    if (wasSelected) setSelectedLikeIds(prev => new Set([...prev, paper.id]));
+    setLastRemovedLike(null);
   };
 
   const handleRemoveSelectedLikes = () => {
@@ -951,6 +963,7 @@ export default function App() {
             onOpenDetails={(p) => setDetailPaper(p)}
             onSharePaper={handleSharePaper}
             onRemoveLike={handleRemoveLike}
+            onUndoRemove={handleUndoRemoveLike}
             onMoveUp={handleMoveUp}
             onMoveDown={handleMoveDown}
             langDict={langDict}
