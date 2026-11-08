@@ -66,8 +66,25 @@ export function getBaseFilter(f: FilterState): string[] {
   if (f.journalId) parts.push(`primary_location.source.id:${f.journalId}`);
   // Konumu yalnızca makalenin başlık/özet metninde ara; yazar kurum adresini
   // araştırma sahası gibi yorumlayıp yanlış pozitif üretme.
-  const geographicQuery = String(f.geographicQuery || "").trim().slice(0, 80);
-  if (geographicQuery) parts.push(`title_and_abstract.search:${encodeURIComponent(`"${geographicQuery}"`)}`);
+  const geographicQuery = String(f.geographicQuery || "").trim().replace(/["\\\\]/g, " ").replace(/\\s+/g, " ").slice(0, 80);
+  if (geographicQuery) {
+    // Yaygın Türkçe bölge adları için İngilizce bilimsel kullanım karşılıklarını da ara.
+    // Serbest metinli şehir/ilçe adlarında kullanıcının yazdığı ifade korunur.
+    const aliases: Record<string, string[]> = {
+      akdeniz: ["Akdeniz", "Mediterranean Sea", "Mediterranean"],
+      ege: ["Ege", "Aegean Sea", "Aegean"],
+      "ege denizi": ["Ege Denizi", "Aegean Sea"],
+      karadeniz: ["Karadeniz", "Black Sea"],
+      "marmara denizi": ["Marmara Denizi", "Sea of Marmara"],
+      turkiye: ["Türkiye", "Turkey", "Turkiye"],
+      turkey: ["Türkiye", "Turkey", "Turkiye"]
+    };
+    const terms = aliases[normalizeString(geographicQuery)] || [geographicQuery];
+    const expression = terms.length > 1
+      ? `(${terms.map(term => `"${term}"`).join(" OR ")})`
+      : `"${geographicQuery}"`;
+    parts.push(`title_and_abstract.search:${encodeURIComponent(expression)}`);
+  }
   return parts;
 }
 
