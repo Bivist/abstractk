@@ -64,6 +64,10 @@ export function getBaseFilter(f: FilterState): string[] {
   }
   if (f.authorId) parts.push(`authorships.author.id:${f.authorId}`);
   if (f.journalId) parts.push(`primary_location.source.id:${f.journalId}`);
+  // Konumu yalnızca makalenin başlık/özet metninde ara; yazar kurum adresini
+  // araştırma sahası gibi yorumlayıp yanlış pozitif üretme.
+  const geographicQuery = String(f.geographicQuery || "").trim().slice(0, 80);
+  if (geographicQuery) parts.push(`title_and_abstract.search:${encodeURIComponent(`"${geographicQuery}"`)}`);
   return parts;
 }
 
