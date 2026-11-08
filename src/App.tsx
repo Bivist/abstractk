@@ -598,7 +598,7 @@ export default function App() {
         // aynı sayfanın kalan sorgularını sonraki turda tamamla.
         const requestBatch = tier.fs.slice(tierRequestOffsetRef.current, tierRequestOffsetRef.current + 12);
         if (!requestBatch.length) break;
-        const count = requestBatch.length > 1 ? Math.max(6, Math.ceil(24 / requestBatch.length)) : 24;
+        const count = requestBatch.length > 1 ? Math.max(3, Math.ceil(36 / requestBatch.length)) : 24;
 
         const results = await Promise.allSettled(
           requestBatch.map((f: string) => fetchWorks(f, count, tierPageRef.current))
