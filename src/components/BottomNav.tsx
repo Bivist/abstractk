@@ -95,7 +95,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <nav className={desktop ? "relative z-20 w-60 shrink-0 bg-white dark:bg-[#071828] px-3 py-5 border-r border-[#c5dfe9]/40 dark:border-[#0d2f45] overflow-y-auto" : "relative z-20 bg-white dark:bg-[#071828] px-3 pb-2 pt-2 shadow-[0_-6px_20px_rgba(2,132,199,0.06)] border-t border-[#c5dfe9]/40 dark:border-[#0d2f45]"}>
+    <nav className={desktop ? "relative z-20 w-60 shrink-0 bg-white dark:bg-[#071828] px-3 py-5 border-r border-[#c5dfe9]/40 dark:border-[#0d2f45] overflow-y-auto" : "relative z-20 bg-white dark:bg-[#071828] px-3 pb-3 pt-7 shadow-[0_-6px_20px_rgba(2,132,199,0.08)] border-t border-[#c5dfe9]/40 dark:border-[#0d2f45] overflow-visible"}>
       {/* Gentle Oceanic Wavy Top Edge Contour */}
       <div className="absolute -top-[7px] left-0 right-0 h-[8px] pointer-events-none overflow-hidden leading-none">
         <svg
@@ -118,34 +118,40 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               data-tour={`nav-${tab.id}`}
               className={desktop ? "relative w-full py-3 px-4 flex flex-row items-center justify-start gap-3 min-h-[48px] rounded-xl transition-all group focus-visible:outline-hidden" : "relative flex-1 py-1 px-1 flex flex-col items-center justify-center gap-1 min-h-[50px] transition-all group focus-visible:outline-hidden"}
             >
-              {/* Aktif sekme: masaüstünde sakin vurgu, mobilde su damlası formu */}
-              {isActive && (
+              {/* Masaüstünde yatay vurgu; mobilde belirgin, yüzen mavi aktif düğme */}
+              {desktop && isActive && (
                 <motion.div
                   layoutId="activeNavIndicator"
-                  transition={{ type: 'spring', stiffness: 360, damping: 26, mass: 0.72 }}
-                  className={desktop
-                    ? "absolute inset-0 rounded-xl bg-[#dff0f7] dark:bg-[#0c2d44]"
-                    : "absolute left-1/2 top-[-5px] h-[43px] w-[48px] -translate-x-1/2 rounded-[52%_48%_56%_44%/43%_46%_54%_57%] bg-gradient-to-br from-[#c8effb] via-[#dff5fb] to-[#b9e5f3] shadow-[0_5px_14px_rgba(2,132,199,0.16),inset_0_1px_3px_rgba(255,255,255,0.9)] dark:from-[#104563] dark:via-[#0c354e] dark:to-[#08283e] dark:shadow-[0_5px_16px_rgba(0,0,0,0.24),inset_0_1px_3px_rgba(125,211,252,0.18)]"}
-                  style={!desktop ? { transformOrigin: '50% 55%' } : undefined}
-                >
-                  {!desktop && (
-                    <span className="absolute left-[9px] top-[6px] h-[10px] w-[17px] rotate-[-28deg] rounded-full bg-white/55 blur-[1px] dark:bg-cyan-100/15" />
-                  )}
-                </motion.div>
+                  transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+                  className="absolute inset-0 rounded-xl bg-[#dff0f7] dark:bg-[#0c2d44]"
+                />
               )}
 
-              {/* Seçili ikon hafifçe yükselerek öne gelir */}
               <motion.div
                 animate={isActive
-                  ? { y: desktop ? 0 : -5, scale: desktop ? 1.05 : 1.16 }
+                  ? desktop ? { y: 0, scale: 1.05 } : { y: -17, scale: 1 }
                   : { y: 0, scale: 1 }}
-                transition={{ type: 'spring', stiffness: 420, damping: 23 }}
-                className={`relative z-10 ${
-                  isActive
-                    ? 'text-[#0284c7] dark:text-[#38bdf8]'
-                    : 'text-[#527993] dark:text-[#7bb0cc] group-hover:text-[#0284c7] dark:group-hover:text-[#38bdf8]'
-                }`}
+                transition={{ type: 'spring', stiffness: 390, damping: 23, mass: 0.75 }}
+                className={desktop
+                  ? `relative z-10 ${
+                      isActive ? 'text-[#0284c7] dark:text-[#38bdf8]' : 'text-[#527993] dark:text-[#7bb0cc] group-hover:text-[#0284c7] dark:group-hover:text-[#38bdf8]'
+                    }`
+                  : isActive
+                    ? 'relative z-10 -mt-[31px] mb-[-12px] flex h-[66px] w-[66px] items-center justify-center rounded-full border-[4px] border-white bg-gradient-to-br from-[#42a8ed] via-[#0876c9] to-[#064a9b] text-white shadow-[0_9px_22px_rgba(2,80,150,0.38),inset_0_2px_5px_rgba(255,255,255,0.32)] ring-[3px] ring-[#83d6b7]/75 dark:border-[#071828] dark:from-[#38bdf8] dark:via-[#087bb8] dark:to-[#06436e] dark:ring-[#5cc9ad]/70'
+                    : 'relative z-10 flex h-6 items-center justify-center text-[#527993] dark:text-[#7bb0cc] group-hover:text-[#0284c7] dark:group-hover:text-[#38bdf8]'}
               >
+                {!desktop && isActive && (
+                  <>
+                    <span className="pointer-events-none absolute inset-[5px] rounded-full border border-white/25" />
+                    <span className="pointer-events-none absolute left-[11px] top-[8px] h-[18px] w-[30px] -rotate-[28deg] rounded-full bg-white/25 blur-[2px]" />
+                    <motion.span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -right-[1px] bottom-[8px] h-[17px] w-[17px] rounded-full border-[3px] border-[#6de0a9] border-l-transparent border-t-transparent"
+                      animate={{ rotate: [0, 35, 0], scale: [1, 1.08, 1] }}
+                      transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                  </>
+                )}
                 <AppIcon
                   name={tab.iconName}
                   size={20}
