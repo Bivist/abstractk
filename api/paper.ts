@@ -62,7 +62,9 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
     const doi = typeof work.doi === 'string' ? work.doi : '';
     const sourceUrl = doi.startsWith('https://') ? doi : `https://openalex.org/${id}`;
     const canonical = `${SITE}/paper/${id}`;
-    const description = abstract.length > 300 ? abstract.slice(0, 297) + '...' : abstract;
+    // Sosyal paylaşım kartında makale adı başlık, kısa çağrı ise açıklama olarak görünür.
+    // Tam özet makale sayfasında gösterilmeye devam eder.
+    const description = "Abstract'ta oku";
     const schema = {
       '@context': 'https://schema.org',
       '@type': 'ScholarlyArticle',
@@ -91,9 +93,9 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Abstract">
 <meta property="og:title" content="${escapeHtml(title)}">
-<meta property="og:description" content="${escapeHtml(description)}">
+<meta property="og:description" content="${escapeHtml(description)}">\n<meta property="og:locale" content="tr_TR">
 <meta property="og:url" content="${canonical}">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary">\n<meta name="twitter:title" content="${escapeHtml(title)}">\n<meta name="twitter:description" content="${escapeHtml(description)}">
 <script type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script>
 <style>
 :root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#eef7fb;color:#0a2540;font:16px/1.7 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:900px;margin:0 auto;padding:32px 22px 64px}.brand{font-weight:800;letter-spacing:.02em;color:#0369a1;text-decoration:none;font-size:1.1rem}.eyebrow{margin-top:42px;color:#0369a1;font-size:.78rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}h1{font-family:Georgia,serif;font-size:clamp(2rem,5vw,3.2rem);line-height:1.16;letter-spacing:-.025em;margin:12px 0 18px}.meta{color:#42677e;font-size:.95rem}.panel{background:#fff;border:1px solid #c5dfe9;border-radius:18px;padding:24px;margin-top:28px}.panel h2{font:700 1rem system-ui;margin:0 0 12px;color:#0369a1;text-transform:uppercase;letter-spacing:.08em}.abstract{white-space:pre-wrap}.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}.button{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border-radius:999px;background:#0369a1;color:#fff;text-decoration:none;font-weight:700}.secondary{background:#dbeafe;color:#075985}.footer{margin-top:36px;color:#58798c;font-size:.85rem}@media(max-width:560px){.wrap{padding:22px 16px 48px}.panel{padding:18px}}
