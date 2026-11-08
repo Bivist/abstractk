@@ -66,7 +66,7 @@ export function getBaseFilter(f: FilterState): string[] {
   if (f.journalId) parts.push(`primary_location.source.id:${f.journalId}`);
   // Konumu yalnızca makalenin başlık/özet metninde ara; yazar kurum adresini
   // araştırma sahası gibi yorumlayıp yanlış pozitif üretme.
-  const geographicQuery = String(f.geographicQuery || "").trim().replace(/["\\]/g, " ").replace(/\s+/g, " ").slice(0, 80);
+  const geographicQuery = String(f.geographicQuery || "").trim().replace(/["\\]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
   if (geographicQuery) {
     // Yaygın Türkçe bölge adları için İngilizce bilimsel kullanım karşılıklarını da ara.
     // Serbest metinli şehir/ilçe adlarında kullanıcının yazdığı ifade korunur.
