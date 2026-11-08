@@ -3,7 +3,7 @@ import { DynamicButton } from './DynamicButton';
 import { FilterState, TaxonomyNode } from '../types';
 import { TAXONOMY, TAXONOMY_NODES } from '../constants/taxonomy';
 import { normalizeString, hasAncestorSelected, countSelectedChildren, getEffectiveNodes, resolveEntity, normalizeYears } from '../utils/openalex';
-import { X, Search, ChevronDown, Check } from 'lucide-react';
+import { X, Search, ChevronDown, Check, MapPin } from 'lucide-react';
 
 interface FilterSheetProps {
   isOpen: boolean;
@@ -32,6 +32,7 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
   const [openNodes, setOpenNodes] = useState<Set<string>>(new Set());
   const [authorInput, setAuthorInput] = useState(filter.aName || "");
   const [journalInput, setJournalInput] = useState(filter.jName || "");
+  const [geographicInput, setGeographicInput] = useState(filter.geographicQuery || "");
   const [statusMessage, setStatusMessage] = useState("");
 
   // Panel her açıldığında taslağı uygulanmış filtreyle senkronla (örn. dışarıdan sıfırlandıysa)
@@ -40,6 +41,7 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
       setDraft({ ...filter, sel: new Set(filter.sel) });
       setAuthorInput(filter.aName || "");
       setJournalInput(filter.jName || "");
+      setGeographicInput(filter.geographicQuery || "");
       setStatusMessage("");
     }
   }, [isOpen]);
@@ -141,6 +143,7 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
         return;
       }
 
+      const geographicQuery = geographicInput.trim().slice(0, 80);
       const years = normalizeYears(draft.from, draft.to);
       const finalFilter: FilterState = {
         ...draft,
@@ -149,7 +152,8 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
         authorId: authorRes.id,
         aName: isEggKeyword ? authorInput.trim() : (authorRes.name || authorInput.trim()),
         journalId: journalRes.id,
-        jName: journalRes.name || ""
+        jName: journalRes.name || "",
+        geographicQuery
       };
 
       onApply(finalFilter);
@@ -169,8 +173,10 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
       journalId: "",
       aName: "",
       jName: "",
-      en: true
+      en: true,
+      geographicQuery: ""
     });
+    setGeographicInput("");
     setAuthorInput("");
     setJournalInput("");
     setSearchQuery("");
@@ -369,6 +375,24 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
                 </div>
               );
             })}
+          </div>
+
+          {/* Geographic research-area filter */}
+          <div className="rounded-2xl border border-[#9bc9dc] dark:border-[#15506b] bg-[#e4f3f9] dark:bg-[#071f30] p-3.5">
+            <div className="flex items-center gap-2 mb-2">
+              <MapPin className="w-4 h-4 text-sky-700 dark:text-sky-300" />
+              <span className="text-[11px] font-bold tracking-wider uppercase text-[#245d78] dark:text-[#83c8e5]">Coğrafi Bölge</span>
+            </div>
+            <input
+              type="text"
+              value={geographicInput}
+              maxLength={80}
+              onChange={(e) => setGeographicInput(e.target.value)}
+              placeholder="Örn. Antalya, Akdeniz, Kaş, Tuna Havzası"
+              aria-label="Coğrafi bölge"
+              className="w-full px-3 py-2 bg-white dark:bg-[#071828] border border-[#b7d6e3] dark:border-[#16445d] rounded-xl text-xs sm:text-sm focus:outline-none focus:border-sky-600"
+            />
+            <p className="mt-1.5 text-[10px] leading-relaxed text-[#416f85] dark:text-[#9ac7d9]">Girilen yer adı makalelerin başlık ve özetlerinde aranır. Yalnızca yazar kurumunun o şehirde olması, araştırmanın orada yapıldığı anlamına gelmez.</p>
           </div>
 
           {/* Year Range Filter */}
