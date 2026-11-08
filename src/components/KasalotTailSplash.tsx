@@ -1,305 +1,143 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { SFX } from '../utils/sfx';
+import React, { useEffect } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { X, Waves, Sparkles } from 'lucide-react';
 
 interface KasalotTailSplashProps {
   isOpen: boolean;
   onDismiss: () => void;
 }
 
-export const KasalotTailSplash: React.FC<KasalotTailSplashProps> = ({
-  isOpen,
-  onDismiss
-}) => {
-  const [drops, setDrops] = useState<Array<{ id: number; left: number; top: number; size: number; delay: number }>>([]);
+export const KasalotTailSplash: React.FC<KasalotTailSplashProps> = ({ isOpen, onDismiss }) => {
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!isOpen) return;
-
-    // Play water breach sound effect
-    try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      
-      // Deep ocean splash swoosh + wave impact
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(140, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 1.2);
-
-      // Noise buffer for water splash spray
-      const bufferSize = audioCtx.sampleRate * 1.5;
-      const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-      const output = noiseBuffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1;
-      }
-
-      const whiteNoise = audioCtx.createBufferSource();
-      whiteNoise.buffer = noiseBuffer;
-
-      // Filter for rushing water sound
-      const filter = audioCtx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(800, audioCtx.currentTime);
-      filter.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 1.2);
-
-      const noiseGain = audioCtx.createGain();
-      noiseGain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      noiseGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.2);
-
-      whiteNoise.connect(filter);
-      filter.connect(noiseGain);
-      noiseGain.connect(audioCtx.destination);
-      whiteNoise.start();
-
-      osc.connect(gain);
-      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 1.3);
-    } catch {}
-
-    // Generate random water spray droplets
-    const newDrops = Array.from({ length: 28 }, (_, i) => ({
-      id: i,
-      left: 10 + Math.random() * 80,
-      top: 15 + Math.random() * 70,
-      size: 6 + Math.random() * 16,
-      delay: Math.random() * 0.4
-    }));
-    setDrops(newDrops);
-
-    const timer = setTimeout(() => {
-      onDismiss();
-    }, 3800);
-
-    return () => clearTimeout(timer);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onDismiss();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    const timer = window.setTimeout(onDismiss, 6500);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      window.clearTimeout(timer);
+    };
   }, [isOpen, onDismiss]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[120] pointer-events-none overflow-hidden select-none flex flex-col justify-end">
-      {/* Dark Oceanic Mist Vignette */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.6 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.5 }}
-        className="absolute inset-0 bg-gradient-to-t from-[#02182b]/80 via-[#0369a1]/20 to-transparent"
-      />
-
-      {/* Screen Water Splatters & Running Droplets */}
-      <div className="absolute inset-0 z-20">
-        {drops.map((drop) => (
-          <motion.div
-            key={drop.id}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{
-              scale: [0, 1.3, 1],
-              opacity: [0, 0.9, 0.4, 0],
-              y: [0, 15, 45]
-            }}
-            transition={{
-              duration: 2.8,
-              delay: drop.delay + 0.3,
-              ease: 'easeOut'
-            }}
-            style={{
-              left: `${drop.left}%`,
-              top: `${drop.top}%`,
-              width: `${drop.size}px`,
-              height: `${drop.size * 1.3}px`
-            }}
-            className="absolute rounded-full bg-radial from-white via-cyan-100/70 to-sky-300/40 backdrop-blur-xs shadow-sm shadow-cyan-900/30 border border-white/50"
-          />
-        ))}
-      </div>
-
-      {/* Sperm Whale (Kaşalot) Giant Fluked Tail Breach */}
-      <motion.div
-        initial={{ y: '120%', rotate: -8, scale: 0.85 }}
-        animate={{
-          y: ['120%', '-8%', '4%', '-2%', '140%'],
-          rotate: [-8, 6, -3, 2, -12],
-          scale: [0.85, 1.15, 1.05, 1, 0.9]
-        }}
-        transition={{
-          duration: 3.5,
-          times: [0, 0.32, 0.48, 0.65, 1],
-          ease: 'easeInOut'
-        }}
-        className="relative z-30 w-full max-w-[480px] mx-auto flex flex-col items-center justify-end pb-0"
-      >
-        {/* Tail Fluke SVG */}
-        <svg
-          viewBox="0 0 420 340"
-          className="w-full max-w-[380px] h-auto drop-shadow-2xl"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-[120] flex items-center justify-center overflow-hidden bg-[#031321]/75 px-4 py-8 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.35 }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="kasalot-title"
+          onClick={onDismiss}
         >
-          <defs>
-            <linearGradient id="kasalotSkin" x1="210" y1="40" x2="210" y2="340" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#1e293b" />
-              <stop offset="45%" stopColor="#0f172a" />
-              <stop offset="85%" stopColor="#0284c7" />
-              <stop offset="100%" stopColor="#0369a1" />
-            </linearGradient>
-            <linearGradient id="waterSheen" x1="160" y1="60" x2="260" y2="280" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
-              <stop offset="70%" stopColor="#38bdf8" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#0284c7" stopOpacity="0" />
-            </linearGradient>
-            <radialGradient id="sprayGlow" cx="50%" cy="100%" r="60%">
-              <stop offset="0%" stopColor="#e0f2fe" stopOpacity="0.9" />
-              <stop offset="60%" stopColor="#38bdf8" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#0284c7" stopOpacity="0" />
-            </radialGradient>
-          </defs>
+          <motion.div
+            className="relative w-full max-w-md overflow-hidden rounded-[30px] border border-cyan-200/20 bg-gradient-to-b from-[#0b3850] via-[#08283d] to-[#041725] text-white shadow-[0_28px_100px_rgba(0,0,0,0.55)]"
+            initial={{ y: 34, scale: 0.94, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            exit={{ y: 22, scale: 0.97, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 180, damping: 22 }}
+            onClick={event => event.stopPropagation()}
+          >
+            <div className="pointer-events-none absolute -left-16 -top-20 h-56 w-56 rounded-full bg-cyan-300/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -right-16 h-56 w-56 rounded-full bg-blue-500/15 blur-3xl" />
 
-          {/* Water Dripping Sheets from Fin Tips */}
-          <path
-            d="M50 145 C65 200, 95 240, 150 280 L140 310 C80 270, 50 210, 42 155 Z"
-            fill="url(#waterSheen)"
-            opacity="0.8"
-          />
-          <path
-            d="M370 145 C355 200, 325 240, 270 280 L280 310 C340 270, 370 210, 378 155 Z"
-            fill="url(#waterSheen)"
-            opacity="0.8"
-          />
+            <button
+              type="button"
+              onClick={onDismiss}
+              aria-label="Kaşalot keşfini kapat"
+              className="absolute right-4 top-4 z-30 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white/75 transition hover:bg-white/20 hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
 
-          {/* Whale Peduncle (Tail Stock) & Flukes (Wings) */}
-          {/* Main Sperm Whale Fluke Silhouette */}
-          <path
-            d="M210 290 
-               C190 260, 160 210, 130 170
-               C100 135, 60 115, 20 110
-               C15 110, 10 114, 12 120
-               C20 145, 55 180, 100 200
-               C145 220, 185 245, 205 320
-               L215 320
-               C235 245, 275 220, 320 200
-               C365 180, 400 145, 408 120
-               C410 114, 405 110, 400 110
-               C360 115, 320 135, 290 170
-               C260 210, 230 260, 210 290 Z"
-            fill="url(#kasalotSkin)"
-            stroke="#38bdf8"
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-          />
+            <div className="relative z-10 px-6 pb-6 pt-7 text-center">
+              <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-100/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-100">
+                <Sparkles className="h-3.5 w-3.5" /> Okyanustan bir karşılaşma
+              </div>
+              <h2 id="kasalot-title" className="font-serif text-2xl font-black tracking-tight sm:text-3xl">
+                Derinlerden bir dev yükseliyor
+              </h2>
+              <p className="mx-auto mt-2 max-w-[30ch] text-xs leading-relaxed text-sky-100/70">
+                Hızlı keşif dalgaların okyanusun en etkileyici dalgıçlarından birini yüzeye çıkardı.
+              </p>
 
-          {/* Median Notch (Kaşalot fluke V-indent at top center) */}
-          <path
-            d="M200 130 C207 145, 213 145, 220 130 C250 120, 320 100, 400 110 C340 140, 280 180, 210 210 C140 180, 80 140, 20 110 C100 100, 170 120, 200 130 Z"
-            fill="#0f172a"
-            opacity="0.95"
-          />
+              <div className="relative mx-auto mt-5 h-48 w-full overflow-hidden rounded-2xl border border-cyan-100/10 bg-gradient-to-b from-[#0d4560]/70 to-[#041b2b]/80">
+                <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-cyan-200/10 to-transparent" />
+                <motion.div
+                  className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-200/15"
+                  animate={reduceMotion ? {} : { scale: [0.75, 1.35], opacity: [0.55, 0] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeOut' }}
+                />
+                <motion.div
+                  className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-200/20"
+                  animate={reduceMotion ? {} : { scale: [0.7, 1.5], opacity: [0.65, 0] }}
+                  transition={{ duration: 2.2, delay: 0.55, repeat: Infinity, ease: 'easeOut' }}
+                />
 
-          {/* Fluke Trailing Edge Scallops & Skin Texture */}
-          <path
-            d="M40 118 Q 80 125, 120 145 T 200 138"
-            stroke="#94a3b8"
-            strokeWidth="1.5"
-            strokeDasharray="4 4"
-            opacity="0.6"
-          />
-          <path
-            d="M380 118 Q 340 125, 300 145 T 220 138"
-            stroke="#94a3b8"
-            strokeWidth="1.5"
-            strokeDasharray="4 4"
-            opacity="0.6"
-          />
+                <motion.svg
+                  viewBox="0 0 360 190"
+                  className="absolute inset-0 h-full w-full"
+                  fill="none"
+                  initial={reduceMotion ? false : { y: 75, rotate: 4, opacity: 0 }}
+                  animate={reduceMotion ? {} : { y: [75, -8, -2, 75], rotate: [4, -2, 0, 4], opacity: [0, 1, 1, 0] }}
+                  transition={{ duration: 5.6, times: [0, 0.32, 0.68, 1], ease: 'easeInOut' }}
+                  aria-hidden="true"
+                >
+                  <defs>
+                    <linearGradient id="whale-fluke-fill" x1="180" y1="35" x2="180" y2="165" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#B8E8F2" />
+                      <stop offset="1" stopColor="#328AA8" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M180 154 C160 126 137 93 103 76 C76 62 45 59 25 65 C37 91 65 112 100 119 C128 125 151 137 174 169 L186 169 C209 137 232 125 260 119 C295 112 323 91 335 65 C315 59 284 62 257 76 C223 93 200 126 180 154Z" fill="url(#whale-fluke-fill)" stroke="#D8F5FA" strokeWidth="2" />
+                  <path d="M174 169 Q180 143 186 169" stroke="#E6FAFC" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M92 82 Q132 100 166 142 M268 82 Q228 100 194 142" stroke="#E7FAFC" strokeOpacity=".45" strokeWidth="2" strokeLinecap="round" />
+                </motion.svg>
 
-          {/* Central Ridge (Caudal Keel) */}
-          <path
-            d="M210 140 L210 320"
-            stroke="#38bdf8"
-            strokeWidth="3"
-            strokeLinecap="round"
-            opacity="0.75"
-          />
+                <div className="absolute inset-x-0 bottom-0 h-9">
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-t from-cyan-400/45 to-cyan-300/0"
+                    animate={reduceMotion ? {} : { opacity: [0.35, 0.8, 0.35] }}
+                    transition={{ duration: 2.4, repeat: Infinity }}
+                  />
+                  <svg viewBox="0 0 360 40" className="absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden="true">
+                    <path d="M0 18 Q45 2 90 18 T180 18 T270 18 T360 18 V40 H0Z" fill="#38BDF8" fillOpacity=".42" />
+                    <path d="M0 25 Q45 10 90 25 T180 25 T270 25 T360 25" stroke="#DDF8FF" strokeOpacity=".65" strokeWidth="1.5" />
+                  </svg>
+                </div>
+              </div>
 
-          {/* Water Highlight Lines Sheening on Skin */}
-          <path
-            d="M170 200 C150 170, 110 150, 70 135"
-            stroke="#e0f2fe"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            opacity="0.7"
-          />
-          <path
-            d="M250 200 C270 170, 310 150, 350 135"
-            stroke="#e0f2fe"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            opacity="0.7"
-          />
+              <div className="mt-4 flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.055] p-3 text-left">
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-300/10 text-cyan-200">
+                  <Waves className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-cyan-100">Kaşalot (Physeter macrocephalus)</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-sky-100/65">
+                    Derin dalışlarıyla tanınan bu dişli balina, okyanusun karanlık katmanlarında avlanabilir.
+                  </p>
+                </div>
+              </div>
 
-          {/* Water Droplets Cascading Off Tail */}
-          <circle cx="50" cy="160" r="3.5" fill="#bae6fd" />
-          <circle cx="85" cy="195" r="4" fill="#bae6fd" />
-          <circle cx="140" cy="245" r="3" fill="#bae6fd" />
-          <circle cx="370" cy="160" r="3.5" fill="#bae6fd" />
-          <circle cx="335" cy="195" r="4" fill="#bae6fd" />
-          <circle cx="280" cy="245" r="3" fill="#bae6fd" />
-        </svg>
-
-        {/* Surging Crest Waves & Foam Splash at Tail Entry Base */}
-        <div className="w-full relative -mt-16 h-28 overflow-visible flex items-center justify-center">
-          <svg viewBox="0 0 500 120" className="w-full h-full" fill="none">
-            {/* Spray Mist Aura */}
-            <ellipse cx="250" cy="80" rx="220" ry="40" fill="url(#sprayGlow)" />
-
-            {/* Violent Foam Crest Waves */}
-            <path
-              d="M0 80 Q 60 40, 130 75 T 250 50 T 370 70 T 500 80 L 500 120 L 0 120 Z"
-              fill="#0284c7"
-            />
-            <path
-              d="M20 85 Q 90 55, 170 80 T 320 60 T 430 82 T 500 90 L 500 120 L 0 120 Z"
-              fill="#38bdf8"
-              opacity="0.8"
-            />
-            <path
-              d="M0 95 Q 80 70, 180 90 T 350 78 T 500 95 L 500 120 L 0 120 Z"
-              fill="#ffffff"
-              opacity="0.9"
-            />
-
-            {/* Flying Droplets Spray Particles */}
-            <circle cx="180" cy="45" r="4.5" fill="#ffffff" />
-            <circle cx="210" cy="30" r="5" fill="#ffffff" />
-            <circle cx="250" cy="20" r="6" fill="#ffffff" />
-            <circle cx="290" cy="32" r="5" fill="#ffffff" />
-            <circle cx="330" cy="48" r="4" fill="#ffffff" />
-            <circle cx="140" cy="60" r="3.5" fill="#e0f2fe" />
-            <circle cx="360" cy="62" r="3.5" fill="#e0f2fe" />
-          </svg>
-        </div>
-      </motion.div>
-
-      {/* Underwater Rumble & Speed Easter Egg Toast Badge */}
-      <motion.div
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 20, opacity: 0 }}
-        transition={{ delay: 0.4, duration: 0.5 }}
-        className="absolute top-20 left-1/2 -translate-x-1/2 z-40 bg-[#0f172a]/90 backdrop-blur-md border border-cyan-400/50 shadow-2xl shadow-cyan-500/30 text-white px-5 py-2.5 rounded-full flex items-center gap-2.5 whitespace-nowrap"
-      >
-        <span className="text-xl">🐋</span>
-        <div>
-          <b className="block text-xs font-bold text-cyan-200">
-            Dev Kaşalot Yüzeye Çıktı!
-          </b>
-          <span className="text-[10.5px] text-sky-200">
-            Hızlı kaydırma dalgaları okyanusu sarstı!
-          </span>
-        </div>
-      </motion.div>
-    </div>
+              <button
+                type="button"
+                onClick={onDismiss}
+                className="mt-4 w-full rounded-xl bg-cyan-300 px-4 py-3 text-sm font-extrabold text-[#062236] shadow-lg shadow-cyan-950/20 transition hover:bg-cyan-200 active:scale-[0.99]"
+              >
+                Keşfe devam et
+              </button>
+              <p className="mt-2 text-[9px] font-medium tracking-wide text-sky-100/35">Bu küçük karşılaşma birkaç saniye sonra kendiliğinden kapanır.</p>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
