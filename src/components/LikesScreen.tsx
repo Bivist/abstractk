@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Paper } from '../types';
+import { HoldToConfirmButton } from './HoldToConfirmButton';
 import { FolderPlus, Download, Check, Trash2, ArrowUp, ArrowDown, ChevronRight, FileText, Sparkles, Share2 } from 'lucide-react';
 
 interface LikesScreenProps {
@@ -156,13 +157,15 @@ export const LikesScreen: React.FC<LikesScreenProps> = ({
       {selectedCount > 0 && (
         <div className="flex items-center gap-2 p-2.5 mb-2.5 rounded-2xl bg-gradient-to-r from-sky-700 to-cyan-600 text-white text-xs font-semibold shadow-md shrink-0">
           <span className="flex-1">{selectedCount} seçildi</span>
-          <button
-            type="button"
-            onClick={onRemoveSelected}
-            className="px-2.5 py-1 rounded-lg bg-rose-500/90 hover:bg-rose-600 border border-white/20"
+          <HoldToConfirmButton
+            onConfirm={onRemoveSelected}
+            duration={1200}
+            resetAfter={1400}
+            className="min-h-8 px-2.5 py-1 text-[11px]"
+            confirmedContent="Silindi"
           >
-            Seçilenleri sil
-          </button>
+            Silmek için basılı tut
+          </HoldToConfirmButton>
           <button
             type="button"
             onClick={onOpenMoveFolder}
