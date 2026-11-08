@@ -1,4 +1,4 @@
-import { Paper, SettingsState, LighthouseWatchState, ReadingHistoryItem } from '../types';
+import { Paper, SettingsState, LighthouseWatchState, ReadingHistoryItem, PaperNote } from '../types';
 
 /**
  * localStorage'dan okunan veriyi doğrular. Bozuk / elle değiştirilmiş / eski sürümden kalan veri
@@ -85,6 +85,17 @@ export function sanitizeFolders(raw: unknown): Record<string, string[]> {
     if (Array.isArray(v)) out[k] = v.filter(isStr);
   }
   return out;
+}
+
+export function loadNotes(): PaperNote[] {
+  return sanitizeNotes(readRaw('abs_notes'));
+}
+
+export function sanitizeNotes(raw: unknown): PaperNote[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((n: any) => isObj(n) && isStr(n.id) && isStr(n.paperId) && isStr(n.content) && n.content.trim().length > 0 && (n.type === 'note' || n.type === 'quote' || n.type === 'question'))
+    .map((n: any) => ({ id: n.id, paperId: n.paperId, type: n.type, content: n.content.slice(0, 5000), createdAt: num(n.createdAt, Date.now()), updatedAt: num(n.updatedAt, num(n.createdAt, Date.now())) }))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export function loadHistory(): ReadingHistoryItem[] {
