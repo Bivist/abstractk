@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Paper, FilterState, SettingsState, TabId, LighthouseWatchState, ReadingHistoryItem } from './types';
+import { Paper, FilterState, SettingsState, TabId, LighthouseWatchState, ReadingHistoryItem, PaperNote } from './types';
 import { I18N } from './constants/i18n';
 import { buildSearchTiers, fetchWorks, parseWorksToPapers, getEffectiveNodes, normalizeYears, fetchWorkById } from './utils/openalex';
 import { SFX } from './utils/sfx';
 import { ensureTranslatedPaper } from './utils/translate';
 import { exportPapersToPrint } from './utils/export';
 import { sharePaper, readSharedIdFromLocation, clearSharedParam } from './utils/share';
-import { loadSettings, loadLikedPapers, loadFolders, loadHistory, loadLighthouseWatch, freshLighthouseWatch } from './utils/storage';
+import { loadSettings, loadLikedPapers, loadFolders, loadHistory, loadLighthouseWatch, freshLighthouseWatch, loadNotes } from './utils/storage';
 import { useAuth } from './hooks/useAuth';
 import { authEnabled, supabase } from './lib/supabase';
 import { pullCloud, pushCloud, mergeSnapshots, type UserSnapshot } from './utils/cloudSync';
@@ -179,6 +179,11 @@ export default function App() {
   const [likedPapers, setLikedPapers] = useState<Paper[]>(() => loadLikedPapers());
 
   const [folders, setFolders] = useState<Record<string, string[]>>(() => loadFolders());
+  const [paperNotes, setPaperNotes] = useState<PaperNote[]>(() => loadNotes());
+
+  useEffect(() => {
+    try { localStorage.setItem('abs_notes', JSON.stringify(paperNotes)); } catch {}
+  }, [paperNotes]);
 
   // En güncel kişisel ilgi profilini arama callback'inde kullan.
   const likedProfileRef = useRef(likedPapers);
@@ -407,8 +412,8 @@ export default function App() {
   const [retryTick, setRetryTick] = useState(0);
   const lastPushedRef = useRef<string | null>(null);
 
-  const latestRef = useRef<UserSnapshot>({ liked: likedPapers, folders, history: readingHistory, streak: lighthouseWatch, settings });
-  latestRef.current = { liked: likedPapers, folders, history: readingHistory, streak: lighthouseWatch, settings };
+  const latestRef = useRef<UserSnapshot>({ liked: likedPapers, folders, history: readingHistory, notes: paperNotes, streak: lighthouseWatch, settings });
+  latestRef.current = { liked: likedPapers, folders, history: readingHistory, notes: paperNotes, streak: lighthouseWatch, settings };
 
   const snapshotJson = (snap: UserSnapshot) =>
     JSON.stringify({ ...snap, liked: snap.liked.map(({ trP, ...rest }) => rest) });
@@ -453,6 +458,7 @@ export default function App() {
         setLikedPapers(next.liked);
         setFolders(next.folders);
         setReadingHistory(next.history);
+        setPaperNotes(next.notes || []);
         setLighthouseWatch(next.streak);
         setSettings(next.settings);
 
@@ -496,7 +502,7 @@ export default function App() {
     }, 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [likedPapers, folders, readingHistory, lighthouseWatch, settings, syncedUid, auth.user?.id, retryTick]);
+  }, [likedPapers, folders, readingHistory, paperNotes, lighthouseWatch, settings, syncedUid, auth.user?.id, retryTick]);
 
   const handleSignOut = useCallback(async () => {
     const uid = auth.user?.id;
@@ -517,6 +523,7 @@ export default function App() {
     setFolders({});
     setSelectedLikeIds(new Set());
     setReadingHistory([]);
+    setPaperNotes([]);
     setLighthouseWatch(freshLighthouseWatch());
     lastPushedRef.current = null;
     setSyncedUid(null);
@@ -530,6 +537,18 @@ export default function App() {
     if (result === 'copied') setToast(langDict.share_copied || 'Bağlantı kopyalandı');
     else if (result === 'failed') setToast(langDict.share_failed || 'Bağlantı paylaşılamadı');
   }, [settings.translate, langDict]);
+
+  const handleAddPaperNote = useCallback((paper: Paper, type: PaperNote['type'], content: string) => {
+    const now = Date.now();
+    const clean = content.trim();
+    if (!clean) return;
+    setPaperNotes(prev => [{ id: `note_${now}_${Math.random().toString(36).slice(2, 8)}`, paperId: paper.id, type, content: clean.slice(0, 5000), createdAt: now, updatedAt: now }, ...prev]);
+    setToast('Notun Bilim Defterim’e kaydedildi.');
+  }, []);
+
+  const handleDeletePaperNote = useCallback((noteId: string) => {
+    setPaperNotes(prev => prev.filter(note => note.id !== noteId));
+  }, []);
 
   // Detay ekranındaki beğen / beğenmekten vazgeç
   const handleToggleLikeInDetail = useCallback((paper: Paper) => {
@@ -1101,6 +1120,9 @@ export default function App() {
         onShare={handleSharePaper}
         isLiked={!!detailPaper && likedPapers.some(p => p.id === detailPaper.id)}
         onToggleLike={handleToggleLikeInDetail}
+        notes={detailPaper ? paperNotes.filter(note => note.paperId === detailPaper.id) : []}
+        onAddNote={handleAddPaperNote}
+        onDeleteNote={handleDeletePaperNote}
         isSharedView={sharedStatus === 'ready'}
       />
 
