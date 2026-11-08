@@ -62,6 +62,9 @@ export const SeyirPanosu: React.FC<SeyirPanosuProps> = ({
   const beamPower = Math.min(100, Math.max(5, lighthouseWatch.beamPower || 20));
   const beamDistanceMiles = (beamPower * 0.24).toFixed(1);
 
+  // İlgi alanı dağılımındaki temsili derinlik hesabı.
+  const calculatedDepthMeters = Math.max(80, totalReads * 140 + likedPapers.length * 90);
+
   // Discipline Depth Distribution
   const disciplineStats = useMemo(() => {
     const counts: Record<string, number> = {};
