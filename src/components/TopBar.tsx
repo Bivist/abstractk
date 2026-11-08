@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { AppIcon } from './AppIcon';
 
 interface TopBarProps {
@@ -19,6 +19,30 @@ export const TopBar: React.FC<TopBarProps> = ({
   showAvatar = true
 }) => {
   const [avatarExpanded, setAvatarExpanded] = useState(false);
+  const logoClickRef = useRef<{ count: number; lastClick: number }>({ count: 0, lastClick: 0 });
+  const [beaconBurst, setBeaconBurst] = useState(false);
+  const [showSecretBadge, setShowSecretBadge] = useState(false);
+  const [secretBadgeUnlocked, setSecretBadgeUnlocked] = useState(() => {
+    try { return localStorage.getItem('abs_lighthouse_secret_badge') === '1'; } catch { return false; }
+  });
+
+  const handleLogoClick = () => {
+    onGoHome();
+    const now = Date.now();
+    const previous = logoClickRef.current;
+    const count = now - previous.lastClick > 1800 ? 1 : previous.count + 1;
+    logoClickRef.current = { count, lastClick: now };
+
+    if (count >= 5) {
+      logoClickRef.current = { count: 0, lastClick: 0 };
+      setBeaconBurst(true);
+      setShowSecretBadge(true);
+      setSecretBadgeUnlocked(true);
+      try { localStorage.setItem('abs_lighthouse_secret_badge', '1'); } catch {}
+      window.setTimeout(() => setBeaconBurst(false), 2600);
+      window.setTimeout(() => setShowSecretBadge(false), 6500);
+    }
+  };
   const [avatarAnimation, setAvatarAnimation] = useState<'grow' | 'shrink'>('grow');
   const toggleAvatar = () => {
     setAvatarAnimation(avatarExpanded ? 'shrink' : 'grow');
@@ -29,12 +53,20 @@ export const TopBar: React.FC<TopBarProps> = ({
       {/* Brand & Logo Zone */}
       <button
         type="button"
-        onClick={onGoHome}
-        className="flex items-center gap-3 text-left group focus-visible:outline-2 focus-visible:outline-sky-600 rounded-xl transition-transform active:scale-95"
+        onClick={handleLogoClick}
+        className="relative flex items-center gap-3 text-left group focus-visible:outline-2 focus-visible:outline-sky-600 rounded-xl transition-transform active:scale-95"
         title="Ana Sayfa"
       >
         {/* Logo: büyütülmüş, çerçevesiz */}
-        <div className="w-[68px] h-[68px] flex items-center justify-center shrink-0">
+        <div className={`relative w-[68px] h-[68px] flex items-center justify-center shrink-0 ${beaconBurst ? 'drop-shadow-[0_0_18px_rgba(56,189,248,0.95)]' : ''}`}>
+          {beaconBurst && (
+            <>
+              <span className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-1 w-24 -translate-y-1/2 -translate-x-1/2 rounded-full bg-cyan-300/80 blur-md animate-ping" />
+              <span className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-1 w-28 -translate-y-1/2 -translate-x-1/2 rotate-[-18deg] rounded-full bg-amber-200/90 blur-sm animate-pulse" />
+              <span className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-1 w-28 -translate-y-1/2 -translate-x-1/2 rotate-[18deg] rounded-full bg-cyan-200/90 blur-sm animate-pulse" />
+            </>
+          )}
+          <span className={beaconBurst ? 'relative z-10 scale-110 transition-transform duration-500' : 'relative z-10 transition-transform duration-500'}>
           <AppIcon
             name="logo"
             size={64}
@@ -48,6 +80,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               </svg>
             }
           />
+          </span>
         </div>
         <div className="flex flex-col">
           <span className="font-serif text-[26px] font-bold tracking-tight text-[#0a2540] dark:text-[#f0f9ff]">
@@ -60,6 +93,33 @@ export const TopBar: React.FC<TopBarProps> = ({
           )}
         </div>
       </button>
+
+      {showSecretBadge && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute left-4 top-[calc(100%+10px)] z-[80] w-[min(330px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-cyan-300/50 bg-[#071d30]/95 p-4 text-left text-white shadow-[0_18px_55px_rgba(2,20,35,0.45)] backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-500"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-amber-200/50 bg-cyan-300/10 text-amber-200 shadow-[0_0_22px_rgba(103,232,249,0.2)]">
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
+                <path d="M12 2.8 14.7 8l5.7.8-4.1 4 1 5.7-5.3-2.7-5.3 2.7 1-5.7-4.1-4L9.3 8 12 2.8Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                <path d="M12 6.5v7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">Gizli keşif · {secretBadgeUnlocked ? 'Rozet açıldı' : 'Yeni keşif'}</p>
+              <p className="mt-1 text-sm font-semibold text-white">Fenerin Sırlarını Keşfettin</p>
+            </div>
+            <button type="button" onClick={() => setShowSecretBadge(false)} aria-label="Mesajı kapat" className="ml-auto self-start rounded-full px-2 text-white/60 hover:bg-white/10 hover:text-white">×</button>
+          </div>
+          <p className="mt-3 text-sm leading-relaxed text-slate-200">“Bazı keşifler yalnızca dikkatli bakanlara görünür.”</p>
+          <div className="mt-3 flex items-center gap-2 border-t border-white/10 pt-3 text-[11px] font-medium text-cyan-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_8px_#67e8f9]" />
+            Gizli başarı rozeti koleksiyonuna eklendi
+          </div>
+        </div>
+      )}
 
       {showAvatar && avatarUrl && (
         <button
