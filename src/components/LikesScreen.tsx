@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Paper } from '../types';
 import { FolderPlus, Download, Check, Trash2, ArrowUp, ArrowDown, ChevronRight, FileText, Sparkles, Share2 } from 'lucide-react';
 
@@ -18,6 +19,7 @@ interface LikesScreenProps {
   onOpenDetails: (paper: Paper) => void;
   onSharePaper?: (paper: Paper) => void;
   onRemoveLike: (paperId: string) => void;
+  onUndoRemove: () => void;
   onMoveUp: (index: number) => void;
   onMoveDown: (index: number) => void;
   langDict: Record<string, string>;
@@ -39,10 +41,26 @@ export const LikesScreen: React.FC<LikesScreenProps> = ({
   onOpenDetails,
   onSharePaper,
   onRemoveLike,
+  onUndoRemove,
   onMoveUp,
   onMoveDown,
   langDict
 }) => {
+  const [undoPaper, setUndoPaper] = useState<Paper | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (undoTimer.current) clearTimeout(undoTimer.current); }, []);
+  const removeWithFeedback = (paper: Paper) => {
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setUndoPaper(paper);
+    onRemoveLike(paper.id);
+    undoTimer.current = setTimeout(() => setUndoPaper(null), 2000);
+  };
+  const undoLastRemoval = () => {
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    onUndoRemove();
+    setUndoPaper(null);
+  };
+
   // Extract all unique folder names
   const allFolderNames = Array.from(
     new Set(Object.values(folders).flat())
@@ -127,6 +145,13 @@ export const LikesScreen: React.FC<LikesScreenProps> = ({
         })}
       </div>
 
+      {undoPaper && (
+        <div role="status" aria-live="polite" className="mb-2 flex shrink-0 items-center gap-2 rounded-xl border border-sky-200/80 bg-white/95 px-3 py-2 text-xs text-[#315d78] shadow-[0_4px_14px_rgba(2,132,199,0.10)] backdrop-blur dark:border-sky-900/70 dark:bg-[#0b2639]/95 dark:text-sky-100">
+          <span className="min-w-0 flex-1 truncate">Makale beğenilenlerden çıkarıldı.</span>
+          <button type="button" onClick={undoLastRemoval} className="shrink-0 rounded-full px-3 py-1.5 font-semibold text-sky-700 transition-colors hover:bg-sky-100 active:scale-95 dark:text-sky-300 dark:hover:bg-sky-900/60">Geri al</button>
+        </div>
+      )}
+
       {/* Batch Selection Action Bar */}
       {selectedCount > 0 && (
         <div className="flex items-center gap-2 p-2.5 mb-2.5 rounded-2xl bg-gradient-to-r from-sky-700 to-cyan-600 text-white text-xs font-semibold shadow-md shrink-0">
@@ -173,20 +198,22 @@ export const LikesScreen: React.FC<LikesScreenProps> = ({
             </p>
           </div>
         ) : (
-          displayedPapers.map((paper, idx) => {
+          <AnimatePresence initial={false}>
+          {displayedPapers.map((paper, idx) => {
             const isSelected = selectedIds.has(paper.id);
             const paperFolders = folders[paper.id] || [];
             return (
-              <div
+              <motion.div
                 key={paper.id}
-                onTouchStart={(event) => { event.currentTarget.dataset.touchStartX = String(event.touches[0]?.clientX || 0); }}
-                onTouchEnd={(event) => {
-                  const startX = Number(event.currentTarget.dataset.touchStartX || 0);
-                  const endX = event.changedTouches[0]?.clientX || 0;
-                  if (startX - endX > 85) onRemoveLike(paper.id);
-                  delete event.currentTarget.dataset.touchStartX;
-                }}
-                className={`relative p-3.5 rounded-2xl bg-white dark:bg-[#071828] border transition-all ${
+                layout
+                drag="x"
+                dragDirectionLock
+                dragConstraints={{ left: -120, right: 0 }}
+                dragElastic={0.12}
+                onDragEnd={(_, info) => { if (info.offset.x < -78) removeWithFeedback(paper); }}
+                whileDrag={{ scale: 0.985, transition: { duration: 0.12 } }}
+                exit={{ x: -260, opacity: 0, scale: 0.94, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } }}
+                className={`relative touch-pan-y p-3.5 rounded-2xl bg-white dark:bg-[#071828] border transition-colors ${
                   isSelected
                     ? 'border-sky-600 ring-2 ring-sky-600/20 shadow-md'
                     : 'border-[#c5dfe9] dark:border-[#0d2f45] hover:border-sky-400'
@@ -272,16 +299,17 @@ export const LikesScreen: React.FC<LikesScreenProps> = ({
                   )}
                   <button
                     type="button"
-                    onClick={() => onRemoveLike(paper.id)}
+                    onClick={() => removeWithFeedback(paper)}
                     className="px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 font-medium ml-auto flex items-center gap-1 hover:bg-rose-100"
                   >
                     <Trash2 className="w-3 h-3" />
                     <span>Çıkar</span>
                   </button>
                 </div>
-              </div>
+              </motion.div>
             );
-          })
+          })}
+          </AnimatePresence>
         )}
       </div>
 
