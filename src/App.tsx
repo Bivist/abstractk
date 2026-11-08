@@ -625,7 +625,7 @@ export default function App() {
           const activeFilter = filterRef.current;
           const hasNarrowFilter = Boolean(activeFilter && (
             activeFilter.sel.size > 0 || activeFilter.from || activeFilter.to ||
-            activeFilter.authorId || activeFilter.journalId || activeFilter.aName || activeFilter.jName
+            activeFilter.authorId || activeFilter.journalId || activeFilter.aName || activeFilter.jName || activeFilter.geographicQuery
           ));
           if (communityIds.length && !hasNarrowFilter) {
             const existingIds = new Set(papers.map(paper => paper.id));
@@ -762,7 +762,8 @@ export default function App() {
       journalId: '',
       aName: '',
       jName: '',
-      en: true
+      en: true,
+      geographicQuery: ''
     };
     setFilter(cleared);
     resetAndSearch(cleared);
@@ -770,9 +771,10 @@ export default function App() {
 
   // Filter Summary Text
   const effectiveFilterNodes = getEffectiveNodes(filter.sel);
-  const filterSummary = effectiveFilterNodes.length
-    ? effectiveFilterNodes.map(n => n.label).join(' · ')
-    : '';
+  const filterSummary = [
+    ...effectiveFilterNodes.map(n => n.label),
+    filter.geographicQuery ? `Konum: ${filter.geographicQuery}` : ''
+  ].filter(Boolean).join(' · ');
 
   // Theme Toggle Quick Handler
   const handleToggleTheme = () => {
@@ -1134,7 +1136,8 @@ export default function App() {
             has_subject: applied.sel.size > 0,
             has_year_range: Boolean(applied.from || applied.to),
             has_author: Boolean(applied.authorId || applied.aName),
-            has_journal: Boolean(applied.journalId || applied.jName)
+            has_journal: Boolean(applied.journalId || applied.jName),
+            has_geographic_query: Boolean(applied.geographicQuery)
           });
           resetAndSearch(applied);
         }}
