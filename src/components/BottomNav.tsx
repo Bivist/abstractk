@@ -131,7 +131,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 <motion.div
                   layoutId="mobileActiveBubble"
                   transition={{ type: 'spring', stiffness: 230, damping: 28, mass: 1.05 }}
-                  className="pointer-events-none absolute left-1/2 top-[-13px] z-0 flex h-[54px] w-[54px] -translate-x-1/2 items-center justify-center rounded-full border-[3px] border-white bg-gradient-to-br from-[#42a8ed] via-[#0876c9] to-[#064a9b] shadow-[0_6px_15px_rgba(2,80,150,0.30),inset_0_2px_4px_rgba(255,255,255,0.30)] ring-[2px] ring-[#83d6b7]/65 dark:border-[#071828] dark:from-[#38bdf8] dark:via-[#087bb8] dark:to-[#06436e] dark:ring-[#5cc9ad]/60"
+                  className="pointer-events-none absolute left-1/2 top-[-39px] z-0 flex h-[54px] w-[54px] -translate-x-1/2 items-center justify-center rounded-full border-[3px] border-white bg-gradient-to-br from-[#42a8ed] via-[#0876c9] to-[#064a9b] shadow-[0_6px_15px_rgba(2,80,150,0.30),inset_0_2px_4px_rgba(255,255,255,0.30)] ring-[2px] ring-[#83d6b7]/65 dark:border-[#071828] dark:from-[#38bdf8] dark:via-[#087bb8] dark:to-[#06436e] dark:ring-[#5cc9ad]/60"
                 >
                   <span className="absolute inset-[4px] rounded-full border border-white/20" />
                   <span className="absolute left-[9px] top-[7px] h-[15px] w-[25px] -rotate-[28deg] rounded-full bg-white/25 blur-[2px]" />
@@ -146,7 +146,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
               <motion.div
                 animate={isActive
-                  ? desktop ? { y: 0, scale: 1.04 } : { y: -11, scale: 1.04 }
+                  ? desktop ? { y: 0, scale: 1.04 } : { y: -24, scale: 1.04 }
                   : { y: 0, scale: 1 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 27, mass: 0.9 }}
                 className={desktop
