@@ -272,19 +272,21 @@ export default function App() {
   // Easter Egg 3D State ('none' | 'pink-flowers' | 'ocean-fish')
   const [easterEgg, setEasterEgg] = useState<EasterEggMode>('none');
 
-  // Easter Egg Speed Swipe (Sperm Whale / Kaşalot Kuyruğu)
+  // Kaşalot easter egg: kayan 5 saniyelik pencerede 15 gerçek kart kaydırması.
   const [showKasalot, setShowKasalot] = useState<boolean>(false);
   const swipeTimestampsRef = useRef<number[]>([]);
+  const lastKasalotAtRef = useRef<number>(0);
 
   const registerSwipeForSpeedCheck = useCallback(() => {
     const now = Date.now();
+    swipeTimestampsRef.current = swipeTimestampsRef.current.filter(timestamp => now - timestamp <= 5000);
     swipeTimestampsRef.current.push(now);
-    // 10 second time window
-    swipeTimestampsRef.current = swipeTimestampsRef.current.filter(t => now - t <= 10000);
-    // If user swipes rapidly (12+ papers in 10s), breach the whale!
-    if (swipeTimestampsRef.current.length >= 12) {
-      setShowKasalot(true);
+
+    // Aynı oturumda arka arkaya açılmasını önle; 30 saniyelik sakinleşme süresi.
+    if (swipeTimestampsRef.current.length >= 15 && now - lastKasalotAtRef.current >= 30000) {
+      lastKasalotAtRef.current = now;
       swipeTimestampsRef.current = [];
+      setShowKasalot(true);
     }
   }, []);
 
@@ -716,7 +718,6 @@ export default function App() {
 
   // Like Paper Handler (Reels mode & Buttons)
   const handleLikePaper = (paper: Paper) => {
-    registerSwipeForSpeedCheck();
     trackPaperRead(paper);
     if (!likedPapers.some(p => p.id === paper.id)) {
       trackEvent('paper_liked', { paper_id: paper.id, source: 'reels' });
@@ -906,6 +907,7 @@ export default function App() {
               likedPapers={likedPapers}
               loading={loading}
               onLikePaper={handleLikePaper}
+              onPaperSwiped={registerSwipeForSpeedCheck}
               onOpenDetails={(p) => {
                 trackPaperRead(p);
                 setDetailPaper(p);
