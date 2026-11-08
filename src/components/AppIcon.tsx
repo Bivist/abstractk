@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 interface AppIconProps {
-  name: 'logo' | 'home' | 'explore' | 'likes' | 'dashboard' | 'settings';
+  name: 'logo' | 'home' | 'explore' | 'likes' | 'notes' | 'dashboard' | 'settings';
   className?: string;
   alt?: string;
   fallback?: React.ReactNode;
@@ -19,7 +19,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
   // uygulama kök dizinde de alt dizinde de (ör. GitHub Pages) doğru çalışır.
   const base = import.meta.env.BASE_URL;
   // 'dashboard' (Seyir) için dosya yok; doğrudan satır içi yedek ikon kullanılır (404 isteği atılmaz).
-  const hasFile = name !== 'dashboard';
+  const hasFile = name !== 'dashboard' && name !== 'notes';
   const candidates = name === 'logo'
     ? [`${base}assets/logo.webp`, `${base}assets/logo.png`]
     : [`${base}assets/${name}.svg`];
