@@ -971,7 +971,17 @@ export default function App() {
 
         {currentTab === 'notes' && (
           <NotesArchive
-            notes={paperNotes}
+            notes={paperNotes.map(note => {
+              const sourcePaper = [...likedPapers, ...queue].find(item => item.id === note.paperId);
+              return sourcePaper ? {
+                ...note,
+                paperTitle: note.paperTitle || sourcePaper.title,
+                paperJournal: note.paperJournal || sourcePaper.journal,
+                paperField: note.paperField || sourcePaper.sub || sourcePaper.field,
+                paperLink: note.paperLink || sourcePaper.link,
+                paperAuthors: note.paperAuthors || sourcePaper.authors
+              } : note;
+            })}
             onUpdateNote={handleUpdatePaperNote}
             onDeleteNote={handleDeletePaperNote}
             onOpenPaper={(note) => {
