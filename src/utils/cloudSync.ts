@@ -1,9 +1,10 @@
 import { supabase } from '../lib/supabase';
-import { Paper, SettingsState, LighthouseWatchState, ReadingHistoryItem } from '../types';
+import { Paper, SettingsState, LighthouseWatchState, ReadingHistoryItem, PaperNote } from '../types';
 import {
   sanitizeLiked,
   sanitizeFolders,
   sanitizeHistory,
+  sanitizeNotes,
   sanitizeLighthouseWatch,
   sanitizeSettings,
   localDateStr
@@ -14,6 +15,7 @@ export interface UserSnapshot {
   liked: Paper[];
   folders: Record<string, string[]>;
   history: ReadingHistoryItem[];
+  notes: PaperNote[];
   streak: LighthouseWatchState;
   settings: SettingsState;
 }
@@ -35,6 +37,7 @@ export async function pullCloud(
     liked: sanitizeLiked(data.liked),
     folders: sanitizeFolders(data.folders),
     history: sanitizeHistory(data.history),
+    notes: sanitizeNotes(data.settings?.__paperNotes),
     streak: sanitizeLighthouseWatch(data.streak),
     settings: sanitizeSettings(data.settings, settingsDefaults)
   };
@@ -51,7 +54,7 @@ export async function pushCloud(userId: string, snap: UserSnapshot): Promise<voi
       folders: snap.folders,
       history: snap.history,
       streak: snap.streak,
-      settings: snap.settings,
+      settings: { ...snap.settings, __paperNotes: snap.notes },
       updated_at: new Date().toISOString()
     },
     { onConflict: 'user_id' }
@@ -94,6 +97,14 @@ export function mergeSnapshots(local: UserSnapshot, cloud: UserSnapshot): UserSn
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 50);
 
+  // Notlar: iki cihazdaki notları kimliklerine göre birleştir; en güncel sürümü koru.
+  const noteMap = new Map<string, PaperNote>();
+  for (const note of [...cloud.notes, ...local.notes]) {
+    const previous = noteMap.get(note.id);
+    if (!previous || note.updatedAt > previous.updatedAt) noteMap.set(note.id, note);
+  }
+  const notes = Array.from(noteMap.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+
   // Fener Nöbeti: her iki tarafın en iyisi. Bulut serisi dünden kalmışsa bir gün eklenir.
   const today = localDateStr();
   const yesterday = localDateStr(new Date(Date.now() - 86400000));
@@ -115,5 +126,5 @@ export function mergeSnapshots(local: UserSnapshot, cloud: UserSnapshot): UserSn
   };
 
   // Ayarlar: hesaptaki ayarlar geçerli olur.
-  return { liked, folders, history, streak, settings: cloud.settings };
+  return { liked, folders, history, notes, streak, settings: cloud.settings };
 }
