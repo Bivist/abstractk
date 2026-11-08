@@ -155,7 +155,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 <AppIcon
                   name={tab.iconName}
                   size={20}
-                  className="w-5 h-5 object-contain"
+                  className={`w-5 h-5 object-contain ${!desktop && isActive ? 'scale-125 brightness-0 invert' : ''}`}
                   alt={tab.labelKey}
                   fallback={tab.renderIcon(isActive)}
                 />
@@ -165,7 +165,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               <span
                 className={`${desktop ? "relative z-10 text-sm transition-all duration-200 leading-tight" : "relative z-10 text-[11px] transition-all duration-200 leading-tight"} ${
                   isActive
-                    ? 'text-[#0284c7] dark:text-[#38bdf8] font-bold'
+                    ? (desktop ? 'text-[#0284c7] dark:text-[#38bdf8] font-bold' : 'text-[#0a3b63] dark:text-[#d9f4ff] font-bold')
                     : 'text-[#527993] dark:text-[#7bb0cc] font-medium'
                 }`}
               >
