@@ -282,7 +282,7 @@ export function buildSearchTiers(filter: FilterState): SearchTier[] {
 
   return withGeography(tiers.length ? tiers : [{ fs: [baseParts.join(",")], kind: "any" }]);
 }
-export async function fetchWorks(filterStr: string, count: number): Promise<any[]> {
+export async function fetchWorks(filterStr: string, count: number, page = 1): Promise<any[]> {
   const seed = Math.floor(Math.random() * 1e6);
   // Metin tabanlı filtreleri OpenAlex'in güncel search.title_and_abstract
   // parametresinde birleştir. Coğrafi arama ve alan sorguları birlikte AND çalışır.
@@ -306,12 +306,12 @@ export async function fetchWorks(filterStr: string, count: number): Promise<any[
   // sonuç örneklemesini öngörülemez hâle getirebilir. Metin/coğrafya aramasında
   // sayfalı sonuç, filtresiz keşifte ise mevcut rastgele örnekleme davranışı korunur.
   const pagination = combinedSearch
-    ? "&page=1&per_page=" + count
+    ? "&page=" + Math.max(1, Math.floor(page)) + "&per_page=" + count
     : "&sample=" + count + "&seed=" + seed + "&per_page=" + count;
   let res = await fetch(API + "/works?filter=" + requestFilter + searchParam + pagination + "&select=" + SEL);
 
   if (!res.ok && combinedSearch) {
-    res = await fetch(API + "/works?filter=" + requestFilter + searchParam + "&page=1&per_page=" + count + "&select=" + SEL);
+    res = await fetch(API + "/works?filter=" + requestFilter + searchParam + "&page=" + Math.max(1, Math.floor(page)) + "&per_page=" + count + "&select=" + SEL);
   }
 
   if (!res.ok) {
