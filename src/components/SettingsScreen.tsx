@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SettingsState } from '../types';
-import { Smartphone, Monitor, Trash2, LogIn, LogOut, UserRound, Cloud, Save, Camera, X } from 'lucide-react';
+import { Smartphone, Monitor, Trash2, LogIn, LogOut, UserRound, Cloud, Save, Camera, X, NotebookPen, ChevronRight } from 'lucide-react';
 
 interface SettingsScreenProps {
   settings: SettingsState;
@@ -19,6 +19,7 @@ interface SettingsScreenProps {
   syncStatus?: 'idle' | 'syncing' | 'synced' | 'error';
   onOpenAuth?: () => void;
   onSignOut?: () => void;
+  onOpenNotes?: () => void;
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
@@ -36,7 +37,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onUpdateDisplayName,
   syncStatus = 'idle',
   onOpenAuth,
-  onSignOut
+  onSignOut,
+  onOpenNotes
 }) => {
   const [displayName, setDisplayName] = useState(userDisplayName || '');
   const [nameBusy, setNameBusy] = useState(false);
@@ -148,6 +150,27 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* ── BİLİM DEFTERİM ── */}
+      {onOpenNotes && (
+        <div className="mb-5">
+          <span className="text-[11px] font-bold tracking-wider uppercase text-[#4a7a96] dark:text-[#5fa8c8] mb-2 block">Kişisel Arşiv</span>
+          <button
+            type="button"
+            onClick={onOpenNotes}
+            className="w-full bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-2xl p-4 shadow-sm flex items-center gap-3 text-left hover:border-sky-500 dark:hover:border-sky-700 transition-colors"
+          >
+            <span className="w-10 h-10 rounded-xl bg-[#dff0f7] dark:bg-[#0d2236] text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
+              <NotebookPen className="w-5 h-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-[#0a2540] dark:text-[#e0f4ff]">Bilim Defterim</span>
+              <span className="block mt-0.5 text-xs text-[#4a7a96] dark:text-[#5fa8c8]">Makale notlarını, alıntılarını ve araştırma sorularını görüntüle.</span>
+            </span>
+            <ChevronRight className="w-4 h-4 text-[#4a7a96] dark:text-[#7bb0cc] shrink-0" />
+          </button>
         </div>
       )}
 
