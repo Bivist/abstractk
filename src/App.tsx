@@ -206,6 +206,7 @@ export default function App() {
   const loadingRef = useRef<boolean>(false);
   const shownInTierRef = useRef<number>(0);
   const tierPageRef = useRef<number>(1);
+  const tierRequestOffsetRef = useRef<number>(0);
   const filterRef = useRef<FilterState | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -583,18 +584,24 @@ export default function App() {
         tierIndexRef.current = 0;
         shownInTierRef.current = 0;
         tierPageRef.current = 1;
+        tierRequestOffsetRef.current = 0;
       }
 
       let added = 0;
       // Her coğrafi eş ad ve metin sorgusu sayfa sayfa taranır. Boş/tekrarlı
       // ilk sayfa, sonraki sayfalardaki uygun yayınları erken kesmemelidir.
-      for (let guard = 0; !added && guard < tiersRef.current.length * 4 + 4; guard++) {
+      for (let guard = 0; !added && guard < tiersRef.current.length * 24 + 24; guard++) {
         const tier = tiersRef.current[tierIndexRef.current];
         if (!tier) break;
-        const count = tier.fs.length > 1 ? Math.max(6, Math.ceil(24 / tier.fs.length)) : 24;
+        // Bir kademedeki konu × coğrafi eş ad sorguları çok büyüyebilir.
+        // En fazla 12 paralel istek göndererek API'yi ve tarayıcıyı zorlamadan
+        // aynı sayfanın kalan sorgularını sonraki turda tamamla.
+        const requestBatch = tier.fs.slice(tierRequestOffsetRef.current, tierRequestOffsetRef.current + 12);
+        if (!requestBatch.length) break;
+        const count = requestBatch.length > 1 ? Math.max(6, Math.ceil(24 / requestBatch.length)) : 24;
 
         const results = await Promise.allSettled(
-          tier.fs.map((f: string) => fetchWorks(f, count, tierPageRef.current))
+          requestBatch.map((f: string) => fetchWorks(f, count, tierPageRef.current))
         );
 
         if (thisGen !== genRef.current) return;
@@ -610,7 +617,11 @@ export default function App() {
           .sort(() => Math.random() - 0.5);
 
         const { papers, addedCount } = parseWorksToPapers(combinedRaw, seenIdsRef.current, tier);
-        tierPageRef.current += 1;
+        tierRequestOffsetRef.current += requestBatch.length;
+        if (tierRequestOffsetRef.current >= tier.fs.length) {
+          tierRequestOffsetRef.current = 0;
+          tierPageRef.current += 1;
+        }
         if (addedCount > 0) {
           added = addedCount;
           shownInTierRef.current += addedCount;
@@ -650,8 +661,9 @@ export default function App() {
           break;
         }
 
-        // İlk sayfadaki tekrarlar veya eksik özetler, sonraki sayfaları atlatmasın.
-        // En fazla dört sayfa denenir; sonra bir sonraki filtre kademesine geçilir.
+        // Aynı sayfanın tüm eş ad sorguları tamamlanmadan sonraki sayfaya geçme.
+        if (tierRequestOffsetRef.current > 0) continue;
+        // İlk dört sayfada uygun makale bulunamazsa sonraki filtre kademesine geç.
         if (tierPageRef.current <= 4) continue;
 
         if (tierIndexRef.current < tiersRef.current.length - 1) {
@@ -673,6 +685,7 @@ export default function App() {
           tierIndexRef.current++;
           shownInTierRef.current = 0;
           tierPageRef.current = 1;
+          tierRequestOffsetRef.current = 0;
         } else {
           break;
         }
@@ -700,6 +713,7 @@ export default function App() {
     tierIndexRef.current = 0;
     shownInTierRef.current = 0;
     tierPageRef.current = 1;
+    tierRequestOffsetRef.current = 0;
     fetchMorePapers();
   }, [fetchMorePapers]);
 
