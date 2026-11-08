@@ -1,7 +1,8 @@
 import React from 'react';
 import { Paper } from '../types';
 import { OA_STATUS } from '../constants/taxonomy';
-import { X, ExternalLink, Share2, Heart } from 'lucide-react';
+import { X, ExternalLink, Share2, Heart, StickyNote, Quote, Lightbulb, Trash2, Plus } from 'lucide-react';
+import { PaperNote } from '../types';
 
 interface DetailSheetProps {
   paper: Paper | null;
@@ -13,6 +14,9 @@ interface DetailSheetProps {
   onToggleLike?: (paper: Paper) => void;
   /** Paylaşılan bir bağlantıdan açıldıysa bilgi bandı gösterilir */
   isSharedView?: boolean;
+  notes?: PaperNote[];
+  onAddNote?: (paper: Paper, type: PaperNote['type'], content: string) => void;
+  onDeleteNote?: (noteId: string) => void;
 }
 
 export const DetailSheet: React.FC<DetailSheetProps> = ({
@@ -23,8 +27,14 @@ export const DetailSheet: React.FC<DetailSheetProps> = ({
   onShare,
   isLiked = false,
   onToggleLike,
-  isSharedView = false
+  isSharedView = false,
+  notes = [],
+  onAddNote,
+  onDeleteNote
 }) => {
+  const [noteType, setNoteType] = React.useState<PaperNote['type']>('note');
+  const [noteContent, setNoteContent] = React.useState('');
+  React.useEffect(() => { setNoteContent(''); setNoteType('note'); }, [paper?.id]);
   if (!paper) return null;
 
   const displayTitle = isTranslating && paper.trTitle ? paper.trTitle : paper.title;
@@ -184,6 +194,73 @@ export const DetailSheet: React.FC<DetailSheetProps> = ({
               </div>
             </div>
           )}
+
+          {/* Personal research notebook */}
+          <section className="rounded-2xl border border-sky-200 dark:border-[#16445e] bg-gradient-to-br from-white to-sky-50 dark:from-[#071828] dark:to-[#092338] p-3.5 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-sky-100 dark:bg-sky-900/50 flex items-center justify-center text-sky-700 dark:text-sky-300"><StickyNote className="w-4 h-4" /></div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#0a2540] dark:text-[#e0f4ff]">Bilim Defterim</h3>
+                  <p className="text-[10px] text-[#4a7a96] dark:text-[#78a9c2]">Bu makaleye özel kişisel kayıtların</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-semibold rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 px-2 py-1">{notes.length} kayıt</span>
+            </div>
+
+            {onAddNote && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-1.5">
+                  {([
+                    { id: 'note', label: 'Kişisel not', Icon: StickyNote },
+                    { id: 'quote', label: 'Alıntı', Icon: Quote },
+                    { id: 'question', label: 'Araştırma sorusu', Icon: Lightbulb }
+                  ] as const).map(item => (
+                    <button key={item.id} type="button" onClick={() => setNoteType(item.id)} aria-pressed={noteType === item.id}
+                      className={`min-w-0 rounded-xl border px-1.5 py-2 text-[10px] font-semibold flex flex-col items-center gap-1 transition-colors ${noteType === item.id ? 'bg-sky-600 border-sky-600 text-white' : 'bg-white dark:bg-[#0b2234] border-[#c5dfe9] dark:border-[#16445e] text-[#4a7a96] dark:text-sky-200'}`}>
+                      <item.Icon className="w-4 h-4" />{item.label}
+                    </button>
+                  ))}
+                </div>
+                <textarea value={noteContent} onChange={event => setNoteContent(event.target.value)} maxLength={5000}
+                  placeholder={noteType === 'note' ? 'Bu makale hakkında ne düşünüyorsun?' : noteType === 'quote' ? 'Saklamak istediğin cümleyi buraya ekle…' : 'Bu makaleden hareketle hangi soruyu araştırmak istersin?'}
+                  rows={3} className="w-full resize-y rounded-xl border border-[#c5dfe9] dark:border-[#16445e] bg-white dark:bg-[#061522] p-3 text-xs leading-relaxed text-[#0a2540] dark:text-[#e0f4ff] placeholder:text-[#7b9aad] focus:outline-none focus:ring-2 focus:ring-sky-500/30" />
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-[#7b9aad]">{noteContent.length}/5000</span>
+                  <button type="button" disabled={!noteContent.trim()} onClick={() => { onAddNote(paper, noteType, noteContent); setNoteContent(''); }}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-700 to-cyan-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm disabled:opacity-40 active:scale-95 transition">
+                    <Plus className="w-3.5 h-3.5" /> Kaydet
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {notes.length > 0 ? (
+              <div className="space-y-2 border-t border-sky-100 dark:border-[#16445e] pt-3">
+                {notes.map(note => {
+                  const meta = note.type === 'quote'
+                    ? { label: 'Önemli alıntı', Icon: Quote, style: 'text-violet-600 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/30' }
+                    : note.type === 'question'
+                    ? { label: 'Araştırma sorusu', Icon: Lightbulb, style: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30' }
+                    : { label: 'Kişisel not', Icon: StickyNote, style: 'text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/30' };
+                  return (
+                    <article key={note.id} className="rounded-xl border border-[#d7e9f0] dark:border-[#16445e] bg-white/80 dark:bg-[#061522]/80 p-3">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold ${meta.style}`}><meta.Icon className="w-3 h-3" />{meta.label}</span>
+                        <div className="flex items-center gap-2">
+                          <time className="text-[9px] text-[#7b9aad]">{new Date(note.updatedAt).toLocaleDateString('tr-TR')}</time>
+                          {onDeleteNote && <button type="button" onClick={() => onDeleteNote(note.id)} aria-label="Kaydı sil" title="Kaydı sil" className="p-1.5 rounded-lg text-[#7b9aad] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"><Trash2 className="w-3.5 h-3.5" /></button>}
+                        </div>
+                      </div>
+                      <p className="whitespace-pre-wrap break-words text-xs leading-relaxed text-[#0a2540] dark:text-[#e0f4ff]">{note.content}</p>
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-dashed border-[#c5dfe9] dark:border-[#16445e] px-3 py-4 text-center text-[11px] text-[#6b91a8]">Bu makale için henüz kayıt yok. İlk notunu ekleyerek başlayabilirsin.</p>
+            )}
+          </section>
 
           {/* Actions */}
           <div className="flex items-stretch gap-2 mt-4">
