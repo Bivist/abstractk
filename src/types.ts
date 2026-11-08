@@ -52,6 +52,8 @@ export interface FilterState {
   aName: string;
   jName: string;
   en: boolean;
+  /** Başlık/özette aranacak coğrafi yer adı; kurum adresi eşleşmesi değildir. */
+  geographicQuery?: string;
 }
 
 export interface SettingsState {
