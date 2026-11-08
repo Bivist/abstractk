@@ -49,6 +49,61 @@ export function normalizeYears(fromRaw: string, toRaw: string): { from: string; 
   return { from: from === null ? "" : String(from), to: to === null ? "" : String(to) };
 }
 
+/**
+ * Kullanıcının girdiği coğrafi yer için bilimsel yayınlarda kullanılan adları üretir.
+ * Eş anlamlılar ayrı OpenAlex sorgularına dönüşür; OR sözdizimine güvenilmez.
+ * Bilinmeyen serbest metinli yer adları aynen korunur.
+ */
+export function getGeographicSearchTerms(rawQuery: string): string[] {
+  const query = String(rawQuery || "")
+    .trim()
+    .replace(/["\\]/g, " ")
+    .replace(/\\s+/g, " ")
+    .slice(0, 80);
+  if (!query) return [];
+
+  const normalized = normalizeString(query)
+    .replace(/[,;]+/g, " ")
+    .replace(/\\s+/g, " ")
+    .trim()
+    .replace(/\\s+(turkiye|turkey)$/i, "");
+
+  const aliases: Record<string, string[]> = {
+    antalya: ["Antalya", "Gulf of Antalya", "Antalya Bay", "Antalya Province"],
+    kas: ["Kaş", "Kas", "Kas, Antalya"],
+    finike: ["Finike", "Finike Bay"],
+    manavgat: ["Manavgat", "Manavgat River"],
+    alanya: ["Alanya", "Alanya Bay"],
+    kemer: ["Kemer", "Kemer, Antalya"],
+    akdeniz: ["Akdeniz", "Mediterranean Sea", "Mediterranean"],
+    "akdeniz denizi": ["Akdeniz Denizi", "Mediterranean Sea", "Mediterranean"],
+    ege: ["Ege", "Aegean Sea", "Aegean"],
+    "ege denizi": ["Ege Denizi", "Aegean Sea", "Aegean"],
+    karadeniz: ["Karadeniz", "Black Sea"],
+    "marmara denizi": ["Marmara Denizi", "Sea of Marmara"],
+    turkiye: ["Türkiye", "Turkey", "Turkiye"],
+    turkey: ["Türkiye", "Turkey", "Turkiye"],
+    izmir: ["İzmir", "Izmir", "Izmir Bay"],
+    mugla: ["Muğla", "Mugla", "Gulf of Gökova", "Gulf of Fethiye"],
+    canakkale: ["Çanakkale", "Canakkale", "Dardanelles"],
+    istanbul: ["İstanbul", "Istanbul", "Bosphorus", "Sea of Marmara"],
+    mersin: ["Mersin", "Mersin Bay", "İçel"],
+    trabzon: ["Trabzon"],
+    samsun: ["Samsun"],
+    rize: ["Rize"],
+    adana: ["Adana", "Ceyhan River"],
+    hatay: ["Hatay", "Iskenderun Bay", "Gulf of Iskenderun"],
+    edirne: ["Edirne", "Meriç River", "Maritsa River"],
+    firat: ["Fırat", "Euphrates River"],
+    dicle: ["Dicle", "Tigris River"],
+    tuna: ["Tuna Nehri", "Danube River", "Danube"],
+    "tuna havzasi": ["Tuna Havzası", "Danube Basin", "Danube River Basin"]
+  };
+
+  const terms = aliases[normalized] || [query];
+  return [...new Set(terms.map(term => term.trim()).filter(Boolean))].slice(0, 5);
+}
+
 export function getBaseFilter(f: FilterState): string[] {
   const parts = ["has_abstract:true", "type:article"];
   if (f.en) parts.push("language:en");
@@ -64,27 +119,9 @@ export function getBaseFilter(f: FilterState): string[] {
   }
   if (f.authorId) parts.push(`authorships.author.id:${f.authorId}`);
   if (f.journalId) parts.push(`primary_location.source.id:${f.journalId}`);
-  // Konumu yalnızca makalenin başlık/özet metninde ara; yazar kurum adresini
-  // araştırma sahası gibi yorumlayıp yanlış pozitif üretme.
-  const geographicQuery = String(f.geographicQuery || "").trim().replace(/["\\]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
-  if (geographicQuery) {
-    // Yaygın Türkçe bölge adları için İngilizce bilimsel kullanım karşılıklarını da ara.
-    // Serbest metinli şehir/ilçe adlarında kullanıcının yazdığı ifade korunur.
-    const aliases: Record<string, string[]> = {
-      akdeniz: ["Akdeniz", "Mediterranean Sea", "Mediterranean"],
-      ege: ["Ege", "Aegean Sea", "Aegean"],
-      "ege denizi": ["Ege Denizi", "Aegean Sea"],
-      karadeniz: ["Karadeniz", "Black Sea"],
-      "marmara denizi": ["Marmara Denizi", "Sea of Marmara"],
-      turkiye: ["Türkiye", "Turkey", "Turkiye"],
-      turkey: ["Türkiye", "Turkey", "Turkiye"]
-    };
-    const terms = aliases[normalizeString(geographicQuery)] || [geographicQuery];
-    const expression = terms.length > 1
-      ? `(${terms.map(term => `"${term}"`).join(" OR ")})`
-      : `"${geographicQuery}"`;
-    parts.push(`title_and_abstract.search:${encodeURIComponent(expression)}`);
-  }
+  // Coğrafi sorgu buildSearchTiers içinde ayrı arama varyantlarına ayrılır.
+  // Böylece OpenAlex'in tam metin aramasına OR ifadesi vermek yerine her yer adı
+  // bağımsız aranır; sonuçlar üst katmanda makale kimliğine göre tekilleştirilir.
   return parts;
 }
 
@@ -170,6 +207,17 @@ function combinations<T>(items: T[], size: number): T[][] {
 
 export function buildSearchTiers(filter: FilterState): SearchTier[] {
   const baseParts = getBaseFilter(filter);
+  const geographicTerms = getGeographicSearchTerms(filter.geographicQuery || "");
+  const withGeography = (tiers: SearchTier[]): SearchTier[] => {
+    if (!geographicTerms.length) return tiers;
+    return tiers.map(tier => ({
+      ...tier,
+      // Her eş ad bağımsız aranır; makale ID tekilleştirmesi parseWorksToPapers'ta yapılır.
+      fs: [...new Set(tier.fs.flatMap(base =>
+        geographicTerms.map(term => `${base},title_and_abstract.search:${encodeURIComponent(`"${term}"`)}`)
+      ))]
+    }));
+  };
   const effective = getEffectiveNodes(filter.sel);
   const groupsByRoot = new Map<TaxonomyNode, TaxonomyNode[]>();
 
@@ -181,7 +229,7 @@ export function buildSearchTiers(filter: FilterState): SearchTier[] {
 
   const groups = [...groupsByRoot.values()];
   if (!groups.length) {
-    return [{ fs: [baseParts.join(",")], kind: "any" }];
+    return withGeography([{ fs: [baseParts.join(",")], kind: "any" }]);
   }
 
   const labels = groups.map(nodes =>
@@ -232,7 +280,7 @@ export function buildSearchTiers(filter: FilterState): SearchTier[] {
     }
   }
 
-  return tiers.length ? tiers : [{ fs: [baseParts.join(",")], kind: "any" }];
+  return withGeography(tiers.length ? tiers : [{ fs: [baseParts.join(",")], kind: "any" }]);
 }
 export async function fetchWorks(filterStr: string, count: number): Promise<any[]> {
   const seed = Math.floor(Math.random() * 1e6);
@@ -254,11 +302,16 @@ export async function fetchWorks(filterStr: string, count: number): Promise<any[
   const searchParam = combinedSearch
     ? "&search.title_and_abstract=" + encodeURIComponent(combinedSearch)
     : "";
-  let res = await fetch(API + "/works?filter=" + requestFilter + searchParam + "&sample=" + count + "&seed=" + seed + "&per_page=" + count + "&select=" + SEL);
+  // OpenAlex'in sample parametresi arama sorgusuyla birlikte kullanıldığında
+  // sonuç örneklemesini öngörülemez hâle getirebilir. Metin/coğrafya aramasında
+  // sayfalı sonuç, filtresiz keşifte ise mevcut rastgele örnekleme davranışı korunur.
+  const pagination = combinedSearch
+    ? "&page=1&per_page=" + count
+    : "&sample=" + count + "&seed=" + seed + "&per_page=" + count;
+  let res = await fetch(API + "/works?filter=" + requestFilter + searchParam + pagination + "&select=" + SEL);
 
   if (!res.ok && combinedSearch) {
-    const page = 1 + Math.floor(Math.random() * 4);
-    res = await fetch(API + "/works?filter=" + requestFilter + "&search.title_and_abstract=" + encodeURIComponent(combinedSearch) + "&page=" + page + "&per_page=" + count + "&select=" + SEL);
+    res = await fetch(API + "/works?filter=" + requestFilter + searchParam + "&page=1&per_page=" + count + "&select=" + SEL);
   }
 
   if (!res.ok) {
