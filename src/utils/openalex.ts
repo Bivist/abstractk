@@ -51,7 +51,7 @@ export function normalizeYears(fromRaw: string, toRaw: string): { from: string; 
 
 /**
  * Kullanıcının girdiği coğrafi yer için bilimsel yayınlarda kullanılan adları üretir.
- * Eş anlamlılar ayrı OpenAlex sorgularına dönüşür; OR sözdizimine güvenilmez.
+ * Eş anlamlılar OpenAlex'in Boolean OR ve tırnaklı ifade desteğiyle tek sorguda birleştirilir.
  * Bilinmeyen serbest metinli yer adları aynen korunur.
  */
 export function getGeographicSearchTerms(rawQuery: string): string[] {
@@ -119,9 +119,7 @@ export function getBaseFilter(f: FilterState): string[] {
   }
   if (f.authorId) parts.push(`authorships.author.id:${f.authorId}`);
   if (f.journalId) parts.push(`primary_location.source.id:${f.journalId}`);
-  // Coğrafi sorgu buildSearchTiers içinde ayrı arama varyantlarına ayrılır.
-  // Böylece OpenAlex'in tam metin aramasına OR ifadesi vermek yerine her yer adı
-  // bağımsız aranır; sonuçlar üst katmanda makale kimliğine göre tekilleştirilir.
+  // Coğrafi eş adlar buildSearchTiers içinde başlık/özet sorgusuna eklenir.
   return parts;
 }
 
