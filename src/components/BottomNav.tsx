@@ -1,7 +1,7 @@
 import React from 'react';
 import { TabId } from '../types';
 import { AppIcon } from './AppIcon';
-import { Compass, Heart, Settings } from 'lucide-react';
+import { Compass, Heart, Settings, NotebookPen } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface BottomNavProps {
@@ -37,7 +37,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const tabs: {
     id: TabId;
     labelKey: string;
-    iconName: 'home' | 'explore' | 'likes' | 'dashboard' | 'settings';
+    iconName: 'home' | 'explore' | 'likes' | 'notes' | 'dashboard' | 'settings';
     renderIcon: (active: boolean) => React.ReactNode;
   }[] = [
     {
@@ -70,6 +70,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           )}
         </div>
       )
+    },
+    {
+      id: 'notes',
+      labelKey: 'tab_notes',
+      iconName: 'notes',
+      renderIcon: (active) => <NotebookPen className={`w-5 h-5 ${active ? 'stroke-[2.2]' : 'stroke-[1.8]'}`} />
     },
     {
       id: 'dashboard',
