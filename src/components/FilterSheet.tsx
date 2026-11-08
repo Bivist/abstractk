@@ -377,24 +377,6 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
             })}
           </div>
 
-          {/* Geographic research-area filter */}
-          <div className="rounded-2xl border border-[#9bc9dc] dark:border-[#15506b] bg-[#e4f3f9] dark:bg-[#071f30] p-3.5">
-            <div className="flex items-center gap-2 mb-2">
-              <MapPin className="w-4 h-4 text-sky-700 dark:text-sky-300" />
-              <span className="text-[11px] font-bold tracking-wider uppercase text-[#245d78] dark:text-[#83c8e5]">Coğrafi Bölge</span>
-            </div>
-            <input
-              type="text"
-              value={geographicInput}
-              maxLength={80}
-              onChange={(e) => setGeographicInput(e.target.value)}
-              placeholder="Örn. Antalya, Kaş, Akdeniz, Tuna Havzası"
-              aria-label="Coğrafi bölge"
-              className="w-full px-3 py-2 bg-white dark:bg-[#071828] border border-[#b7d6e3] dark:border-[#16445d] rounded-xl text-xs sm:text-sm focus:outline-none focus:border-sky-600"
-            />
-            <p className="mt-1.5 text-[10px] leading-relaxed text-[#416f85] dark:text-[#9ac7d9]">Şehir ve bölge adları, bilimsel yayınlarda kullanılan yaygın İngilizce karşılıklarıyla birlikte aranır. Eşleşme makalenin başlık veya özetindedir; tek başına araştırma sahasını kanıtlamaz. Yazar kurumlarının adresleri konum eşleşmesi sayılmaz. Seçili dil ve diğer filtreler geçerliliğini korur.</p>
-          </div>
-
           {/* Year Range Filter */}
           <div>
             <span className="text-[11px] font-bold tracking-wider uppercase text-[#4a7a96] dark:text-[#5fa8c8] mb-1.5 block">
@@ -502,6 +484,26 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
               className="w-4 h-4 text-sky-600 rounded focus:ring-sky-500"
             />
           </label>
+
+          {/* Geographic research-area filter — placed last to match the other filter sections */}
+          <div>
+            <span className="text-[11px] font-bold tracking-wider uppercase text-[#4a7a96] dark:text-[#5fa8c8] mb-1.5 block">
+              Coğrafi Bölge
+            </span>
+            <div className="relative">
+              <MapPin className="w-4 h-4 absolute left-3 top-3 text-[#4a7a96]" />
+              <input
+                type="text"
+                value={geographicInput}
+                maxLength={80}
+                onChange={(e) => setGeographicInput(e.target.value)}
+                placeholder="Örn. Antalya, Kaş, Akdeniz, Tuna Havzası"
+                aria-label="Coğrafi bölge"
+                className="w-full pl-9 pr-3 py-2 bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-xl text-xs sm:text-sm focus:outline-none focus:border-sky-600"
+              />
+            </div>
+            <p className="mt-1 text-[10px] leading-relaxed text-[#527993] dark:text-[#7bb0cc]">Şehir veya bölge adı, bilimsel yayınlarda kullanılan yaygın karşılıklarıyla da aranır. Eşleşme başlık ya da özette bulunur; tek başına araştırma sahasını kanıtlamaz.</p>
+          </div>
 
           {statusMessage && (
             <p className="text-xs text-sky-700 dark:text-sky-300 italic">{statusMessage}</p>
