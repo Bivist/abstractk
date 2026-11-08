@@ -236,19 +236,21 @@ export function buildSearchTiers(filter: FilterState): SearchTier[] {
 }
 export async function fetchWorks(filterStr: string, count: number): Promise<any[]> {
   const seed = Math.floor(Math.random() * 1e6);
-  let res = await fetch(`${API}/works?filter=${filterStr}&sample=${count}&seed=${seed}&per_page=${count}&select=${SEL}`);
+  // Arama ifadesini eski filter=...search sözdizimiyle göndermek yerine
+  // OpenAlex'in güncel search.title_and_abstract parametresine taşı.
+  // Böylece hem coğrafi arama hem taksonomi metin sorguları başlık/özetle sınırlı kalır.
+  const searchMatch = filterStr.match(/(?:^|,)title_and_abstract\\.search:([^,]*)/);
+  const requestFilter = searchMatch
+    ? filterStr.replace(/,?title_and_abstract\\.search:[^,]*/, "").replace(/^,|,$/g, "")
+    : filterStr;
+  const searchParam = searchMatch ? `&search.title_and_abstract=${searchMatch[1]}` : "";
+  let res = await fetch(`${API}/works?filter=${requestFilter}${searchParam}&sample=${count}&seed=${seed}&per_page=${count}&select=${SEL}`);
 
-  if (!res.ok && filterStr.includes("title_and_abstract.search")) {
-    const match = filterStr.match(/title_and_abstract\.search:([^,]*)/);
-    const rest = filterStr.replace(/,?title_and_abstract\.search:[^,]*/, "");
-    if (match) {
-      const page = 1 + Math.floor(Math.random() * 4);
-      // buildFilterString arama ifadesini zaten encodeURIComponent ile kodlar; çift kodlamayı
-      // önlemek için önce çözüp sonra tek sefer kodluyoruz (özel karakterler sorguyu bozamaz).
-      let term = match[1];
-      try { term = decodeURIComponent(term); } catch { /* zaten düz metin */ }
-      res = await fetch(`${API}/works?filter=${rest}&search=${encodeURIComponent(term)}&page=${page}&per_page=${count}&select=${SEL}`);
-    }
+  if (!res.ok && searchMatch) {
+    const page = 1 + Math.floor(Math.random() * 4);
+    let term = searchMatch[1];
+    try { term = decodeURIComponent(term); } catch { /* zaten düz metin */ }
+    res = await fetch(`${API}/works?filter=${requestFilter}&search.title_and_abstract=${encodeURIComponent(term)}&page=${page}&per_page=${count}&select=${SEL}`);
   }
 
   if (!res.ok) {
