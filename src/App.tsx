@@ -1090,6 +1090,7 @@ export default function App() {
             syncStatus={syncStatus}
             onOpenAuth={() => setIsAuthOpen(true)}
             onSignOut={handleSignOut}
+            onOpenNotes={() => setCurrentTab('notes')}
           />
         )}
       </main>
