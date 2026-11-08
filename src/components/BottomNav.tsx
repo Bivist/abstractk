@@ -127,35 +127,40 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 />
               )}
 
+              {!desktop && isActive && (
+                <motion.div
+                  layoutId="mobileActiveBubble"
+                  transition={{ type: 'spring', stiffness: 230, damping: 28, mass: 1.05 }}
+                  className="pointer-events-none absolute left-1/2 top-[-13px] z-0 flex h-[54px] w-[54px] -translate-x-1/2 items-center justify-center rounded-full border-[3px] border-white bg-gradient-to-br from-[#42a8ed] via-[#0876c9] to-[#064a9b] shadow-[0_6px_15px_rgba(2,80,150,0.30),inset_0_2px_4px_rgba(255,255,255,0.30)] ring-[2px] ring-[#83d6b7]/65 dark:border-[#071828] dark:from-[#38bdf8] dark:via-[#087bb8] dark:to-[#06436e] dark:ring-[#5cc9ad]/60"
+                >
+                  <span className="absolute inset-[4px] rounded-full border border-white/20" />
+                  <span className="absolute left-[9px] top-[7px] h-[15px] w-[25px] -rotate-[28deg] rounded-full bg-white/25 blur-[2px]" />
+                  <motion.span
+                    aria-hidden="true"
+                    className="absolute -right-[1px] bottom-[6px] h-[15px] w-[15px] rounded-full border-[3px] border-[#6de0a9] border-l-transparent border-t-transparent"
+                    animate={{ rotate: [0, 35, 0] }}
+                    transition={{ duration: 3.6, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                </motion.div>
+              )}
+
               <motion.div
                 animate={isActive
-                  ? desktop ? { y: 0, scale: 1.05 } : { y: -17, scale: 1 }
+                  ? desktop ? { y: 0, scale: 1.04 } : { y: -11, scale: 1.04 }
                   : { y: 0, scale: 1 }}
-                transition={{ type: 'spring', stiffness: 390, damping: 23, mass: 0.75 }}
+                transition={{ type: 'spring', stiffness: 260, damping: 27, mass: 0.9 }}
                 className={desktop
                   ? `relative z-10 ${
                       isActive ? 'text-[#0284c7] dark:text-[#38bdf8]' : 'text-[#527993] dark:text-[#7bb0cc] group-hover:text-[#0284c7] dark:group-hover:text-[#38bdf8]'
                     }`
-                  : isActive
-                    ? 'relative z-10 -mt-[31px] mb-[-12px] flex h-[66px] w-[66px] items-center justify-center rounded-full border-[4px] border-white bg-gradient-to-br from-[#42a8ed] via-[#0876c9] to-[#064a9b] text-white shadow-[0_9px_22px_rgba(2,80,150,0.38),inset_0_2px_5px_rgba(255,255,255,0.32)] ring-[3px] ring-[#83d6b7]/75 dark:border-[#071828] dark:from-[#38bdf8] dark:via-[#087bb8] dark:to-[#06436e] dark:ring-[#5cc9ad]/70'
-                    : 'relative z-10 flex h-6 items-center justify-center text-[#527993] dark:text-[#7bb0cc] group-hover:text-[#0284c7] dark:group-hover:text-[#38bdf8]'}
+                  : `relative z-10 flex h-6 items-center justify-center ${
+                      isActive ? 'text-white' : 'text-[#527993] dark:text-[#7bb0cc] group-hover:text-[#0284c7] dark:group-hover:text-[#38bdf8]'
+                    }`}
               >
-                {!desktop && isActive && (
-                  <>
-                    <span className="pointer-events-none absolute inset-[5px] rounded-full border border-white/25" />
-                    <span className="pointer-events-none absolute left-[11px] top-[8px] h-[18px] w-[30px] -rotate-[28deg] rounded-full bg-white/25 blur-[2px]" />
-                    <motion.span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute -right-[1px] bottom-[8px] h-[17px] w-[17px] rounded-full border-[3px] border-[#6de0a9] border-l-transparent border-t-transparent"
-                      animate={{ rotate: [0, 35, 0], scale: [1, 1.08, 1] }}
-                      transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-                    />
-                  </>
-                )}
                 <AppIcon
                   name={tab.iconName}
                   size={20}
-                  className={`w-5 h-5 object-contain ${!desktop && isActive ? 'scale-125 brightness-0 invert' : ''}`}
+                  className={`w-5 h-5 object-contain ${!desktop && isActive ? 'brightness-0 invert' : ''}`}
                   alt={tab.labelKey}
                   fallback={tab.renderIcon(isActive)}
                 />
