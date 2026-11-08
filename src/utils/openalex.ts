@@ -243,18 +243,18 @@ export async function fetchWorks(filterStr: string, count: number): Promise<any[
   const requestFilter = searchMatch
     ? filterStr.replace(/,?title_and_abstract\.search:[^,]*/, "").replace(/^,|,$/g, "")
     : filterStr;
-  const searchParam = searchMatch ? \`&search.title_and_abstract=\${searchMatch[1]}\` : "";
-  let res = await fetch(\`\${API}/works?filter=\${requestFilter}\${searchParam}&sample=\${count}&seed=\${seed}&per_page=\${count}&select=\${SEL}\`);
+  const searchParam = searchMatch ? "&search.title_and_abstract=" + searchMatch[1] : "";
+  let res = await fetch(API + "/works?filter=" + requestFilter + searchParam + "&sample=" + count + "&seed=" + seed + "&per_page=" + count + "&select=" + SEL);
 
   if (!res.ok && searchMatch) {
     const page = 1 + Math.floor(Math.random() * 4);
     let term = searchMatch[1];
     try { term = decodeURIComponent(term); } catch { /* zaten düz metin */ }
-    res = await fetch(\`\${API}/works?filter=\${requestFilter}&search.title_and_abstract=\${encodeURIComponent(term)}&page=\${page}&per_page=\${count}&select=\${SEL}\`);
+    res = await fetch(API + "/works?filter=" + requestFilter + "&search.title_and_abstract=" + encodeURIComponent(term) + "&page=" + page + "&per_page=" + count + "&select=" + SEL);
   }
 
   if (!res.ok) {
-    throw new Error(\`OpenAlex HTTP \${res.status}\`);
+    throw new Error("OpenAlex HTTP " + res.status);
   }
   const json = await res.json();
   return json.results || [];
