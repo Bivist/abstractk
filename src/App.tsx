@@ -23,6 +23,7 @@ import { HomeScreen } from './components/HomeScreen';
 import { DiscoverClassic } from './components/DiscoverClassic';
 import { DiscoverReels } from './components/DiscoverReels';
 import { LikesScreen } from './components/LikesScreen';
+import { NotesArchive } from './components/NotesArchive';
 import { SeyirPanosu } from './components/SeyirPanosu';
 import { SettingsScreen } from './components/SettingsScreen';
 import { AuthSheet } from './components/AuthSheet';
@@ -542,8 +543,15 @@ export default function App() {
     const now = Date.now();
     const clean = content.trim();
     if (!clean) return;
-    setPaperNotes(prev => [{ id: `note_${now}_${Math.random().toString(36).slice(2, 8)}`, paperId: paper.id, type, content: clean.slice(0, 5000), createdAt: now, updatedAt: now }, ...prev]);
+    setPaperNotes(prev => [{ id: `note_${now}_${Math.random().toString(36).slice(2, 8)}`, paperId: paper.id, type, content: clean.slice(0, 5000), createdAt: now, updatedAt: now, paperTitle: paper.title, paperJournal: paper.journal, paperField: paper.sub || paper.field, paperLink: paper.link, paperAuthors: paper.authors }, ...prev]);
     setToast('Notun Bilim Defterim’e kaydedildi.');
+  }, []);
+
+  const handleUpdatePaperNote = useCallback((noteId: string, content: string) => {
+    const clean = content.trim();
+    if (!clean) return;
+    setPaperNotes(prev => prev.map(note => note.id === noteId ? { ...note, content: clean.slice(0, 5000), updatedAt: Date.now() } : note));
+    setToast('Bilim Defterim kaydı güncellendi.');
   }, []);
 
   const handleDeletePaperNote = useCallback((noteId: string) => {
@@ -959,6 +967,20 @@ export default function App() {
               recommendationActive={likedPapers.length > 0 || readingHistory.length > 0}
             />
           )
+        )}
+
+        {currentTab === 'notes' && (
+          <NotesArchive
+            notes={paperNotes}
+            onUpdateNote={handleUpdatePaperNote}
+            onDeleteNote={handleDeletePaperNote}
+            onOpenPaper={(note) => {
+              const paper = [...likedPapers, ...queue].find(item => item.id === note.paperId);
+              if (paper) setDetailPaper(paper);
+              else if (note.paperLink) window.open(note.paperLink, '_blank', 'noopener,noreferrer');
+              else setToast('Bu makalenin kaynak bağlantısı kayıtlı değil.');
+            }}
+          />
         )}
 
         {currentTab === 'likes' && (
