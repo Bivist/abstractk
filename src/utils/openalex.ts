@@ -58,15 +58,15 @@ export function getGeographicSearchTerms(rawQuery: string): string[] {
   const query = String(rawQuery || "")
     .trim()
     .replace(/["\\]/g, " ")
-    .replace(/\\s+/g, " ")
+    .replace(/\s+/g, " ")
     .slice(0, 80);
   if (!query) return [];
 
   const normalized = normalizeString(query)
     .replace(/[,;]+/g, " ")
-    .replace(/\\s+/g, " ")
+    .replace(/\s+/g, " ")
     .trim()
-    .replace(/\\s+(turkiye|turkey)$/i, "");
+    .replace(/\s+(turkiye|turkey)$/i, "");
 
   const aliases: Record<string, string[]> = {
     antalya: ["Antalya", "Gulf of Antalya", "Antalya Bay", "Antalya Province"],
@@ -446,10 +446,10 @@ export async function resolveEntity(kind: "authors" | "sources", query: string):
     }
 
     // Dergide yanlış bir kaynağa sessizce yönelmemek için tam/tekil eşleşme kullan.
-    const wanted = normalizeString(requested).replace(/[^a-z0-9 ]/g, " ").replace(/\\s+/g, " ").trim();
+    const wanted = normalizeString(requested).replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
     const normalized = candidates.map(item => ({
       item,
-      name: normalizeString(item.display_name || "").replace(/[^a-z0-9 ]/g, " ").replace(/\\s+/g, " ").trim()
+      name: normalizeString(item.display_name || "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim()
     }));
     const exact = normalized.find(candidate => candidate.name === wanted);
     const partial = normalized.filter(candidate =>
