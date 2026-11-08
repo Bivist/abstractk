@@ -36,6 +36,11 @@ export interface PaperNote {
   content: string;
   createdAt: number;
   updatedAt: number;
+  paperTitle?: string;
+  paperJournal?: string;
+  paperField?: string;
+  paperLink?: string;
+  paperAuthors?: string;
 }
 
 export interface FilterState {
@@ -91,4 +96,4 @@ export interface ReadingHistoryItem {
   timestamp: number;
 }
 
-export type TabId = 'home' | 'disc' | 'likes' | 'dashboard' | 'sets';
+export type TabId = 'home' | 'disc' | 'likes' | 'notes' | 'dashboard' | 'sets';
