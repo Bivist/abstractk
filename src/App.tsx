@@ -650,6 +650,10 @@ export default function App() {
           break;
         }
 
+        // İlk sayfadaki tekrarlar veya eksik özetler, sonraki sayfaları atlatmasın.
+        // En fazla dört sayfa denenir; sonra bir sonraki filtre kademesine geçilir.
+        if (tierPageRef.current <= 4) continue;
+
         if (tierIndexRef.current < tiersRef.current.length - 1) {
           // Bir üst kademede (ortak yayınlar) sonuç kalmadı -> kullanıcıyı bilgilendir
           if (tier.kind === 'all' || tier.kind === 'part') {
