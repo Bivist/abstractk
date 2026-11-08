@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
 type DynamicButtonProps = Omit<
   React.ComponentProps<typeof motion.button>,
-  'children' | 'animate' | 'initial' | 'exit'
+  'children' | 'animate' | 'exit'
 > & {
   children: string;
   icon?: ReactNode;
