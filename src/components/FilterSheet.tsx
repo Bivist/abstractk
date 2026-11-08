@@ -392,7 +392,7 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
               aria-label="Coğrafi bölge"
               className="w-full px-3 py-2 bg-white dark:bg-[#071828] border border-[#b7d6e3] dark:border-[#16445d] rounded-xl text-xs sm:text-sm focus:outline-none focus:border-sky-600"
             />
-            <p className="mt-1.5 text-[10px] leading-relaxed text-[#416f85] dark:text-[#9ac7d9]">Girilen yer adı makalelerin başlık ve özetlerinde aranır. Yalnızca yazar kurumunun o şehirde olması, araştırmanın orada yapıldığı anlamına gelmez.</p>
+            <p className="mt-1.5 text-[10px] leading-relaxed text-[#416f85] dark:text-[#9ac7d9]">Yer adı makalelerin başlık ve özetlerinde aranır. Bu eşleşme tek başına saha çalışmasının o bölgede yapıldığını kanıtlamaz; yazar kurumlarının adresleri konum eşleşmesi sayılmaz.</p>
           </div>
 
           {/* Year Range Filter */}
