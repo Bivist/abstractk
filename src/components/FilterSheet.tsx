@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { DynamicButton } from './DynamicButton';
 import { FilterState, TaxonomyNode } from '../types';
 import { TAXONOMY, TAXONOMY_NODES } from '../constants/taxonomy';
 import { normalizeString, hasAncestorSelected, countSelectedChildren, getEffectiveNodes, resolveEntity, normalizeYears } from '../utils/openalex';
@@ -492,13 +493,16 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
           >
             {langDict.clear_btn || "Temizle"}
           </button>
-          <button
+          <DynamicButton
             type="button"
             onClick={handleApply}
-            className="flex-2 py-2.5 rounded-xl bg-gradient-to-r from-sky-700 to-cyan-600 text-white text-xs font-bold shadow-md shadow-sky-900/20 hover:opacity-95"
+            disabled={statusMessage === "Uygulanıyor…"}
+            width="full"
+            icon={<Check className="h-4 w-4" />}
+            stateKey={statusMessage === "Uygulanıyor…" ? "loading" : "ready"}
           >
-            {langDict.apply_btn || "Uygula"}
-          </button>
+            {statusMessage === "Uygulanıyor…" ? "Uygulanıyor…" : (langDict.apply_btn || "Filtreleri uygula")}
+          </DynamicButton>
         </div>
       </div>
     </div>
