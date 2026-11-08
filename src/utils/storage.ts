@@ -94,7 +94,7 @@ export function loadNotes(): PaperNote[] {
 export function sanitizeNotes(raw: unknown): PaperNote[] {
   if (!Array.isArray(raw)) return [];
   return raw.filter((n: any) => isObj(n) && isStr(n.id) && isStr(n.paperId) && isStr(n.content) && n.content.trim().length > 0 && (n.type === 'note' || n.type === 'quote' || n.type === 'question'))
-    .map((n: any) => ({ id: n.id, paperId: n.paperId, type: n.type, content: n.content.slice(0, 5000), createdAt: num(n.createdAt, Date.now()), updatedAt: num(n.updatedAt, num(n.createdAt, Date.now())) }))
+    .map((n: any) => ({ id: n.id, paperId: n.paperId, type: n.type, content: n.content.slice(0, 5000), createdAt: num(n.createdAt, Date.now()), updatedAt: num(n.updatedAt, num(n.createdAt, Date.now())), paperTitle: isStr(n.paperTitle) ? n.paperTitle : undefined, paperJournal: isStr(n.paperJournal) ? n.paperJournal : undefined, paperField: isStr(n.paperField) ? n.paperField : undefined, paperLink: isStr(n.paperLink) ? n.paperLink : undefined, paperAuthors: isStr(n.paperAuthors) ? n.paperAuthors : undefined }))
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
