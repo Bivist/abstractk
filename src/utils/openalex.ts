@@ -210,12 +210,13 @@ export function buildSearchTiers(filter: FilterState): SearchTier[] {
   const geographicTerms = getGeographicSearchTerms(filter.geographicQuery || "");
   const withGeography = (tiers: SearchTier[]): SearchTier[] => {
     if (!geographicTerms.length) return tiers;
+    // OpenAlex Boolean OR + tırnaklı ifade desteği sayesinde eş adları tek
+    // istekte ararız. Bu, her eş ad için ayrı API çağrısı yapmaktan daha verimlidir.
+    const geographicExpression = `(${geographicTerms.map(term => `"${term}"`).join(" OR ")})`;
+    const encodedGeography = encodeURIComponent(geographicExpression);
     return tiers.map(tier => ({
       ...tier,
-      // Her eş ad bağımsız aranır; makale ID tekilleştirmesi parseWorksToPapers'ta yapılır.
-      fs: [...new Set(tier.fs.flatMap(base =>
-        geographicTerms.map(term => `${base},title_and_abstract.search:${encodeURIComponent(`"${term}"`)}`)
-      ))]
+      fs: tier.fs.map(base => `${base},title_and_abstract.search:${encodedGeography}`)
     }));
   };
   const effective = getEffectiveNodes(filter.sel);
