@@ -10,6 +10,7 @@ interface DiscoverReelsProps {
   likedPapers: Paper[];
   loading: boolean;
   onLikePaper: (paper: Paper) => void;
+  onPaperSwiped?: () => void;
   onOpenDetails: (paper: Paper) => void;
   onOpenFilter: () => void;
   onFetchMore: () => void;
@@ -26,6 +27,7 @@ export const DiscoverReels: React.FC<DiscoverReelsProps> = ({
   likedPapers,
   loading,
   onLikePaper,
+  onPaperSwiped,
   onOpenDetails,
   onOpenFilter,
   onFetchMore,
@@ -142,8 +144,10 @@ export const DiscoverReels: React.FC<DiscoverReelsProps> = ({
     lastTapRef.current = 0;
 
     if (absY > absX && absY > 45) {
+      onPaperSwiped?.();
       goToNext();
     } else if (absX > absY && absX > 50) {
+      onPaperSwiped?.();
       if (deltaX > 50) {
         handleLike();
       } else if (deltaX < -50 && currentPaper) {
