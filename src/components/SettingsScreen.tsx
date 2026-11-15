@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SettingsState } from '../types';
-import { Smartphone, Monitor, Trash2, LogIn, LogOut, UserRound, Cloud, Save, Camera, X, NotebookPen, ChevronRight, Cookie, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Smartphone, Monitor, Trash2, LogIn, LogOut, UserRound, Cloud, Save, Camera, X, NotebookPen, ChevronRight, Cookie, ShieldCheck } from 'lucide-react';
 
 interface SettingsScreenProps {
   settings: SettingsState;
@@ -45,6 +45,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
   const [nameMessage, setNameMessage] = useState<string | null>(null);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   useEffect(() => { setDisplayName(userDisplayName || ''); }, [userDisplayName]);
   const saveDisplayName = async () => {
     if (!onUpdateDisplayName || nameBusy) return;
@@ -197,6 +198,59 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </span>
         <div className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-2xl overflow-hidden shadow-sm divide-y divide-[#c5dfe9] dark:divide-[#0d2f45]">
           {/* AKIŞ MODU SWITCH */}
+          {showPrivacyPolicy && (
+            <article className="p-4 sm:p-5 space-y-4 text-xs leading-relaxed text-[#31566e] dark:text-[#b5d4e4]">
+              <div>
+                <h3 className="text-base font-bold text-[#0a2540] dark:text-[#e0f4ff]">Abstract Gizlilik Politikası ve Kişisel Verilerin İşlenmesine İlişkin Bilgilendirme</h3>
+                <p className="mt-1 text-[11px]">Son güncelleme: 15 Kasım 2026</p>
+              </div>
+              <section className="space-y-1">
+                <h4 className="font-bold text-sm text-[#0a2540] dark:text-[#e0f4ff]">1. Veri sorumlusu</h4>
+                <p>Abstract platformunun yayıncısı ve veri sorumlusu Binali'dir. Bu metin, https://abstractk.vercel.app adresinden sunulan Abstract web uygulaması için hazırlanmıştır. Abstract bağımsız bir akademik makale keşif ve kişisel okuma/arşiv platformudur.</p>
+              </section>
+              <section className="space-y-1">
+                <h4 className="font-bold text-sm text-[#0a2540] dark:text-[#e0f4ff]">2. Hangi veriler işlenebilir?</h4>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><b>Hesap bilgileri:</b> Hesapla giriş yapmayı seçersen e-posta adresin, görünen adın ve profil fotoğrafın.</li>
+                  <li><b>Uygulama ve kullanım verileri:</b> Beğendiğin makaleler, klasörlerin, okuma geçmişin, Bilim Defterim notların, okuma serin ve uygulama tercihlerin.</li>
+                  <li><b>Teknik veriler:</b> Uygulamanın çalışması, güvenliği ve hata ayıklama için hizmet sağlayıcıların işleyebileceği bağlantı ve cihaz bilgileri. Bu verilerin kapsamı ilgili sağlayıcının teknik işleyişine bağlıdır.</li>
+                  <li><b>Analitik veriler:</b> Yalnızca isteğe bağlı analitik iznini verirsen PostHog üzerinden uygulama etkileşimlerine ilişkin kullanım istatistikleri.</li>
+                </ul>
+              </section>
+              <section className="space-y-1">
+                <h4 className="font-bold text-sm text-[#0a2540] dark:text-[#e0f4ff]">3. Verileri hangi amaçlarla kullanıyoruz?</h4>
+                <p>Hesap oturumunu sağlamak; beğenilerini, notlarını ve tercihlerini saklamak ve cihazların arasında eşitlemek; makale keşfi ve kişiselleştirme özelliklerini sunmak; uygulamanın güvenliğini, sürekliliğini ve performansını korumak; yalnızca izin verdiğinde kullanım istatistikleri oluşturmak.</p>
+              </section>
+              <section className="space-y-1">
+                <h4 className="font-bold text-sm text-[#0a2540] dark:text-[#e0f4ff]">4. Veriler nerede saklanır ve kimlerle paylaşılır?</h4>
+                <p>Giriş yapmadan kullanılan bazı tercihler ve içerikler tarayıcının yerel depolama alanında tutulur. Hesapla giriş yaptığında eşitleme için hesap verileri Supabase altyapısındaki veritabanına; profil fotoğrafın ilgili dosya depolama alanına kaydedilebilir. Makale arama ve bibliyografik bilgiler OpenAlex gibi harici akademik veri hizmetlerinden alınır; arama isteğin bu hizmetlere iletilebilir.</p>
+                <p>Analitik izni verdiğinde kullanım olayları PostHog hizmetine iletilir. Bu hizmet sağlayıcılar, kendi altyapıları ve sözleşmeleri kapsamında verileri işleyebilir. Altyapı sağlayıcılarının sunucu konumları ve uluslararası veri aktarım mekanizmaları kullanılan hesap/plan yapılandırmasına göre değişebilir; bu nedenle belirli bir ülkeye aktarım olmadığı garanti edilmez.</p>
+                <p>Abstract kişisel verilerini reklam amacıyla üçüncü kişilere satmayı amaçlamaz. Veriler; hizmetin sunulması, güvenliği veya hukuki yükümlülüklerin yerine getirilmesi için gerekli olduğu ölçüde ilgili altyapı sağlayıcıları ya da yetkili makamlarla paylaşılabilir.</p>
+              </section>
+              <section className="space-y-1">
+                <h4 className="font-bold text-sm text-[#0a2540] dark:text-[#e0f4ff]">5. Çerezler ve benzer teknolojiler</h4>
+                <p>Abstract şu anda tercihleri ve uygulama verilerini hatırlamak için ağırlıklı olarak tarayıcı yerel depolamasını kullanır; bu kayıtlar klasik HTTP çerezleriyle aynı şey değildir. Zorunlu kayıtlar uygulamanın temel işlevleri için kullanılır. PostHog analitiği, çerez tercih penceresinde “Tümünü kabul et” seçilmedikçe başlatılmaz. Tercihini Ayarlar bölümünden yeniden düzenleyebilirsin. Tarayıcı verilerini silmen, bu cihazdaki yerel kayıtları kaldırabilir.</p>
+              </section>
+              <section className="space-y-1">
+                <h4 className="font-bold text-sm text-[#0a2540] dark:text-[#e0f4ff]">6. Saklama süresi ve güvenlik</h4>
+                <p>Yerel veriler tarayıcı depolamasını temizleyene kadar; hesap verileri ise hesabın ve ilgili hizmetin çalışması için gerekli olduğu sürece saklanır. Yedekler, güvenlik kayıtları ve hizmet sağlayıcı kayıtları kendi saklama döngülerine tabi olabilir. Verilerin korunması için makul teknik ve idari önlemler uygulanır; ancak internet üzerinden aktarım veya elektronik saklama yöntemlerinin mutlak güvenliği garanti edilemez.</p>
+              </section>
+              <section className="space-y-1">
+                <h4 className="font-bold text-sm text-[#0a2540] dark:text-[#e0f4ff]">7. Hakların ve başvuru</h4>
+                <p>Uygulanabildiği ölçüde 6698 sayılı Kişisel Verilerin Korunması Kanunu'nun 11. maddesi ve ilgili diğer mevzuat kapsamında kişisel verilerinin işlenip işlenmediğini öğrenme, bilgi talep etme, işleme amacını öğrenme, aktarılan üçüncü kişileri bilme, eksik veya yanlış verilerin düzeltilmesini ve kanuni şartlar dahilinde silinmesini/yok edilmesini isteme, otomatik analiz sonuçlarına itiraz etme ve kanunda belirtilen şartlarda zararın giderilmesini talep etme haklarına sahipsin.</p>
+                <p>Abstract için ayrı bir e-posta veya başvuru adresi henüz yayımlanmamıştır. Başvuru kanalı belirlendiğinde bu sayfada duyurulacaktır. Bu eksiklik nedeniyle bu metin tek başına resmî başvuru kanalının yerine geçtiği şeklinde yorumlanmamalıdır.</p>
+              </section>
+              <section className="space-y-1">
+                <h4 className="font-bold text-sm text-[#0a2540] dark:text-[#e0f4ff]">8. Çocukların gizliliği</h4>
+                <p>Abstract özellikle çocuklara yönelik tasarlanmamıştır. Ebeveyn veya yasal temsilci, bir çocuğa ait kişisel verinin uygun olmayan biçimde işlendiğini düşünüyorsa yayımlanacak başvuru kanalı üzerinden bildirimde bulunabilir.</p>
+              </section>
+              <section className="space-y-1">
+                <h4 className="font-bold text-sm text-[#0a2540] dark:text-[#e0f4ff]">9. Politika değişiklikleri</h4>
+                <p>Platformun özellikleri, kullanılan hizmetler veya mevzuat değiştikçe bu politika güncellenebilir. Güncel metin her zaman Abstract'ın Ayarlar bölümünde yayımlanır; önemli değişiklikler uygun olduğunda uygulama içinde duyurulur.</p>
+              </section>
+              <p className="border-t border-[#c5dfe9] dark:border-[#17435c] pt-3 text-[11px]">Bu metin Abstract'ın mevcut teknik işleyişi esas alınarak hazırlanmış genel bilgilendirmedir; hukuki danışmanlık veya mevzuata tam uyum garantisi değildir. Özellikle veri sorumlusu iletişim kanalı, saklama süreleri, hizmet sağlayıcı sözleşmeleri ve uluslararası aktarım mekanizmaları netleştirilerek yayına alınmadan önce hukuk uzmanı tarafından gözden geçirilmelidir.</p>
+            </article>
+          )}
           <div className="p-4 flex items-center justify-between gap-3">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-cyan-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-sky-600/20">
@@ -350,14 +404,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               <p className="mt-1 text-xs leading-relaxed text-[#4a7a96] dark:text-[#5fa8c8]">
                 Verilerin nasıl işlendiği, hangi amaçlarla kullanıldığı ve tercihlerini nasıl yönetebileceğin hakkında bilgi edin.
               </p>
-              <a
-                href="https://1in8b.life/tr/privacy/"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={() => setShowPrivacyPolicy(v => !v)}
                 className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-sky-700 dark:text-sky-300 hover:underline"
+                aria-expanded={showPrivacyPolicy}
               >
-                Gizlilik politikasını görüntüle <ExternalLink className="w-3.5 h-3.5" />
-              </a>
+                {showPrivacyPolicy ? 'Gizlilik politikasını gizle' : 'Abstract gizlilik politikasını oku'}
+                <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showPrivacyPolicy ? 'rotate-90' : ''}`} />
+              </button>
             </div>
           </div>
           <div className="p-4 flex items-center justify-between gap-3">
