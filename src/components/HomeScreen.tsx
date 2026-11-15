@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Sparkles, SlidersHorizontal, ChevronRight, Heart, Flame, Award, BookOpen, Activity } from 'lucide-react';
 import { LighthouseWatchState } from '../types';
 
@@ -25,6 +25,27 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   lighthouseWatch,
   onUpdateDailyGoal
 }) => {
+  const lighthouseClickRef = useRef<{ count: number; lastClick: number }>({ count: 0, lastClick: 0 });
+  const [lighthouseEasterActive, setLighthouseEasterActive] = useState(false);
+  const lighthouseEasterTimerRef = useRef<number | null>(null);
+
+  const handleHeroLighthouseClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    const now = Date.now();
+    const previous = lighthouseClickRef.current;
+    const count = now - previous.lastClick > 2000 ? 1 : previous.count + 1;
+    lighthouseClickRef.current = { count, lastClick: now };
+    if (count >= 5) {
+      lighthouseClickRef.current = { count: 0, lastClick: 0 };
+      setLighthouseEasterActive(true);
+      if (lighthouseEasterTimerRef.current) window.clearTimeout(lighthouseEasterTimerRef.current);
+      lighthouseEasterTimerRef.current = window.setTimeout(() => {
+        setLighthouseEasterActive(false);
+        lighthouseEasterTimerRef.current = null;
+      }, 6200);
+    }
+  };
+
   // Motivational Lighthouse Keeper Rank based on streak & readings
   const getKeeperRank = (streak: number, total: number) => {
     if (streak >= 14 || total >= 50) return { title: 'Usta Kılavuz', icon: '🏆', color: 'text-amber-500' };
@@ -48,17 +69,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {/* Right side vector Lighthouse illustration with warm beam & waves */}
         <div className="absolute right-0 bottom-0 w-[42%] h-full pointer-events-none flex items-end justify-end overflow-hidden">
           {/* Beaming light cone radiating from lighthouse lamp */}
-          <div
-            className="absolute right-12 bottom-14 w-60 h-32 origin-right pointer-events-none opacity-40 mix-blend-screen"
-            style={{
-              background: 'radial-gradient(ellipse at right center, rgba(254, 240, 138, 0.95) 0%, rgba(254, 240, 138, 0.45) 45%, rgba(254, 240, 138, 0) 80%)',
-              transform: 'rotate(-7deg)'
-            }}
-          />
+          <div className={`hero-lighthouse-beam absolute right-12 bottom-14 w-60 h-32 origin-right pointer-events-none mix-blend-screen ${lighthouseEasterActive ? 'is-active' : ''}`} />
 
-          <svg viewBox="0 0 160 200" className="w-full h-auto max-h-[175px] drop-shadow-md z-10" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <button type="button" onClick={handleHeroLighthouseClick} aria-label="Deniz fenerini keşfet" title="Feneri keşfet" className={`hero-lighthouse-trigger relative z-20 pointer-events-auto focus-visible:outline-2 focus-visible:outline-amber-200 rounded-xl ${lighthouseEasterActive ? 'is-active' : ''}`}>
+          <svg viewBox="0 0 160 200" className="w-full h-auto max-h-[175px] drop-shadow-md" fill="none" xmlns="http://www.w3.org/2000/svg">
             {/* Ambient beacon glow circle */}
-            <circle cx="120" cy="50" r="16" fill="#fef08a" fillOpacity="0.4" className="animate-pulse" />
+            <circle cx="120" cy="50" r="16" fill="#fef08a" fillOpacity="0.4" className="hero-lighthouse-aura" />
 
             {/* Lighthouse Tower Body (Tapered) */}
             <path d="M106 150L112 55H128L134 150H106Z" fill="#ffffff" />
@@ -71,7 +87,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <rect x="108" y="52" width="24" height="4" rx="1.5" fill="#0f172a" />
             <rect x="111" y="36" width="18" height="16" rx="2" fill="#0f172a" />
             <rect x="113" y="38" width="14" height="12" rx="1" fill="#fef08a" />
-            <circle cx="120" cy="44" r="3" fill="#ffffff" />
+            <circle cx="120" cy="44" r="3" fill="#ffffff" className="hero-lighthouse-lamp" />
 
             {/* Conical Roof Dome */}
             <path d="M110 36L120 18L130 36H110Z" fill="#0f172a" />
@@ -85,6 +101,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <path d="M0 175 C40 165, 80 185, 120 170 C140 162, 150 175, 160 168 L160 200 L0 200 Z" fill="#0369a1" fillOpacity="0.95" />
             <path d="M0 185 C30 180, 70 190, 110 182 C140 176, 150 185, 160 180 L160 200 L0 200 Z" fill="#0c4a6e" />
           </svg>
+          </button>
         </div>
 
         {/* Banner Content */}
