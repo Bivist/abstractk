@@ -38,6 +38,7 @@ const ThreeEasterEgg = lazy(() => import('./components/ThreeEasterEgg').then(m =
 import { KasalotTailSplash } from './components/KasalotTailSplash';
 import { PolarAuroraEffect } from './components/PolarAuroraEffect';
 import { NotFoundPage } from './components/NotFoundPage';
+import { CookieConsent } from './components/CookieConsent';
 
 const DEFAULT_SETTINGS: SettingsState = {
   theme: 'auto',
@@ -1198,6 +1199,9 @@ export default function App() {
           langDict={langDict}
         />
       )}
+
+      {/* İlk ziyarette gösterilen çerez tercihleri */}
+      {!showSplash && <CookieConsent />}
 
       {/* Kısa bilgi mesajı */}
       {toast && (
