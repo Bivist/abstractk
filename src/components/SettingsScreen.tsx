@@ -479,7 +479,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       {/* Sitenin En Altındaki Telif & İmza Yazısı */}
       <footer className="mt-4 pt-4 pb-2 text-center border-t border-[#c5dfe9]/50 dark:border-[#0d2f45]/50">
         <p className="text-xs text-[#527993] dark:text-[#7bb0cc] font-medium tracking-wide">
-          © 2026 Binali. Her hakkı saklıdır.
+          Binali © 2026. All rights reserved.
         </p>
       </footer>
     </div>
