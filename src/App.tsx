@@ -902,7 +902,7 @@ export default function App() {
       {/* SEO: <head> etiketleri (görsel çıktısı yok). Değerler index.html ile aynıdır. */}
       <Helmet>
         <title>Abstract — Bilimi Kaydırarak Keşfet</title>
-        <meta name="description" content="Akademik makaleleri Tinder ve Instagram Reels tarzı dokunmatik kaydırma ile keşfetme, beğenme, klasörleme ve paylaşma uygulaması." />
+        <meta name="description" content="Farklı disiplinlerdeki bilimsel makaleleri keşfetmenizi, araştırma ilgi alanlarınıza göre düzenlemenizi ve kişisel akademik okuma arşivinizi oluşturmanızı sağlayan bir bilimsel yayın keşif platformu." />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
         <link rel="canonical" href="https://abstractk.vercel.app/" />
       </Helmet>
