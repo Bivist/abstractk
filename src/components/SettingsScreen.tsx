@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SettingsState } from '../types';
-import { Smartphone, Monitor, Trash2, LogIn, LogOut, UserRound, Cloud, Save, Camera, X, NotebookPen, ChevronRight } from 'lucide-react';
+import { Smartphone, Monitor, Trash2, LogIn, LogOut, UserRound, Cloud, Save, Camera, X, NotebookPen, ChevronRight, Cookie, ShieldCheck, ExternalLink } from 'lucide-react';
 
 interface SettingsScreenProps {
   settings: SettingsState;
@@ -317,6 +317,66 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 {mode === 'auto' ? langDict.theme_auto || 'Sistem' : mode === 'light' ? langDict.theme_light || 'Açık Deniz' : langDict.theme_dark || 'Derin Deniz'}
               </button>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── ÇEREZLER VE GİZLİLİK ── */}
+      <div className="mb-5">
+        <span className="text-[11px] font-bold tracking-wider uppercase text-[#4a7a96] dark:text-[#5fa8c8] mb-2 block">
+          Çerezler ve Gizlilik
+        </span>
+        <div className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-2xl overflow-hidden shadow-sm divide-y divide-[#c5dfe9] dark:divide-[#0d2f45]">
+          <div className="p-4 flex items-start gap-3">
+            <span className="w-10 h-10 rounded-xl bg-[#dff0f7] dark:bg-[#0d2236] text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
+              <Cookie className="w-5 h-5" />
+            </span>
+            <div className="min-w-0">
+              <span className="block text-sm font-bold text-[#0a2540] dark:text-[#e0f4ff]">Çerezler ve yerel depolama</span>
+              <p className="mt-1 text-xs leading-relaxed text-[#4a7a96] dark:text-[#5fa8c8]">
+                Abstract, tema, dil ve uygulama tercihlerini hatırlamak; beğenilerini ve kişisel arşivini bu cihazda tutmak için tarayıcının yerel depolama alanından yararlanır. Bunlar klasik tarayıcı çerezleri değil, benzer amaçla kullanılan cihaz içi kayıtlardır.
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-[#4a7a96] dark:text-[#5fa8c8]">
+                İsteğe bağlı kullanım istatistikleri PostHog aracılığıyla yalnızca “Tümünü kabul et” tercihini verdiğinde etkinleştirilir. “Yalnızca zorunlu” seçeneğinde analitik başlatılmaz.
+              </p>
+            </div>
+          </div>
+          <div className="p-4 flex items-start gap-3">
+            <span className="w-10 h-10 rounded-xl bg-[#dff0f7] dark:bg-[#0d2236] text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-[#0a2540] dark:text-[#e0f4ff]">Gizlilik politikası</span>
+              <p className="mt-1 text-xs leading-relaxed text-[#4a7a96] dark:text-[#5fa8c8]">
+                Verilerin nasıl işlendiği, hangi amaçlarla kullanıldığı ve tercihlerini nasıl yönetebileceğin hakkında bilgi edin.
+              </p>
+              <a
+                href="https://1in8b.life/tr/privacy/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-sky-700 dark:text-sky-300 hover:underline"
+              >
+                Gizlilik politikasını görüntüle <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
+          <div className="p-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <span className="block text-sm font-semibold text-[#0a2540] dark:text-[#e0f4ff]">Çerez tercihlerini değiştir</span>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-[#4a7a96] dark:text-[#5fa8c8]">
+                Tercih penceresini yeniden açarak seçimini güncelleyebilirsin.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                try { localStorage.removeItem('abs_cookie_consent'); } catch {}
+                window.location.reload();
+              }}
+              className="shrink-0 px-3 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold transition-colors"
+            >
+              Tercihleri yönet
+            </button>
           </div>
         </div>
       </div>
