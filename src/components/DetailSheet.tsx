@@ -1,7 +1,7 @@
 import React from 'react';
 import { Paper } from '../types';
 import { OA_STATUS } from '../constants/taxonomy';
-import { X, ExternalLink, Share2, Heart, StickyNote, Quote, Lightbulb, Trash2, Plus } from 'lucide-react';
+import { X, ExternalLink, Share2, Users, Heart, StickyNote, Quote, Lightbulb, Trash2, Plus } from 'lucide-react';
 import { PaperNote } from '../types';
 
 interface DetailSheetProps {
@@ -10,6 +10,7 @@ interface DetailSheetProps {
   isTranslating: boolean;
   langDict: Record<string, string>;
   onShare?: (paper: Paper) => void;
+  onShareToCommunity?: (paper: Paper) => void;
   isLiked?: boolean;
   onToggleLike?: (paper: Paper) => void;
   /** Paylaşılan bir bağlantıdan açıldıysa bilgi bandı gösterilir */
@@ -25,6 +26,7 @@ export const DetailSheet: React.FC<DetailSheetProps> = ({
   isTranslating,
   langDict,
   onShare,
+  onShareToCommunity,
   isLiked = false,
   onToggleLike,
   isSharedView = false,
@@ -63,6 +65,18 @@ export const DetailSheet: React.FC<DetailSheetProps> = ({
               >
                 <Share2 className="w-3.5 h-3.5" />
                 <span>{langDict.share_btn || 'Paylaş'}</span>
+              </button>
+            )}
+            {onShareToCommunity && (
+              <button
+                type="button"
+                onClick={() => onShareToCommunity(paper)}
+                aria-label="Toplulukta paylaş"
+                title="Toplulukta paylaş"
+                className="h-8 px-3 rounded-full border border-sky-500 text-sky-700 dark:text-sky-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-sky-50 dark:hover:bg-sky-950/40 active:scale-95 transition"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Topluluk</span>
               </button>
             )}
             <button
