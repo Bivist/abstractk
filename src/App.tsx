@@ -136,7 +136,19 @@ export default function App() {
         if (active) {
           setCommunityNavVisible(false);
           setCommunityCanPost(false);
-          if (!String(communityDiagnostic).includes('HATA:')) setCommunityDiagnostic(`Erişim kontrolü başarısız: ${error instanceof Error ? error.message : String(error)} · UID: ${auth.user.id}`);
+          // React state güncellemesi asenkron olduğundan burada effect'in eski
+          // communityDiagnostic değerine bakma. RPC hatasını doğrudan yakalanan
+          // hata nesnesinden oluştur; böylece gerçek mesaj ve PostgreSQL kodu kaybolmaz.
+          const rpcError = error as { message?: unknown; code?: unknown };
+          const errorMessage = typeof rpcError?.message === 'string'
+            ? rpcError.message
+            : error instanceof Error
+              ? error.message
+              : String(error);
+          const errorCode = typeof rpcError?.code === 'string' ? rpcError.code : '';
+          setCommunityDiagnostic(
+            `Erişim kontrolü başarısız: ${errorMessage}${errorCode ? ` (kod: ${errorCode})` : ''} · UID: ${auth.user.id}`
+          );
         }
       }
     };
