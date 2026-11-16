@@ -315,7 +315,7 @@ export const SeyirHaritasi: React.FC<SeyirHaritasiProps> = ({
               className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-all flex items-center gap-1 ${
                 chartTheme === 'night'
                   ? 'bg-sky-500 text-white shadow-xs'
-                  : (chartTheme === 'night' ? 'text-sky-300 hover:text-white' : 'text-[#72532e] hover:text-[#24190e]')
+                  : 'text-[#72532e] hover:text-[#24190e]'
               }`}
               title="Gece Gökyüzü Takımyıldızı"
             >
