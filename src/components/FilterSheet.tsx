@@ -91,7 +91,14 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({
         nextSel.delete(node.id);
       } else {
         nextSel.add(node.id);
-        // Clear all descendants
+
+        // Alt dal seçildiğinde seçili üst dalları kaldır:
+        // aksi halde getEffectiveNodes üst dalı tercih edip alt dalı yok sayar.
+        for (let parent = node.parent; parent; parent = parent.parent) {
+          nextSel.delete(parent.id);
+        }
+
+        // Üst dal seçildiğinde alt dallar temizlenir; tek seçim seviyesi etkin kalır.
         const removeDescendants = (m: TaxonomyNode) => {
           m.children.forEach(c => {
             nextSel.delete(c.id);
