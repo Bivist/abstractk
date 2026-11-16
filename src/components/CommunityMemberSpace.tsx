@@ -88,7 +88,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
     const pmap:Record<string,Profile>={}; (profileRows.data||[]).forEach((p:any)=>pmap[p.user_id]=p as Profile);
     const commentAuthorIds=[...new Set((commentRows.data||[]).map((x:any)=>x.author_id).filter((id:string)=>!pmap[id]))];
     if(commentAuthorIds.length){const {data:commentProfiles,error:commentProfileError}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',commentAuthorIds);if(commentProfileError)throw commentProfileError;(commentProfiles||[]).forEach((p:any)=>pmap[p.user_id]=p as Profile);}
-    setProfiles(pmap);
+    setProfiles(prev=>({...prev,...pmap}));
     setLikes(new Set((likeRows.data||[]).filter((x:any)=>x.user_id===userId).map((x:any)=>x.post_id)));
     setBookmarks(new Set((bookmarkRows.data||[]).map((x:any)=>x.post_id)));
     const counts:Record<string,number>={}; (commentRows.data||[]).forEach((x:any)=>counts[x.post_id]=(counts[x.post_id]||0)+1); setCommentCounts(counts);
