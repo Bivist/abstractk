@@ -39,7 +39,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const tabs: {
     id: TabId;
     labelKey: string;
-    iconName: 'home' | 'explore' | 'likes' | 'notes' | 'dashboard' | 'settings';
+    iconName: 'home' | 'explore' | 'likes' | 'notes' | 'dashboard' | 'community' | 'settings';
     renderIcon: (active: boolean) => React.ReactNode;
   }[] = [
     {
@@ -91,7 +91,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     {
       id: 'community',
       labelKey: 'tab_community',
-      iconName: 'dashboard',
+      iconName: 'community',
       renderIcon: (active) => <Users className={`w-5 h-5 ${active ? 'stroke-[2.2]' : 'stroke-[1.8]'}`} />
     },
     {
