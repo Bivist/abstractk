@@ -142,18 +142,18 @@ create or replace function public.community_is_conversation_member(p_conversatio
 returns boolean
 language sql stable security definer
 set search_path=public,pg_temp
-as $
+as $community$
   select auth.uid() is not null and exists(
     select 1 from public.community_conversation_members cm
     where cm.conversation_id=p_conversation_id and cm.user_id=auth.uid()
   );
-$;
+$community$;
 
 create or replace function public.community_revoke_shared_note(p_shared_note_id uuid)
 returns void
 language plpgsql security definer
 set search_path=public,pg_temp
-as $
+as $community$
 begin
   if auth.uid() is null or not public.community_is_member() then
     raise exception 'community_membership_required' using errcode='42501';
@@ -163,7 +163,7 @@ begin
   where id=p_shared_note_id and owner_id=auth.uid();
   if not found then raise exception 'shared_note_not_found' using errcode='P0002'; end if;
 end;
-$;
+$community$;
 
 create or replace function public.community_create_conversation(p_user_ids uuid[], p_kind text default 'direct', p_title text default null)
 returns uuid
