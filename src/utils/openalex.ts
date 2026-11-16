@@ -247,6 +247,13 @@ export function buildSearchTiers(filter: FilterState): SearchTier[] {
       );
     }
 
+    const isSanatSelection = indices.some(index =>
+      groups[index].some(node => (node.root || node).label === "Sanat")
+    );
+    const isSanatRootOnly = indices.length === 1 &&
+      groups[indices[0]].length === 1 &&
+      groups[indices[0]][0].label === "Sanat";
+
     const uniqueFilters = [...new Set(combinationsForQuery.map(series =>
       buildFilterString(
         baseParts,
@@ -256,7 +263,25 @@ export function buildSearchTiers(filter: FilterState): SearchTier[] {
         },
         true
       )
-    ))];
+    ))].map(query => {
+      if (!isSanatSelection) return query;
+
+      // Sanat ana dalında yalnızca birincil sanat sınıflandırmasını kullan:
+      // Arts & Humanities içindeki tali/ikincil eşleşmelerin rastgele görünmesini önler.
+      if (isSanatRootOnly) {
+        return query
+          .replace(/,?topics\\.field\\.id:12/g, "")
+          .replace(/,?primary_topic\\.field\\.id:12/g, "") +
+          ",primary_topic.field.id:12";
+      }
+
+      // Sanat alt dallarında metin eşleşmesini sanat alanıyla birlikte uygula.
+      // Böylece yalnızca kelime benzerliği nedeniyle ilgisiz disiplinler gelmez.
+      if (!/(?:^|,)topics\\.field\\.id:12(?:,|$)/.test(query)) {
+        return query + ",topics.field.id:12";
+      }
+      return query;
+    });
 
     if (!uniqueFilters.length) return null;
     // Bir alt kümedeki farklı taksonomi sorguları için makul bir istek üst sınırı.
