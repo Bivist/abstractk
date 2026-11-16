@@ -270,8 +270,8 @@ export function buildSearchTiers(filter: FilterState): SearchTier[] {
       // Arts & Humanities içindeki tali/ikincil eşleşmelerin rastgele görünmesini önler.
       if (isSanatRootOnly) {
         return query
-          .replace(/,?topics\\.field\\.id:12/g, "")
-          .replace(/,?primary_topic\\.field\\.id:12/g, "") +
+          .replace(/,?topics\.field\.id:12/g, "")
+          .replace(/,?primary_topic\.field\.id:12/g, "") +
           ",primary_topic.field.id:12";
       }
 
