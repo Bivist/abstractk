@@ -176,7 +176,7 @@ begin
     raise exception 'community_membership_required' using errcode='42501';
   end if;
   if p_user_ids is null or cardinality(p_user_ids) < 1 or cardinality(p_user_ids) > 19
-     or p_kind not in ('direct','group') then
+     or p_kind is null or p_kind not in ('direct','group') then
     raise exception 'invalid_conversation' using errcode='22023';
   end if;
   if auth.uid() = any(p_user_ids) then
