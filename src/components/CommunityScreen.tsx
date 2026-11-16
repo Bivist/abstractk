@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, AlertCircle, Check, ChevronDown, Clock3, Loader2, Search, ShieldCheck, Users, UserX, Waves } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { CommunityMemberSpace } from './CommunityMemberSpace';
 
 type CommunityRole = 'admin' | 'member' | 'disabled';
 type CommunityUser = {
@@ -231,7 +232,7 @@ export const CommunityScreen: React.FC<{ userId: string | null }> = ({ userId })
             </section>
           </>
         ) : (
-          <section className="rounded-3xl border border-[var(--ln)] bg-[var(--sf)] p-8 text-center"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"><UserX size={27} /></div><h2 className="mt-4 text-xl font-bold text-[var(--ink)]">Topluluk hazırlanıyor</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--mu)]">Üyelik erişimin doğrulandı. Akademik paylaşım akışı ve mesajlaşma bölümleri sonraki geliştirme aşamasında açılacak.</p></section>
+          <CommunityMemberSpace userId={userId} />
         )}
       </div>
     </div>
