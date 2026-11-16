@@ -399,7 +399,7 @@ export const RAW_TAXONOMY: TaxonomyNode[] = [
   ]),
 
   // ── SANAT (Görsel, İşitsel, Sahne ve Tasarım Alanları) ──
-  N("Sanat", { s: { f: 12 }, q: 'art OR arts OR "visual arts" OR "fine arts" OR "performing arts" OR music OR architecture OR design OR cinema' }, [
+  N("Sanat", { s: { f: 12 } }, [
     N("Görsel Sanatlar", { q: '"visual arts" OR "fine arts" OR painting OR sculpture' }, C([
       ["Resim ve Boya Sanatları", 'painting OR "oil painting" OR watercolor OR "acrylic painting" OR drawing'],
       ["Heykel ve Üç Boyutlu Sanat", 'sculpture OR sculpting OR "three-dimensional art" OR installation'],
