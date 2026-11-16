@@ -1135,7 +1135,7 @@ export default function App() {
         )}
 
         {currentTab === 'community' && (
-          <CommunityScreen userId={auth.user?.id || null} />
+          <CommunityScreen userId={auth.user?.id || null} notes={paperNotes} />
         )}
 
         {currentTab === 'sets' && (
