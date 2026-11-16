@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bookmark, Check, ChevronLeft, Heart, Loader2, MessageCircle, MessageSquare, Plus, Search, Send, ShieldAlert, Users, UserPlus, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import type { PaperNote } from '../types';
 
 type Profile = { user_id:string; username:string; display_name:string; avatar_url:string|null; bio:string; affiliation:string; research_interests:string[]; };
 type Post = { id:string; author_id:string; body:string; paper:Record<string,unknown>|null; created_at:string; };
@@ -14,7 +15,7 @@ const button = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-x
 function errorText(error:unknown) { return error && typeof error==='object' && 'message' in error ? String((error as {message:unknown}).message) : 'İşlem tamamlanamadı.'; }
 function shortId(id:string) { return id.slice(0,8); }
 
-export const CommunityMemberSpace:React.FC<{userId:string}> = ({userId}) => {
+export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]}> = ({userId,notes}) => {
   const [section,setSection]=useState<'feed'|'messages'|'people'|'profile'>('feed');
   const [profile,setProfile]=useState<Profile|null>(null);
   const [profileDraft,setProfileDraft]=useState({username:'',display_name:'',bio:'',affiliation:'',research_interests:''});
@@ -37,6 +38,7 @@ export const CommunityMemberSpace:React.FC<{userId:string}> = ({userId}) => {
   const [conversationMembers,setConversationMembers]=useState<Record<string,string[]>>({});
   const [activeConversation,setActiveConversation]=useState<string|null>(null);
   const [messages,setMessages]=useState<Message[]>([]);
+  const [sharedNoteIds,setSharedNoteIds]=useState<Set<string>>(new Set());
   const [messageDraft,setMessageDraft]=useState('');
 
   const loadProfile=useCallback(async()=>{
@@ -86,6 +88,12 @@ export const CommunityMemberSpace:React.FC<{userId:string}> = ({userId}) => {
     if(memberResult.error) throw memberResult.error;
     setConversations((convResult.data||[]) as Conversation[]);
     const map:Record<string,string[]>={}; (memberResult.data||[]).forEach((x:any)=>{(map[x.conversation_id] ||= []).push(x.user_id);}); setConversationMembers(map);
+    const otherIds=[...new Set((memberResult.data||[]).map((x:any)=>x.user_id).filter((id:string)=>id!==userId))];
+    if(otherIds.length){
+      const {data:otherProfiles,error:profileError}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',otherIds);
+      if(profileError) throw profileError;
+      setProfiles(prev=>({...prev,...Object.fromEntries((otherProfiles||[]).map((p:any)=>[p.user_id,p as Profile]))}));
+    }
   },[userId]);
 
   const loadAll=useCallback(async()=>{
@@ -166,15 +174,30 @@ export const CommunityMemberSpace:React.FC<{userId:string}> = ({userId}) => {
     const {error}=await supabase.from('community_reports').insert({reporter_id:userId,target_type:'post',target_id:postId,reason:reason.trim().slice(0,1000)});
     if(error)setError(errorText(error));else setNotice('Bildirimin yönetime iletildi.');
   };
-  const tabs=[{id:'feed',label:'Akış',icon:MessageSquare},{id:'messages',label:'Mesajlar',icon:MessageCircle},{id:'people',label:'Üyeler',icon:Users},{id:'profile',label:'Profilim',icon:UserPlus}] as const;
+  const tabs=[{id:'feed',label:'Akış',icon:MessageSquare},{id:'messages',label:'Mesajlar',icon:MessageCircle},{id:'people',label:'Üyeler',icon:Users},{id:'notes',label:'Notlarım',icon:Bookmark},{id:'profile',label:'Profilim',icon:UserPlus}] as const;
 
   if(loading)return <div className="flex flex-1 items-center justify-center gap-2 text-[var(--mu)]"><Loader2 className="animate-spin" size={18}/> Topluluk yükleniyor…</div>;
   return <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--bg)] px-3 py-4 sm:px-6 sm:py-6">
     <div className="mx-auto max-w-4xl space-y-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><div className="text-xs font-bold uppercase tracking-[.18em] text-sky-700 dark:text-sky-300">Abstract · Kapalı topluluk</div><h1 className="mt-1 font-serif text-3xl font-bold text-[var(--ink)]">Bilimsel topluluk</h1><p className="mt-1 text-sm text-[var(--mu)]">Akademik paylaşım ve araştırmacılar arası iletişim alanı.</p></div><div className="text-xs text-[var(--mu)]">{profile?'@'+profile.username:'Profilini tamamla'}</div></header>
-      <nav className="grid grid-cols-4 gap-1 rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-1">{tabs.map(t=><button key={t.id} onClick={()=>{setSection(t.id);setError('');}} className={`flex min-h-10 items-center justify-center gap-1 rounded-xl px-2 text-xs font-semibold sm:gap-2 sm:text-sm ${section===t.id?'bg-sky-700 text-white':'text-[var(--mu)] hover:bg-[var(--bg)]'}`}><t.icon size={15}/><span>{t.label}</span></button>)}</nav>
+      <nav className="grid grid-cols-5 gap-1 rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-1">{tabs.map(t=><button key={t.id} onClick={()=>{setSection(t.id);setError('');}} className={`flex min-h-10 items-center justify-center gap-1 rounded-xl px-2 text-xs font-semibold sm:gap-2 sm:text-sm ${section===t.id?'bg-sky-700 text-white':'text-[var(--mu)] hover:bg-[var(--bg)]'}`}><t.icon size={15}/><span>{t.label}</span></button>)}</nav>
       {error&&<div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">{error}</div>}
       {notice&&<div role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">{notice}</div>}
+
+      {section==='notes'&&<section className={card+' space-y-3 p-4'}>
+        <div><h2 className="font-bold text-[var(--ink)]">Bilim Defterim notları</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Notların varsayılan olarak özeldir. Yalnızca aşağıdaki paylaş düğmesine basıp onay verdiğin notlar topluluk üyelerine açılır. Paylaşım, notun o andaki içeriğinin ayrı bir kopyasını oluşturur.</p></div>
+        {notes.map(note=><div key={note.id} className="rounded-xl border border-[var(--ln)] p-3"><div className="text-xs font-semibold text-[var(--ink)]">{note.paperTitle||'Başlıksız makale notu'} · {note.type==='quote'?'Alıntı':note.type==='question'?'Soru':'Not'}</div><p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-[var(--mu)]">{note.content}</p><button className={button+' mt-3'} onClick={async()=>{
+          if(!supabase)return;
+          if(!window.confirm('Bu notun mevcut içeriğinin bir kopyası topluluk üyeleriyle paylaşılacak. Özel notunun kendisi değişmeyecek. Devam edilsin mi?'))return;
+          setBusy(true);setError('');
+          try{
+            const {data,error}=await supabase.rpc('community_share_note_snapshot',{p_source_note_id:note.id,p_snapshot:{type:note.type,content:note.content,paperTitle:note.paperTitle||'',paperJournal:note.paperJournal||'',paperField:note.paperField||'',paperLink:note.paperLink||'',paperAuthors:note.paperAuthors||'',createdAt:note.createdAt}});
+            if(error)throw error;
+            setSharedNoteIds(prev=>new Set(prev).add(note.id));setNotice('Notun kopyası toplulukla paylaşıldı.');
+          }catch(e){setError(errorText(e));}finally{setBusy(false);}
+        }} disabled={busy||sharedNoteIds.has(note.id)}><Check size={15}/>{sharedNoteIds.has(note.id)?'Bu oturumda paylaşıldı':'Açık onayla paylaş'}</button></div>)}
+        {!notes.length&&<p className="rounded-xl bg-[var(--bg)] p-4 text-xs text-[var(--mu)]">Bilim Defterim’de henüz notun bulunmuyor.</p>}
+      </section>}
 
       {section==='profile'&&<section className={`${card} space-y-3 p-4 sm:p-5`}><div><h2 className="font-bold text-[var(--ink)]">Topluluk profilin</h2><p className="mt-1 text-xs text-[var(--mu)]">E-posta adresin burada gösterilmez. Profil yalnızca topluluk üyelerine açıktır.</p></div>
         <label className="block text-xs font-semibold text-[var(--mu)]">Kullanıcı adı<input className={field+' mt-1'} value={profileDraft.username} onChange={e=>setProfileDraft(p=>({...p,username:e.target.value}))} placeholder="ornek.kullanici"/></label>
