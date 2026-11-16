@@ -266,8 +266,8 @@ export function buildSearchTiers(filter: FilterState): SearchTier[] {
     ))].map(query => {
       if (!isSanatSelection) return query;
 
-      // Sanat ana dalında yalnızca birincil sanat sınıflandırmasını kullan:
-      // Arts & Humanities içindeki tali/ikincil eşleşmelerin rastgele görünmesini önler.
+      // Sanat ana dalını tüm beşerî bilimler alanına açma:
+      // yalnızca sanatla doğrudan ilişkili OpenAlex alt alanlarını birlikte (OR) getir.
       if (isSanatRootOnly) {
         return query
           .replace(/,?topics\.field\.id:12/g, "")
