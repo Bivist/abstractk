@@ -110,10 +110,16 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
         p_limit: 25
       });
       if (rpcError) throw rpcError;
-      setUsers((data || []).map((row: CommunityUser) => ({
-        ...row,
-        role: memberships[row.user_id]
-      })));
+      const found=(data||[]) as CommunityUser[];
+      const ids=found.map(row=>row.user_id);
+      let roleMap:Record<string,CommunityRole>={};
+      if(ids.length){
+        const {data:roleRows,error:roleError}=await supabase.from('community_memberships').select('user_id,role').in('user_id',ids);
+        if(roleError)throw roleError;
+        (roleRows||[]).forEach((row:any)=>roleMap[row.user_id]=row.role as CommunityRole);
+        setMemberships(prev=>({...prev,...roleMap}));
+      }
+      setUsers(found.map(row=>({...row,role:roleMap[row.user_id]||memberships[row.user_id]})));
       if (!data?.length) setNotice('Bu aramayla eşleşen hesap bulunamadı.');
     } catch (e) {
       setError(friendlyError(e));
