@@ -333,7 +333,7 @@ create policy community_comments_insert on public.community_comments for insert 
 );
 create policy community_comments_delete on public.community_comments for delete to authenticated using (public.community_is_member() and (author_id=auth.uid() or public.community_is_admin()));
 
-create policy community_follows_read on public.community_follows for select to authenticated using (public.community_is_member());
+create policy community_follows_read on public.community_follows for select to authenticated using (public.community_is_member() and (follower_id=auth.uid() or followed_id=auth.uid()));
 create policy community_follows_insert on public.community_follows for insert to authenticated with check (
   public.community_is_member() and follower_id=auth.uid()
   and exists(select 1 from public.community_memberships m join public.community_profiles p on p.user_id=m.user_id where m.user_id=followed_id and m.role in ('admin','member') and p.profile_visibility='community' and p.searchable=true)
