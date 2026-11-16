@@ -67,7 +67,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
     if(error) throw error;
     const rows=(data||[]) as Post[]; setPosts(rows);
     const ids=rows.map(p=>p.id);
-    if(!ids.length) {setProfiles({});setLikes(new Set());setBookmarks(new Set());setCommentCounts({});return;}
+    if(!ids.length) {setProfiles({});setLikes(new Set());setBookmarks(new Set());setCommentCounts({});}
     const [profileRows,likeRows,bookmarkRows,commentRows]=await Promise.all([
       supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',[...new Set(rows.map(p=>p.author_id))]),
       supabase.from('community_post_likes').select('post_id,user_id').in('post_id',ids),
