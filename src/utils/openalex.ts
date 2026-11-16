@@ -272,7 +272,7 @@ export function buildSearchTiers(filter: FilterState): SearchTier[] {
         return query
           .replace(/,?topics\.field\.id:12/g, "")
           .replace(/,?primary_topic\.field\.id:12/g, "") +
-          ",primary_topic.field.id:12";
+          ",topics.subfield.id:1200|1206|1209|1210|1213";
       }
 
       // Alt dallar disiplinler arasıdır (ör. mimarlık, tasarım ve sinema).
