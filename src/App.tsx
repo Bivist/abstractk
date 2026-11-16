@@ -85,47 +85,58 @@ export default function App() {
   const [communityNavVisible, setCommunityNavVisible] = useState(false);
   const [communityCanPost, setCommunityCanPost] = useState(false);
   const [communityPendingPaper, setCommunityPendingPaper] = useState<Paper | null>(null);
+  const [communityDiagnostic, setCommunityDiagnostic] = useState('Topluluk erişimi kontrol ediliyor…');
   useEffect(() => {
     let active = true;
     const checkCommunityAccess = async () => {
       if (!supabase || !auth.ready || !auth.user) {
-        if (active) { setCommunityNavVisible(false); setCommunityCanPost(false); }
+        if (active) {
+          setCommunityNavVisible(false);
+          setCommunityCanPost(false);
+          setCommunityDiagnostic(!supabase ? 'Supabase istemcisi başlatılamadı.' : !auth.ready ? 'Oturum henüz hazır değil.' : 'Bu tarayıcıda giriş yapılmamış.');
+        }
         return;
       }
+      if (active) setCommunityDiagnostic(`Hesap UID: ${auth.user.id} · Yönetici yetkisi sorgulanıyor…`);
       try {
-        // Yönetici erişimi, topluluk genel kullanıma kapalı olsa da geçerli olmalıdır.
-        // Önce yalnızca admin RPC'sini kontrol ederek üye/ayar RPC'lerindeki olası
-        // bağımsız bir hatanın yönetici sekmesini gizlemesini önlüyoruz.
         const adminResult = await supabase.rpc('community_is_admin');
-        if (adminResult.error) throw adminResult.error;
+        if (adminResult.error) {
+          if (active) setCommunityDiagnostic(`Yönetici RPC HATASI: ${adminResult.error.message} (kod: ${adminResult.error.code || 'yok'}) · UID: ${auth.user.id}`);
+          throw adminResult.error;
+        }
 
         if (Boolean(adminResult.data)) {
           if (active) {
             setCommunityNavVisible(true);
             setCommunityCanPost(true);
+            setCommunityDiagnostic(`Yönetici RPC sonucu: TRUE · Topluluk sekmesi açıldı · UID: ${auth.user.id}`);
           }
           return;
         }
 
-        // Yönetici değilse normal üyelik ve genel etkinlik koşulları uygulanır.
+        if (active) setCommunityDiagnostic(`Yönetici RPC sonucu: FALSE · Üyelik kontrol ediliyor · UID: ${auth.user.id}`);
         const [memberResult, enabledResult] = await Promise.all([
           supabase.rpc('community_is_member'),
           supabase.rpc('community_is_enabled')
         ]);
         if (memberResult.error || enabledResult.error) {
-          throw memberResult.error || enabledResult.error;
+          const err = memberResult.error || enabledResult.error;
+          if (active) setCommunityDiagnostic(`Üyelik/etkinlik RPC HATASI: ${err.message} (kod: ${err.code || 'yok'}) · UID: ${auth.user.id}`);
+          throw err;
         }
 
         const allowed = Boolean(memberResult.data) && Boolean(enabledResult.data);
         if (active) {
           setCommunityNavVisible(allowed);
-          setCommunityCanPost(Boolean(memberResult.data) && Boolean(enabledResult.data));
+          setCommunityCanPost(allowed);
+          setCommunityDiagnostic(`Yönetici: FALSE · Üye: ${String(memberResult.data)} · Topluluk etkin: ${String(enabledResult.data)} · Sekme: ${allowed ? 'AÇIK' : 'KAPALI'} · UID: ${auth.user.id}`);
         }
       } catch (error) {
         console.warn('Topluluk erişimi doğrulanamadı:', error);
         if (active) {
           setCommunityNavVisible(false);
           setCommunityCanPost(false);
+          if (!String(communityDiagnostic).includes('HATA:')) setCommunityDiagnostic(`Erişim kontrolü başarısız: ${error instanceof Error ? error.message : String(error)} · UID: ${auth.user.id}`);
         }
       }
     };
@@ -1209,6 +1220,13 @@ export default function App() {
         onDismiss={() => setIsPolarNight(false)}
         durationSeconds={60}
       />
+
+      {/* Geçici topluluk erişim tanılaması: yalnızca oturum açmış kullanıcıya gösterilir. */}
+      {auth.user && (
+        <div role="status" className="absolute left-3 right-3 top-3 z-[80] rounded-xl border border-amber-300 bg-amber-50/95 px-3 py-2 text-[11px] leading-relaxed text-amber-950 shadow-lg dark:border-amber-700 dark:bg-[#2b2414]/95 dark:text-amber-100">
+          <strong>Topluluk tanılaması:</strong> {communityDiagnostic}
+        </div>
+      )}
 
       {/* Küçük uyarı kutusu (ortak yayın bulunamadı vb.) */}
       {notice && (
