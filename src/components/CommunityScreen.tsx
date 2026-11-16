@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, AlertCircle, Check, ChevronDown, Clock3, Loader2, Search, ShieldCheck, Users, UserX, Waves } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CommunityMemberSpace } from './CommunityMemberSpace';
+import type { PaperNote } from '../types';
 
 type CommunityRole = 'admin' | 'member' | 'disabled';
 type CommunityUser = {
@@ -33,7 +34,7 @@ function friendlyError(error: unknown) {
   return 'İşlem tamamlanamadı. Lütfen tekrar dene.';
 }
 
-export const CommunityScreen: React.FC<{ userId: string | null }> = ({ userId }) => {
+export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote[] }> = ({ userId, notes }) => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMember, setIsMember] = useState(false);
@@ -232,7 +233,7 @@ export const CommunityScreen: React.FC<{ userId: string | null }> = ({ userId })
             </section>
           </>
         ) : (
-          <CommunityMemberSpace userId={userId} />
+          <CommunityMemberSpace userId={userId} notes={notes} />
         )}
       </div>
     </div>
