@@ -1,0 +1,38 @@
+name: Community branch checks
+
+on:
+  push:
+    branches:
+      - feature/controlled-community-foundation
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "supabase/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig*.json"
+      - "vite.config.ts"
+      - ".github/workflows/community-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Type-check
+        run: npm run lint
+      - name: Build production bundle
+        run: npm run build
