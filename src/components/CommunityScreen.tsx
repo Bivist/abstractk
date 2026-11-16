@@ -12,6 +12,7 @@ type CommunityUser = {
   created_at: string;
   role?: CommunityRole;
 };
+type ReportEntry = { id:string; reporter_id:string; target_type:string; target_id:string; reason:string; status:string; created_at:string; };
 type AuditEntry = {
   id: number;
   actor_id: string | null;
@@ -44,6 +45,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
   const [users, setUsers] = useState<CommunityUser[]>([]);
   const [memberships, setMemberships] = useState<Record<string, CommunityRole>>({});
   const [audit, setAudit] = useState<AuditEntry[]>([]);
+  const [reports, setReports] = useState<ReportEntry[]>([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -70,16 +72,19 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
       setEnabled(Boolean(enabledResult.data));
 
       if (admin) {
-        const [memberRows, auditRows] = await Promise.all([
+        const [memberRows, auditRows, reportRows] = await Promise.all([
           supabase.from('community_memberships').select('user_id, role').order('updated_at', { ascending: false }).limit(200),
-          supabase.from('community_admin_audit').select('id, actor_id, action, target_user_id, details, created_at').order('created_at', { ascending: false }).limit(30)
+          supabase.from('community_admin_audit').select('id, actor_id, action, target_user_id, details, created_at').order('created_at', { ascending: false }).limit(30),
+          supabase.from('community_reports').select('id,reporter_id,target_type,target_id,reason,status,created_at').order('created_at',{ascending:false}).limit(50)
         ]);
         if (memberRows.error) throw memberRows.error;
         if (auditRows.error) throw auditRows.error;
+        if (reportRows.error) throw reportRows.error;
         const next: Record<string, CommunityRole> = {};
         (memberRows.data || []).forEach((row: any) => { next[row.user_id] = row.role as CommunityRole; });
         setMemberships(next);
         setAudit((auditRows.data || []) as AuditEntry[]);
+        setReports((reportRows.data || []) as ReportEntry[]);
       }
     } catch (e) {
       setError(friendlyError(e));
@@ -223,6 +228,11 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
                   </div>;
                 })}
               </div>
+            </section>
+
+            <section className="rounded-3xl border border-[var(--ln)] bg-[var(--sf)] p-5 shadow-sm sm:p-6">
+              <div className="flex items-center justify-between gap-3"><h2 className="text-lg font-bold text-[var(--ink)]">Üye bildirimleri</h2><span className="text-xs text-[var(--mu)]">{reports.filter(r=>r.status==='open').length} açık</span></div>
+              <div className="mt-4 space-y-2">{reports.map(report=><div key={report.id} className="rounded-xl border border-[var(--ln)] p-3"><div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-bold text-[var(--ink)]">{report.target_type} · {report.status}</span><time className="text-[10px] text-[var(--mu)]">{new Date(report.created_at).toLocaleString('tr-TR')}</time></div><p className="mt-2 whitespace-pre-wrap text-xs text-[var(--mu)]">{report.reason}</p><div className="mt-2 break-all font-mono text-[9px] text-[var(--mu)]">Hedef: {report.target_id} · Bildiren: {report.reporter_id}</div>{report.status!=='resolved'&&report.status!=='dismissed'&&<div className="mt-3 flex gap-2"><button className="rounded-lg border border-[var(--ln)] px-3 py-2 text-xs font-semibold" onClick={async()=>{const {error}=await supabase!.rpc('community_admin_review_report',{p_report_id:report.id,p_status:'reviewing'});if(error)setError(friendlyError(error));else await loadConsole();}}>İnceleniyor</button><button className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white" onClick={async()=>{const {error}=await supabase!.rpc('community_admin_review_report',{p_report_id:report.id,p_status:'resolved'});if(error)setError(friendlyError(error));else await loadConsole();}}>Çözüldü</button><button className="rounded-lg border border-[var(--ln)] px-3 py-2 text-xs font-semibold" onClick={async()=>{const {error}=await supabase!.rpc('community_admin_review_report',{p_report_id:report.id,p_status:'dismissed'});if(error)setError(friendlyError(error));else await loadConsole();}}>Reddet</button></div>}</div>)}{!reports.length&&<p className="text-sm text-[var(--mu)]">Henüz bildirim yok.</p>}</div>
             </section>
 
             <section className="rounded-3xl border border-[var(--ln)] bg-[var(--sf)] p-5 shadow-sm sm:p-6">
