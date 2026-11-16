@@ -98,4 +98,4 @@ export interface ReadingHistoryItem {
   timestamp: number;
 }
 
-export type TabId = 'home' | 'disc' | 'likes' | 'notes' | 'dashboard' | 'sets';
+export type TabId = 'home' | 'disc' | 'likes' | 'notes' | 'dashboard' | 'community' | 'sets';
