@@ -84,6 +84,7 @@ export default function App() {
   // Kapalı topluluk sekmesi yalnızca sunucu tarafında yetkilendirilmiş hesaplara gösterilir.
   const [communityNavVisible, setCommunityNavVisible] = useState(false);
   const [communityCanPost, setCommunityCanPost] = useState(false);
+  const [communityPendingPaper, setCommunityPendingPaper] = useState<Paper | null>(null);
   useEffect(() => {
     let active = true;
     const checkCommunityAccess = async () => {
@@ -601,6 +602,13 @@ export default function App() {
     if (error) setToast('Makale toplulukta paylaşılamadı: ' + error.message);
     else { setToast('Makale topluluk akışında paylaşıldı.'); setDetailPaper(null); }
   }, [auth.user?.id, communityCanPost]);
+
+  const handleSendPaperToCommunity = useCallback((paper: Paper) => {
+    if (!communityCanPost) { setToast('Makale göndermek için etkin topluluk üyeliği gerekiyor.'); return; }
+    setCommunityPendingPaper(paper);
+    setDetailPaper(null);
+    setCurrentTab('community');
+  }, [communityCanPost]);
 
   const handleAddPaperNote = useCallback((paper: Paper, type: PaperNote['type'], content: string) => {
     const now = Date.now();
@@ -1135,7 +1143,7 @@ export default function App() {
         )}
 
         {currentTab === 'community' && (
-          <CommunityScreen userId={auth.user?.id || null} notes={paperNotes} />
+          <CommunityScreen userId={auth.user?.id || null} notes={paperNotes} pendingPaper={communityPendingPaper} onPendingPaperHandled={() => setCommunityPendingPaper(null)} />
         )}
 
         {currentTab === 'sets' && (
@@ -1245,6 +1253,7 @@ export default function App() {
         langDict={langDict}
         onShare={handleSharePaper}
         onShareToCommunity={communityCanPost ? handleSharePaperToCommunity : undefined}
+        onSendToCommunity={communityCanPost ? handleSendPaperToCommunity : undefined}
         isLiked={!!detailPaper && likedPapers.some(p => p.id === detailPaper.id)}
         onToggleLike={handleToggleLikeInDetail}
         notes={detailPaper ? paperNotes.filter(note => note.paperId === detailPaper.id) : []}
