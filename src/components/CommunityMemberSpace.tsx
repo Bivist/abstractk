@@ -7,6 +7,7 @@ type Profile = { user_id:string; username:string; display_name:string; avatar_ur
 type Post = { id:string; author_id:string; body:string; paper:Record<string,unknown>|null; created_at:string; };
 type Conversation = { id:string; kind:'direct'|'group'; title:string|null; updated_at:string; };
 type Message = { id:string; conversation_id:string; sender_id:string; body:string; attachment_type:string|null; attachment:Record<string,unknown>|null; created_at:string; };
+type SharedNote = {id:string;owner_id:string;snapshot:Record<string,unknown>;shared_at:string};
 
 const card = 'rounded-2xl border border-[var(--ln)] bg-[var(--sf)]';
 const field = 'w-full rounded-xl border border-[var(--ln)] bg-[var(--bg)] px-3 py-2.5 text-sm text-[var(--ink)] outline-none focus:border-sky-500';
@@ -39,6 +40,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]}> =
   const [activeConversation,setActiveConversation]=useState<string|null>(null);
   const [messages,setMessages]=useState<Message[]>([]);
   const [sharedNoteIds,setSharedNoteIds]=useState<Set<string>>(new Set());
+  const [sharedNotes,setSharedNotes]=useState<SharedNote[]>([]);
   const [messageDraft,setMessageDraft]=useState('');
 
   const loadProfile=useCallback(async()=>{
@@ -72,6 +74,15 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]}> =
     setLikes(new Set((likeRows.data||[]).filter((x:any)=>x.user_id===userId).map((x:any)=>x.post_id)));
     setBookmarks(new Set((bookmarkRows.data||[]).map((x:any)=>x.post_id)));
     const counts:Record<string,number>={}; (commentRows.data||[]).forEach((x:any)=>counts[x.post_id]=(counts[x.post_id]||0)+1); setCommentCounts(counts);
+    const {data:noteRows,error:noteError}=await supabase.from('community_shared_notes').select('id,owner_id,snapshot,shared_at').is('revoked_at',null).order('shared_at',{ascending:false}).limit(30);
+    if(noteError) throw noteError;
+    const shared=(noteRows||[]) as SharedNote[]; setSharedNotes(shared);
+    const noteOwnerIds=[...new Set(shared.map(n=>n.owner_id))];
+    if(noteOwnerIds.length){
+      const {data:noteProfiles,error:noteProfileError}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',noteOwnerIds);
+      if(noteProfileError) throw noteProfileError;
+      setProfiles(prev=>({...prev,...Object.fromEntries((noteProfiles||[]).map((p:any)=>[p.user_id,p as Profile]))}));
+    }
   },[userId]);
 
   const loadConversations=useCallback(async()=>{
@@ -193,7 +204,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]}> =
           try{
             const {data,error}=await supabase.rpc('community_share_note_snapshot',{p_source_note_id:note.id,p_snapshot:{type:note.type,content:note.content,paperTitle:note.paperTitle||'',paperJournal:note.paperJournal||'',paperField:note.paperField||'',paperLink:note.paperLink||'',paperAuthors:note.paperAuthors||'',createdAt:note.createdAt}});
             if(error)throw error;
-            setSharedNoteIds(prev=>new Set(prev).add(note.id));setNotice('Notun kopyası toplulukla paylaşıldı.');
+            setSharedNoteIds(prev=>new Set(prev).add(note.id));setNotice('Notun kopyası toplulukla paylaşıldı.');await loadFeed();
           }catch(e){setError(errorText(e));}finally{setBusy(false);}
         }} disabled={busy||sharedNoteIds.has(note.id)}><Check size={15}/>{sharedNoteIds.has(note.id)?'Bu oturumda paylaşıldı':'Açık onayla paylaş'}</button></div>)}
         {!notes.length&&<p className="rounded-xl bg-[var(--bg)] p-4 text-xs text-[var(--mu)]">Bilim Defterim’de henüz notun bulunmuyor.</p>}
@@ -218,6 +229,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]}> =
           {openComments.has(post.id)&&<div className="mt-3 space-y-2">{(comments[post.id]||[]).map(c=><div key={c.id} className="rounded-lg bg-[var(--bg)] p-2.5"><div className="text-[10px] font-semibold text-[var(--mu)]">{profiles[c.author_id]?.display_name||shortId(c.author_id)} · {new Date(c.created_at).toLocaleString('tr-TR')}</div><p className="mt-1 whitespace-pre-wrap text-xs text-[var(--ink)]">{c.body}</p></div>)}<div className="flex gap-2"><input className={field} value={commentDrafts[post.id]||''} onChange={e=>setCommentDrafts(p=>({...p,[post.id]:e.target.value}))} placeholder="Yorum yaz…" maxLength={2000}/><button className={button} onClick={()=>void addComment(post.id)} aria-label="Yorumu gönder"><Send size={15}/></button></div></div>}
         </article>)}
         {!posts.length&&<div className={card+' p-8 text-center text-sm text-[var(--mu)]'}>Henüz gönderi yok. İlk akademik paylaşımı sen başlatabilirsin.</div>}
+        {sharedNotes.map(item=><article key={item.id} className={card+' p-4'}><div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Bilim Defterim · Açıkça paylaşılmış not</div><div className="mt-1 text-sm font-semibold text-[var(--ink)]">{profiles[item.owner_id]?.display_name||profiles[item.owner_id]?.username||'Topluluk üyesi'} · {String(item.snapshot.paperTitle||'Makale notu')}</div><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ink)]">{String(item.snapshot.content||'')}</p><div className="mt-2 flex items-center justify-between text-[10px] text-[var(--mu)]"><time>{new Date(item.shared_at).toLocaleString('tr-TR')}</time>{item.owner_id===userId&&<button className="font-semibold text-rose-600" onClick={async()=>{if(!supabase||!window.confirm('Bu not paylaşımını geri almak istiyor musun? Özel notun korunur.'))return;const {error}=await supabase.rpc('community_revoke_shared_note',{p_shared_note_id:item.id});if(error)setError(errorText(error));else{setSharedNotes(prev=>prev.filter(n=>n.id!==item.id));setNotice('Not paylaşımı geri alındı. Özel notun değişmedi.');}}}>Paylaşımı geri al</button>}</div></article>)}
       </div>}
 
       {section==='people'&&<section className={card+' p-4'}><h2 className="font-bold text-[var(--ink)]">Topluluk üyeleri</h2><p className="mt-1 text-xs text-[var(--mu)]">Yalnızca toplulukta görünür olmayı seçen üyeler listelenir.</p><div className="mt-3 flex gap-2"><input className={field} value={peopleQuery} onChange={e=>setPeopleQuery(e.target.value)} placeholder="Ad, kullanıcı adı veya kurum…"/><button className={button} disabled={busy} onClick={()=>void searchPeople()}><Search size={16}/> Ara</button></div><div className="mt-3 space-y-2">{people.map(p=><div key={p.user_id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--ln)] p-3"><div className="min-w-0"><div className="truncate text-sm font-bold text-[var(--ink)]">{p.display_name||p.username}</div><div className="text-xs text-[var(--mu)]">@{p.username} {p.affiliation?'· '+p.affiliation:''}</div><div className="mt-1 text-xs text-[var(--mu)]">{(p.research_interests||[]).join(' · ')}</div></div><button className={button} disabled={busy} onClick={()=>void startConversation(p.user_id)}><MessageCircle size={15}/> Mesaj</button></div>)}</div></section>}
