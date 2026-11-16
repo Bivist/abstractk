@@ -211,7 +211,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
     if(!supabase)return;setActiveConversation(id);setSection('messages');
     const {data,error}=await supabase.from('community_messages').select('id,conversation_id,sender_id,body,attachment_type,attachment,created_at').eq('conversation_id',id).order('created_at',{ascending:true}).limit(100);
     if(error){setError(errorText(error));return;}setMessages((data||[]) as Message[]);
-    await supabase.from('community_conversation_members').update({last_read_at:new Date().toISOString()}).eq('conversation_id',id).eq('user_id',userId);
+    await supabase.rpc('community_mark_conversation_read',{p_conversation_id:id});
   };
   const sendPendingPaper=async()=>{
     if(!supabase||!pendingPaper||selectedPeople.size<1)return;
