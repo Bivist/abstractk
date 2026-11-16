@@ -201,6 +201,25 @@ begin
 end;
 $$;
 
+create or replace function public.community_validate_comment_parent()
+returns trigger
+language plpgsql
+set search_path=public,pg_temp
+as $community$
+begin
+  if new.parent_id is not null and not exists(
+    select 1 from public.community_comments parent
+    where parent.id=new.parent_id and parent.post_id=new.post_id
+  ) then
+    raise exception 'comment_parent_must_belong_to_same_post' using errcode='23514';
+  end if;
+  return new;
+end;
+$community$;
+drop trigger if exists community_comment_parent_guard on public.community_comments;
+create trigger community_comment_parent_guard before insert or update of parent_id,post_id
+on public.community_comments for each row execute function public.community_validate_comment_parent();
+
 create or replace function public.community_send_message(
   p_conversation_id uuid, p_body text default '', p_attachment_type text default null, p_attachment jsonb default null
 )
@@ -213,6 +232,15 @@ begin
   if auth.uid() is null or not public.community_is_member() then raise exception 'community_membership_required' using errcode='42501'; end if;
   if not exists(select 1 from public.community_conversation_members cm where cm.conversation_id=p_conversation_id and cm.user_id=auth.uid()) then
     raise exception 'conversation_access_denied' using errcode='42501';
+  end if;
+  if exists(
+    select 1 from public.community_conversation_members cm
+    join public.community_blocks b on
+      (b.blocker_id=auth.uid() and b.blocked_id=cm.user_id)
+      or (b.blocker_id=cm.user_id and b.blocked_id=auth.uid())
+    where cm.conversation_id=p_conversation_id and cm.user_id<>auth.uid()
+  ) then
+    raise exception 'messaging_blocked' using errcode='42501';
   end if;
   if char_length(coalesce(p_body,'')) > 5000 or
      (length(trim(coalesce(p_body,'')))=0 and p_attachment is null) then
@@ -336,6 +364,7 @@ grant select on public.community_notifications to authenticated;
 grant select on public.community_conversations, public.community_conversation_members, public.community_messages to authenticated;
 -- UUID-backed community tables require no direct sequence privileges.
 
+revoke all on function public.community_validate_comment_parent() from public, anon, authenticated;
 revoke all on function public.community_is_conversation_member(uuid) from public, anon;
 revoke all on function public.community_revoke_shared_note(uuid) from public, anon;
 revoke all on function public.community_can_message(uuid) from public, anon;
