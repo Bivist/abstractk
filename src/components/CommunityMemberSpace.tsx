@@ -22,6 +22,8 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
   const [profile,setProfile]=useState<Profile|null>(null);
   const [profileDraft,setProfileDraft]=useState({username:'',display_name:'',bio:'',affiliation:'',research_interests:''});
   const [posts,setPosts]=useState<Post[]>([]);
+  const [feedHasMore,setFeedHasMore]=useState(true);
+  const [loadingMore,setLoadingMore]=useState(false);
   const [profiles,setProfiles]=useState<Record<string,Profile>>({});
   const [likes,setLikes]=useState<Set<string>>(new Set());
   const [followedPeople,setFollowedPeople]=useState<Set<string>>(new Set());
@@ -65,7 +67,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
     if(!supabase) return;
     const {data,error}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at').order('created_at',{ascending:false}).limit(40);
     if(error) throw error;
-    const rows=(data||[]) as Post[]; setPosts(rows);
+    const rows=(data||[]) as Post[]; setPosts(rows); setFeedHasMore(rows.length===40);
     const ids=rows.map(p=>p.id);
     if(!ids.length) {setProfiles({});setLikes(new Set());setBookmarks(new Set());setCommentCounts({});}
     const [profileRows,likeRows,bookmarkRows,commentRows]=await Promise.all([
@@ -99,6 +101,31 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
     }
   },[userId]);
 
+  const loadMorePosts=async()=>{
+    if(!supabase||loadingMore||!feedHasMore)return;
+    setLoadingMore(true);
+    try{
+      const {data,error}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at').order('created_at',{ascending:false}).range(posts.length,posts.length+39);
+      if(error)throw error;
+      const rows=(data||[]) as Post[];setPosts(prev=>[...prev,...rows]);if(rows.length<40)setFeedHasMore(false);
+      const ids=rows.map(p=>p.id);
+      if(ids.length){
+        const [pr,lr,br,cr]=await Promise.all([
+          supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',[...new Set(rows.map(p=>p.author_id))]),
+          supabase.from('community_post_likes').select('post_id,user_id').in('post_id',ids),
+          supabase.from('community_post_bookmarks').select('post_id,user_id').eq('user_id',userId).in('post_id',ids),
+          supabase.from('community_comments').select('post_id,author_id').in('post_id',ids)
+        ]);
+        if(pr.error)throw pr.error;if(lr.error)throw lr.error;if(br.error)throw br.error;if(cr.error)throw cr.error;
+        setProfiles(prev=>({...prev,...Object.fromEntries((pr.data||[]).map((p:any)=>[p.user_id,p as Profile]))}));
+        setLikes(prev=>new Set([...prev,...(lr.data||[]).filter((x:any)=>x.user_id===userId).map((x:any)=>x.post_id)]));
+        setBookmarks(prev=>new Set([...prev,...(br.data||[]).map((x:any)=>x.post_id)]));
+        setCommentCounts(prev=>{const next={...prev};(cr.data||[]).forEach((x:any)=>next[x.post_id]=(next[x.post_id]||0)+1);return next;});
+        const commentAuthors=[...new Set((cr.data||[]).map((x:any)=>x.author_id))];
+        if(commentAuthors.length){const {data:cp,error:ce}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',commentAuthors);if(ce)throw ce;setProfiles(prev=>({...prev,...Object.fromEntries((cp||[]).map((p:any)=>[p.user_id,p as Profile]))}));}
+      }
+    }catch(e){setError(errorText(e));}finally{setLoadingMore(false);}
+  };
   const loadConversations=useCallback(async()=>{
     if(!supabase) return;
     const {data:mine,error:mineError}=await supabase.from('community_conversation_members').select('conversation_id').eq('user_id',userId);
@@ -281,6 +308,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
           {openComments.has(post.id)&&<div className="mt-3 space-y-2">{(comments[post.id]||[]).map(c=><div key={c.id} className={`rounded-lg bg-[var(--bg)] p-2.5 ${c.parent_id?'ml-5 border-l-2 border-sky-300':''}`}><div className="text-[10px] font-semibold text-[var(--mu)]">{profiles[c.author_id]?.display_name||shortId(c.author_id)} · {new Date(c.created_at).toLocaleString('tr-TR')}</div><p className="mt-1 whitespace-pre-wrap text-xs text-[var(--ink)]">{c.body}</p><button className="mt-1 text-[10px] font-semibold text-sky-700 dark:text-sky-300" onClick={()=>setReplyTargets(prev=>({...prev,[post.id]:c.id}))}>Yanıtla</button></div>)}{replyTargets[post.id]&&<div className="text-[10px] text-[var(--mu)]">Yoruma yanıt yazılıyor <button onClick={()=>setReplyTargets(prev=>({...prev,[post.id]:''}))} className="ml-2 text-rose-600">Vazgeç</button></div>}<div className="flex gap-2"><input className={field} value={commentDrafts[post.id]||''} onChange={e=>setCommentDrafts(p=>({...p,[post.id]:e.target.value}))} placeholder={replyTargets[post.id]?'Yanıt yaz…':'Yorum yaz…'} maxLength={2000}/><button className={button} onClick={()=>void addComment(post.id)} aria-label="Yorumu gönder"><Send size={15}/></button></div></div>}
         </article>)}
         {!posts.length&&<div className={card+' p-8 text-center text-sm text-[var(--mu)]'}>Henüz gönderi yok. İlk akademik paylaşımı sen başlatabilirsin.</div>}
+        {feedHasMore&&<div className="flex justify-center py-2"><button className="rounded-xl border border-[var(--ln)] px-5 py-2.5 text-xs font-semibold text-[var(--mu)]" disabled={loadingMore} onClick={()=>void loadMorePosts()}>{loadingMore?'Yükleniyor…':'Daha eski gönderileri yükle'}</button></div>}
         {sharedNotes.map(item=><article key={item.id} className={card+' p-4'}><div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Bilim Defterim · Açıkça paylaşılmış not</div><div className="mt-1 text-sm font-semibold text-[var(--ink)]">{profiles[item.owner_id]?.display_name||profiles[item.owner_id]?.username||'Topluluk üyesi'} · {String(item.snapshot.paperTitle||'Makale notu')}</div><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ink)]">{String(item.snapshot.content||'')}</p><div className="mt-2 flex items-center justify-between text-[10px] text-[var(--mu)]"><time>{new Date(item.shared_at).toLocaleString('tr-TR')}</time>{item.owner_id===userId&&<button className="font-semibold text-rose-600" onClick={async()=>{if(!supabase||!window.confirm('Bu not paylaşımını geri almak istiyor musun? Özel notun korunur.'))return;const {error}=await supabase.rpc('community_revoke_shared_note',{p_shared_note_id:item.id});if(error)setError(errorText(error));else{setSharedNotes(prev=>prev.filter(n=>n.id!==item.id));setSharedNoteIds(prev=>{const next=new Set(prev);next.delete(item.source_note_id);return next;});setNotice('Not paylaşımı geri alındı. Özel notun değişmedi.');}}}>Paylaşımı geri al</button>}</div></article>)}
       </div>}
 
