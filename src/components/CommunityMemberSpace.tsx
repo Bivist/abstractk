@@ -43,6 +43,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
   const [peopleQuery,setPeopleQuery]=useState('');
   const [people,setPeople]=useState<Profile[]>([]);
   const [selectedPeople,setSelectedPeople]=useState<Set<string>>(new Set());
+  const [blockedMembers,setBlockedMembers]=useState<{blocked_id:string;username?:string;display_name?:string}[]>([]);
   const [groupTitle,setGroupTitle]=useState('');
   const [conversations,setConversations]=useState<Conversation[]>([]);
   const [conversationMembers,setConversationMembers]=useState<Record<string,string[]>>({});
@@ -157,7 +158,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
   const loadAll=useCallback(async()=>{
     if(!supabase){setLoading(false);return;}
     setLoading(true);setError('');
-    try { await Promise.all([loadProfile(),loadFeed(),loadConversations()]); const {data:n,error:ne}=await supabase.from('community_notifications').select('id,kind,actor_id,created_at,read_at').eq('user_id',userId).order('created_at',{ascending:false}).limit(20); if(ne)throw ne; setNotifications((n||[]) as any[]); }
+    try { await Promise.all([loadProfile(),loadFeed(),loadConversations()]); const [n,b]=await Promise.all([supabase.from('community_notifications').select('id,kind,actor_id,created_at,read_at').eq('user_id',userId).order('created_at',{ascending:false}).limit(20),supabase.from('community_blocks').select('blocked_id').eq('blocker_id',userId)]); if(n.error)throw n.error;if(b.error)throw b.error;setNotifications((n.data||[]) as any[]);const blockedIds=(b.data||[]).map((x:any)=>x.blocked_id);if(blockedIds.length){const {data:bp,error:be}=await supabase.from('community_profiles').select('user_id,username,display_name').in('user_id',blockedIds);if(be)throw be;const pmap:Record<string,any>={};(bp||[]).forEach((x:any)=>pmap[x.user_id]=x);setBlockedMembers(blockedIds.map((id:string)=>({blocked_id:id,username:pmap[id]?.username,display_name:pmap[id]?.display_name})));}else setBlockedMembers([]); }
     catch(e){setError(errorText(e));}
     finally{setLoading(false);}
   },[loadProfile,loadFeed,loadConversations]);
@@ -211,6 +212,11 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
     setBusy(true);setError('');
     try{const {data,error}=await supabase.rpc('community_search_members',{p_query:peopleQuery.trim(),p_limit:25});if(error)throw error;setPeople((data||[]) as Profile[]);}
     catch(e){setError(errorText(e));}finally{setBusy(false);}
+  };
+  const unblockMember=async(otherId:string)=>{
+    if(!supabase||!window.confirm('Bu üyenin engelini kaldırmak istiyor musun?'))return;
+    const {error}=await supabase.from('community_blocks').delete().eq('blocker_id',userId).eq('blocked_id',otherId);
+    if(error)setError(errorText(error));else{setBlockedMembers(prev=>prev.filter(x=>x.blocked_id!==otherId));setNotice('Üyenin engeli kaldırıldı.');}
   };
   const blockMember=async(otherId:string)=>{
     if(!supabase||!window.confirm('Bu üyeyi engellemek istiyor musun? Engelleme karşılıklı mesajlaşmayı ve profil aramasını sınırlar.'))return;
@@ -302,6 +308,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
         <label className="block text-xs font-semibold text-[var(--mu)]">Kısa biyografi<textarea className={field+' mt-1'} rows={3} value={profileDraft.bio} onChange={e=>setProfileDraft(p=>({...p,bio:e.target.value}))} maxLength={500}/></label>
         <label className="block text-xs font-semibold text-[var(--mu)]">Araştırma alanları (virgülle ayır)<input className={field+' mt-1'} value={profileDraft.research_interests} onChange={e=>setProfileDraft(p=>({...p,research_interests:e.target.value}))} placeholder="Deniz ekolojisi, moleküler biyoloji"/></label>
         <button className={button} disabled={busy} onClick={()=>void saveProfile()}>{busy?<Loader2 className="animate-spin" size={16}/>:<Check size={16}/>} Profili kaydet</button>
+        <div className="border-t border-[var(--ln)] pt-3"><h3 className="text-sm font-bold text-[var(--ink)]">Engellediğim üyeler</h3>{blockedMembers.map(member=><div key={member.blocked_id} className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-[var(--bg)] p-2.5"><span className="truncate text-xs text-[var(--mu)]">{member.display_name||member.username||shortId(member.blocked_id)}</span><button className="text-xs font-semibold text-sky-700 dark:text-sky-300" onClick={()=>void unblockMember(member.blocked_id)}>Engeli kaldır</button></div>)}{!blockedMembers.length&&<p className="mt-1 text-xs text-[var(--mu)]">Engellediğin üye yok.</p>}</div>
       </section>}
 
       {section==='feed'&&<div className="space-y-3">
