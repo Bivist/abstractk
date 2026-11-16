@@ -12,7 +12,8 @@ create table if not exists public.community_posts (
   updated_at timestamptz not null default now(),
   constraint community_posts_body_or_paper check (length(trim(body)) > 0 or paper is not null),
   constraint community_posts_body_length check (char_length(body) <= 5000),
-  constraint community_posts_paper_object check (paper is null or jsonb_typeof(paper) = 'object')
+  constraint community_posts_paper_object check (paper is null or jsonb_typeof(paper) = 'object'),
+  constraint community_posts_paper_size check (paper is null or pg_column_size(paper) <= 32768)
 );
 create index if not exists community_posts_created_idx on public.community_posts(created_at desc, id desc);
 create index if not exists community_posts_author_idx on public.community_posts(author_id, created_at desc);
