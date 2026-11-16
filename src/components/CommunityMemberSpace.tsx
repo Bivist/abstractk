@@ -20,6 +20,7 @@ function safeHttpUrl(value:unknown):string|null { try { const url=new URL(String
 export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pendingPaper?:import('../types').Paper|null; onPendingPaperHandled?:()=>void; onReturnToAdmin?:()=>void}> = ({userId,notes,pendingPaper,onPendingPaperHandled,onReturnToAdmin}) => {
   const [section,setSection]=useState<'feed'|'messages'|'people'|'notes'|'profile'>('feed');
   const [profile,setProfile]=useState<Profile|null>(null);
+  const [profileVisibility,setProfileVisibility]=useState<'community'|'private'>('community');
   const [profileDraft,setProfileDraft]=useState({username:'',display_name:'',bio:'',affiliation:'',research_interests:''});
   const [posts,setPosts]=useState<Post[]>([]);
   const [feedHasMore,setFeedHasMore]=useState(true);
@@ -60,10 +61,10 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
 
   const loadProfile=useCallback(async()=>{
     if(!supabase) return;
-    const {data,error}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').eq('user_id',userId).maybeSingle();
+    const {data,error}=await supabase.from('community_profiles') .select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests,profile_visibility').eq('user_id',userId).maybeSingle();
     if(error) throw error;
     if(data) {
-      const p=data as Profile; setProfile(p);
+      const p=data as Profile; setProfile(p);setProfileVisibility((data as any).profile_visibility==='private'?'private':'community');
       setProfileDraft({username:p.username||'',display_name:p.display_name||'',bio:p.bio||'',affiliation:p.affiliation||'',research_interests:(p.research_interests||[]).join(', ')});
     }
   },[userId]);
@@ -171,7 +172,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
     if(!/^[a-zA-Z0-9_.-]{3,30}$/.test(username)){setError('Kullanıcı adı 3–30 karakter olmalı; harf, sayı, nokta, alt çizgi ve tire kullanılabilir.');return;}
     setBusy(true);setError('');setNotice('');
     try{
-      const payload={user_id:userId,username,display_name:profileDraft.display_name.trim().slice(0,80),bio:profileDraft.bio.trim().slice(0,500),affiliation:profileDraft.affiliation.trim().slice(0,120),research_interests:profileDraft.research_interests.split(',').map(x=>x.trim()).filter(Boolean).slice(0,12),profile_visibility:'community',searchable:true};
+      const payload={user_id:userId,username,display_name:profileDraft.display_name.trim().slice(0,80),bio:profileDraft.bio.trim().slice(0,500),affiliation:profileDraft.affiliation.trim().slice(0,120),research_interests:profileDraft.research_interests.split(',').map(x=>x.trim()).filter(Boolean).slice(0,12),profile_visibility:profileVisibility,searchable:profileVisibility==='community'};
       const {error}=await supabase.from('community_profiles').upsert(payload,{onConflict:'user_id'});if(error)throw error;
       await loadProfile();setNotice('Topluluk profilin kaydedildi.');
     }catch(e){setError(errorText(e));}finally{setBusy(false);}
@@ -307,6 +308,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
         <label className="block text-xs font-semibold text-[var(--mu)]">Kurum / üniversite<input className={field+' mt-1'} value={profileDraft.affiliation} onChange={e=>setProfileDraft(p=>({...p,affiliation:e.target.value}))} maxLength={120}/></label>
         <label className="block text-xs font-semibold text-[var(--mu)]">Kısa biyografi<textarea className={field+' mt-1'} rows={3} value={profileDraft.bio} onChange={e=>setProfileDraft(p=>({...p,bio:e.target.value}))} maxLength={500}/></label>
         <label className="block text-xs font-semibold text-[var(--mu)]">Araştırma alanları (virgülle ayır)<input className={field+' mt-1'} value={profileDraft.research_interests} onChange={e=>setProfileDraft(p=>({...p,research_interests:e.target.value}))} placeholder="Deniz ekolojisi, moleküler biyoloji"/></label>
+        <label className="block text-xs font-semibold text-[var(--mu)]">Profil görünürlüğü<select className={field+' mt-1'} value={profileVisibility} onChange={e=>setProfileVisibility(e.target.value as 'community'|'private')}><option value="community">Topluluk üyeleri bulabilsin</option><option value="private">Yalnızca ben görebileyim</option></select></label>
         <button className={button} disabled={busy} onClick={()=>void saveProfile()}>{busy?<Loader2 className="animate-spin" size={16}/>:<Check size={16}/>} Profili kaydet</button>
         <div className="border-t border-[var(--ln)] pt-3"><h3 className="text-sm font-bold text-[var(--ink)]">Engellediğim üyeler</h3>{blockedMembers.map(member=><div key={member.blocked_id} className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-[var(--bg)] p-2.5"><span className="truncate text-xs text-[var(--mu)]">{member.display_name||member.username||shortId(member.blocked_id)}</span><button className="text-xs font-semibold text-sky-700 dark:text-sky-300" onClick={()=>void unblockMember(member.blocked_id)}>Engeli kaldır</button></div>)}{!blockedMembers.length&&<p className="mt-1 text-xs text-[var(--mu)]">Engellediğin üye yok.</p>}</div>
       </section>}
