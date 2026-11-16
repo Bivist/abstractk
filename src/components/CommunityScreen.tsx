@@ -202,7 +202,7 @@ export const CommunityScreen: React.FC<{ userId: string | null }> = ({ userId })
             <section className="rounded-3xl border border-[var(--ln)] bg-[var(--sf)] p-5 shadow-sm sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div><h2 className="text-lg font-bold text-[var(--ink)]">Genel erişim kontrolü</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Bu anahtar yalnızca topluluk modülünü etkiler; Abstract'ın diğer bölümlerini kapatmaz.</p></div>
-                <button type="button" disabled={busy} onClick={() => void toggleCommunity()} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold text-white transition disabled:opacity-50 ${enabled ? 'bg-rose-600 hover:bg-rose-700' : 'bg-sky-700 hover:bg-sky-800'}`}>{busy && <Loader2 size={16} className="animate-spin" />}{enabled ? 'Topluluğu kapat' : 'Topluluğu etkinleştir'}</button>
+                <button type="button" disabled title="Topluluk akışı ve mesajlaşma tamamlanmadan genel erişim açılamaz." className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-[var(--ln)] bg-[var(--bg)] px-4 text-sm font-bold text-[var(--mu)] opacity-80">Geliştirme tamamlanınca etkinleştirilecek</button>
               </div>
             </section>
 
