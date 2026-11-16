@@ -331,8 +331,8 @@ revoke all on public.community_posts, public.community_post_likes, public.commun
   public.community_shared_notes, public.community_notifications from anon, authenticated;
 grant select, insert, update, delete on public.community_posts, public.community_post_likes,
   public.community_post_bookmarks, public.community_comments, public.community_follows,
-  public.community_reports, public.community_blocks, public.community_shared_notes,
-  public.community_notifications to authenticated;
+  public.community_reports, public.community_blocks, public.community_shared_notes to authenticated;
+grant select on public.community_notifications to authenticated;
 grant select on public.community_conversations, public.community_conversation_members, public.community_messages to authenticated;
 -- UUID-backed community tables require no direct sequence privileges.
 
