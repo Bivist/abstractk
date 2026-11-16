@@ -275,11 +275,9 @@ export function buildSearchTiers(filter: FilterState): SearchTier[] {
           ",primary_topic.field.id:12";
       }
 
-      // Sanat alt dallarında metin eşleşmesini sanat alanıyla birlikte uygula.
-      // Böylece yalnızca kelime benzerliği nedeniyle ilgisiz disiplinler gelmez.
-      if (!/(?:^|,)topics\\.field\\.id:12(?:,|$)/.test(query)) {
-        return query + ",topics.field.id:12";
-      }
+      // Alt dallar disiplinler arasıdır (ör. mimarlık, tasarım ve sinema).
+      // Bu nedenle onları yalnızca Arts & Humanities alanına kilitleme;
+      // kendi başlık/özet terimleriyle ara, aksi hâlde geçerli yayınlar elenir.
       return query;
     });
 
