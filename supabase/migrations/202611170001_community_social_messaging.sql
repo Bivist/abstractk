@@ -267,6 +267,22 @@ begin
 end;
 $$;
 
+create or replace function public.community_mark_conversation_read(p_conversation_id uuid)
+returns void
+language plpgsql security definer
+set search_path=public,pg_temp
+as $community$
+begin
+  if auth.uid() is null or not public.community_is_member() then
+    raise exception 'community_membership_required' using errcode='42501';
+  end if;
+  update public.community_conversation_members
+  set last_read_at=now()
+  where conversation_id=p_conversation_id and user_id=auth.uid();
+  if not found then raise exception 'conversation_access_denied' using errcode='42501'; end if;
+end;
+$community$;
+
 create or replace function public.community_share_note_snapshot(p_source_note_id text,p_snapshot jsonb)
 returns uuid
 language plpgsql security definer
@@ -370,12 +386,14 @@ revoke all on function public.community_revoke_shared_note(uuid) from public, an
 revoke all on function public.community_can_message(uuid) from public, anon;
 revoke all on function public.community_create_conversation(uuid[],text,text) from public, anon;
 revoke all on function public.community_send_message(uuid,text,text,jsonb) from public, anon;
+revoke all on function public.community_mark_conversation_read(uuid) from public, anon;
 revoke all on function public.community_share_note_snapshot(text,jsonb) from public, anon;
 grant execute on function public.community_is_conversation_member(uuid) to authenticated;
 grant execute on function public.community_revoke_shared_note(uuid) to authenticated;
 grant execute on function public.community_can_message(uuid) to authenticated;
 grant execute on function public.community_create_conversation(uuid[],text,text) to authenticated;
 grant execute on function public.community_send_message(uuid,text,text,jsonb) to authenticated;
+grant execute on function public.community_mark_conversation_read(uuid) to authenticated;
 grant execute on function public.community_share_note_snapshot(text,jsonb) to authenticated;
 
 commit;
