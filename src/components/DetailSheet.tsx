@@ -1,7 +1,7 @@
 import React from 'react';
 import { Paper } from '../types';
 import { OA_STATUS } from '../constants/taxonomy';
-import { X, ExternalLink, Share2, Users, Heart, StickyNote, Quote, Lightbulb, Trash2, Plus } from 'lucide-react';
+import { X, ExternalLink, Share2, Users, MessageCircle, Heart, StickyNote, Quote, Lightbulb, Trash2, Plus } from 'lucide-react';
 import { PaperNote } from '../types';
 
 interface DetailSheetProps {
@@ -11,6 +11,7 @@ interface DetailSheetProps {
   langDict: Record<string, string>;
   onShare?: (paper: Paper) => void;
   onShareToCommunity?: (paper: Paper) => void;
+  onSendToCommunity?: (paper: Paper) => void;
   isLiked?: boolean;
   onToggleLike?: (paper: Paper) => void;
   /** Paylaşılan bir bağlantıdan açıldıysa bilgi bandı gösterilir */
@@ -27,6 +28,7 @@ export const DetailSheet: React.FC<DetailSheetProps> = ({
   langDict,
   onShare,
   onShareToCommunity,
+  onSendToCommunity,
   isLiked = false,
   onToggleLike,
   isSharedView = false,
@@ -77,6 +79,11 @@ export const DetailSheet: React.FC<DetailSheetProps> = ({
               >
                 <Users className="w-3.5 h-3.5" />
                 <span>Topluluk</span>
+              </button>
+            )}
+            {onSendToCommunity && (
+              <button type="button" onClick={() => onSendToCommunity(paper)} aria-label="Üyelere mesajla gönder" title="Üyelere mesajla gönder" className="h-8 px-3 rounded-full border border-cyan-600 text-cyan-700 dark:text-cyan-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 active:scale-95 transition">
+                <MessageCircle className="w-3.5 h-3.5" /><span>Mesajla gönder</span>
               </button>
             )}
             <button
