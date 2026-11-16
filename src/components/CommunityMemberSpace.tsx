@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Bell, Bookmark, Check, Heart, Loader2, MessageCircle, MessageSquare, Plus, Search, Send, ShieldAlert, Users, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { PaperNote } from '../types';
@@ -61,7 +61,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
 
   const loadProfile=useCallback(async()=>{
     if(!supabase) return;
-    const {data,error}=await supabase.from('community_profiles') .select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests,profile_visibility').eq('user_id',userId).maybeSingle();
+    const {data,error}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests,profile_visibility').eq('user_id',userId).maybeSingle();
     if(error) throw error;
     if(data) {
       const p=data as Profile; setProfile(p);setProfileVisibility((data as any).profile_visibility==='private'?'private':'community');
