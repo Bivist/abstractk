@@ -18,7 +18,7 @@ function shortId(id:string) { return id.slice(0,8); }
 function safeHttpUrl(value:unknown):string|null { try { const url=new URL(String(value)); return url.protocol==='https:'||url.protocol==='http:'?url.href:null; } catch { return null; } }
 
 export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pendingPaper?:import('../types').Paper|null; onPendingPaperHandled?:()=>void}> = ({userId,notes,pendingPaper,onPendingPaperHandled}) => {
-  const [section,setSection]=useState<'feed'|'messages'|'people'|'profile'>('feed');
+  const [section,setSection]=useState<'feed'|'messages'|'people'|'notes'|'profile'>('feed');
   const [profile,setProfile]=useState<Profile|null>(null);
   const [profileDraft,setProfileDraft]=useState({username:'',display_name:'',bio:'',affiliation:'',research_interests:''});
   const [posts,setPosts]=useState<Post[]>([]);
