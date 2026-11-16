@@ -138,6 +138,33 @@ as $$
     );
 $$;
 
+create or replace function public.community_is_conversation_member(p_conversation_id uuid)
+returns boolean
+language sql stable security definer
+set search_path=public,pg_temp
+as $
+  select auth.uid() is not null and exists(
+    select 1 from public.community_conversation_members cm
+    where cm.conversation_id=p_conversation_id and cm.user_id=auth.uid()
+  );
+$;
+
+create or replace function public.community_revoke_shared_note(p_shared_note_id uuid)
+returns void
+language plpgsql security definer
+set search_path=public,pg_temp
+as $
+begin
+  if auth.uid() is null or not public.community_is_member() then
+    raise exception 'community_membership_required' using errcode='42501';
+  end if;
+  update public.community_shared_notes
+  set revoked_at=coalesce(revoked_at,now())
+  where id=p_shared_note_id and owner_id=auth.uid();
+  if not found then raise exception 'shared_note_not_found' using errcode='P0002'; end if;
+end;
+$;
+
 create or replace function public.community_create_conversation(p_user_ids uuid[], p_kind text default 'direct', p_title text default null)
 returns uuid
 language plpgsql security definer
@@ -278,20 +305,20 @@ create policy community_blocks_insert on public.community_blocks for insert to a
 create policy community_blocks_delete on public.community_blocks for delete to authenticated using (public.community_is_member() and blocker_id=auth.uid());
 
 create policy community_conversations_read on public.community_conversations for select to authenticated using (
-  public.community_is_member() and exists(select 1 from public.community_conversation_members cm where cm.conversation_id=id and cm.user_id=auth.uid())
+  public.community_is_member() and public.community_is_conversation_member(id)
 );
 create policy community_conversation_members_read on public.community_conversation_members for select to authenticated using (
-  public.community_is_member() and user_id=auth.uid()
+  public.community_is_member() and public.community_is_conversation_member(conversation_id)
 );
 create policy community_messages_read on public.community_messages for select to authenticated using (
-  public.community_is_member() and exists(select 1 from public.community_conversation_members cm where cm.conversation_id=conversation_id and cm.user_id=auth.uid())
+  public.community_is_member() and public.community_is_conversation_member(conversation_id)
 );
 
 create policy community_shared_notes_read on public.community_shared_notes for select to authenticated using (
   public.community_is_member() and revoked_at is null
 );
 create policy community_shared_notes_insert on public.community_shared_notes for insert to authenticated with check (public.community_is_member() and owner_id=auth.uid());
-create policy community_shared_notes_revoke on public.community_shared_notes for update to authenticated using (public.community_is_member() and owner_id=auth.uid()) with check (public.community_is_member() and owner_id=auth.uid());
+-- Revocation is performed through a SECURITY DEFINER RPC so snapshots remain immutable.
 create policy community_shared_notes_delete on public.community_shared_notes for delete to authenticated using (public.community_is_member() and owner_id=auth.uid());
 
 create policy community_notifications_read on public.community_notifications for select to authenticated using (public.community_is_member() and user_id=auth.uid());
@@ -307,12 +334,16 @@ grant select, insert, update, delete on public.community_posts, public.community
   public.community_reports, public.community_blocks, public.community_shared_notes,
   public.community_notifications to authenticated;
 grant select on public.community_conversations, public.community_conversation_members, public.community_messages to authenticated;
-grant usage, select on all sequences in schema public to authenticated;
+-- UUID-backed community tables require no direct sequence privileges.
 
+revoke all on function public.community_is_conversation_member(uuid) from public, anon;
+revoke all on function public.community_revoke_shared_note(uuid) from public, anon;
 revoke all on function public.community_can_message(uuid) from public, anon;
 revoke all on function public.community_create_conversation(uuid[],text,text) from public, anon;
 revoke all on function public.community_send_message(uuid,text,text,jsonb) from public, anon;
 revoke all on function public.community_share_note_snapshot(text,jsonb) from public, anon;
+grant execute on function public.community_is_conversation_member(uuid) to authenticated;
+grant execute on function public.community_revoke_shared_note(uuid) to authenticated;
 grant execute on function public.community_can_message(uuid) to authenticated;
 grant execute on function public.community_create_conversation(uuid[],text,text) to authenticated;
 grant execute on function public.community_send_message(uuid,text,text,jsonb) to authenticated;
