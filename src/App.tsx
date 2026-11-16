@@ -93,19 +93,40 @@ export default function App() {
         return;
       }
       try {
-        const [adminResult, memberResult, enabledResult] = await Promise.all([
-          supabase.rpc('community_is_admin'),
+        // Yönetici erişimi, topluluk genel kullanıma kapalı olsa da geçerli olmalıdır.
+        // Önce yalnızca admin RPC'sini kontrol ederek üye/ayar RPC'lerindeki olası
+        // bağımsız bir hatanın yönetici sekmesini gizlemesini önlüyoruz.
+        const adminResult = await supabase.rpc('community_is_admin');
+        if (adminResult.error) throw adminResult.error;
+
+        if (Boolean(adminResult.data)) {
+          if (active) {
+            setCommunityNavVisible(true);
+            setCommunityCanPost(true);
+          }
+          return;
+        }
+
+        // Yönetici değilse normal üyelik ve genel etkinlik koşulları uygulanır.
+        const [memberResult, enabledResult] = await Promise.all([
           supabase.rpc('community_is_member'),
           supabase.rpc('community_is_enabled')
         ]);
-        if (adminResult.error || memberResult.error || enabledResult.error) {
-          throw adminResult.error || memberResult.error || enabledResult.error;
+        if (memberResult.error || enabledResult.error) {
+          throw memberResult.error || enabledResult.error;
         }
-        const allowed = Boolean(adminResult.data) || (Boolean(memberResult.data) && Boolean(enabledResult.data));
-        if (active) { setCommunityNavVisible(allowed); setCommunityCanPost(Boolean(memberResult.data)); }
+
+        const allowed = Boolean(memberResult.data) && Boolean(enabledResult.data);
+        if (active) {
+          setCommunityNavVisible(allowed);
+          setCommunityCanPost(Boolean(memberResult.data) && Boolean(enabledResult.data));
+        }
       } catch (error) {
         console.warn('Topluluk erişimi doğrulanamadı:', error);
-        if (active) { setCommunityNavVisible(false); setCommunityCanPost(false); }
+        if (active) {
+          setCommunityNavVisible(false);
+          setCommunityCanPost(false);
+        }
       }
     };
     void checkCommunityAccess();
