@@ -1,7 +1,7 @@
 import React from 'react';
 import { TabId } from '../types';
 import { AppIcon } from './AppIcon';
-import { Compass, Heart, Settings } from 'lucide-react';
+import { Compass, Heart, Settings, Users } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface BottomNavProps {
@@ -85,6 +85,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           <path d="M12 5L6 16M12 5L18 15M6 16L18 15M12 5L12 12" stroke="currentColor" strokeWidth="1.3" opacity={active ? "0.9" : "0.5"} />
         </svg>
       )
+    },
+    {
+      id: 'community',
+      labelKey: 'tab_community',
+      iconName: 'dashboard',
+      renderIcon: (active) => <Users className={`w-5 h-5 ${active ? 'stroke-[2.2]' : 'stroke-[1.8]'}`} />
     },
     {
       id: 'sets',
@@ -174,7 +180,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                     : 'text-[#527993] dark:text-[#7bb0cc] font-medium'
                 }`}
               >
-                {langDict[tab.labelKey]}
+                {langDict[tab.labelKey] || (tab.id === 'community' ? 'Topluluk' : tab.labelKey)}
               </span>
             </button>
           );
