@@ -81,6 +81,39 @@ export default function App() {
   // Active Tab
   const [currentTab, setCurrentTab] = useState<TabId>('home');
 
+  // Kapalı topluluk sekmesi yalnızca sunucu tarafında yetkilendirilmiş hesaplara gösterilir.
+  const [communityNavVisible, setCommunityNavVisible] = useState(false);
+  useEffect(() => {
+    let active = true;
+    const checkCommunityAccess = async () => {
+      if (!supabase || !auth.ready || !auth.user) {
+        if (active) setCommunityNavVisible(false);
+        return;
+      }
+      try {
+        const [adminResult, memberResult, enabledResult] = await Promise.all([
+          supabase.rpc('community_is_admin'),
+          supabase.rpc('community_is_member'),
+          supabase.rpc('community_is_enabled')
+        ]);
+        if (adminResult.error || memberResult.error || enabledResult.error) {
+          throw adminResult.error || memberResult.error || enabledResult.error;
+        }
+        const allowed = Boolean(adminResult.data) || (Boolean(memberResult.data) && Boolean(enabledResult.data));
+        if (active) setCommunityNavVisible(allowed);
+      } catch (error) {
+        console.warn('Topluluk erişimi doğrulanamadı:', error);
+        if (active) setCommunityNavVisible(false);
+      }
+    };
+    void checkCommunityAccess();
+    return () => { active = false; };
+  }, [auth.ready, auth.user?.id]);
+
+  useEffect(() => {
+    if (currentTab === 'community' && !communityNavVisible) setCurrentTab('home');
+  }, [currentTab, communityNavVisible]);
+
   // Settings State with LocalStorage persistence
   const [settings, setSettings] = useState<SettingsState>(() => loadSettings(DEFAULT_SETTINGS));
   const [wideViewport, setWideViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches);
@@ -1141,7 +1174,7 @@ export default function App() {
       )}
 
       {/* Duyarlı gezinme */}
-      <BottomNav currentTab={currentTab} onSelectTab={(tab) => {
+      <BottomNav showCommunity={communityNavVisible} currentTab={currentTab} onSelectTab={(tab) => {
         if (tab === "dashboard" && currentTab !== "dashboard") {
           setCurrentTab("dashboard");
           setShowTour(false);
