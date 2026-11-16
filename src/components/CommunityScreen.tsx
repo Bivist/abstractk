@@ -48,6 +48,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
   const [reports, setReports] = useState<ReportEntry[]>([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [adminUsingCommunity, setAdminUsingCommunity] = useState(false);
 
   const loadConsole = useCallback(async () => {
     if (!supabase || !userId) {
@@ -188,6 +189,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
             <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-sky-700 dark:text-sky-300"><Waves size={15} /> Abstract / Topluluk</div>
             <h1 className="font-serif text-3xl font-bold tracking-tight text-[var(--ink)] sm:text-4xl">{isAdmin ? 'Topluluk yönetimi' : 'Bilimsel topluluk'}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--mu)]">{isAdmin ? 'Kapalı beta erişimini, üyeleri ve yönetim kayıtlarını buradan kontrol et.' : 'Akademik topluluk alanı hazırlanıyor. Paylaşım ve iletişim özellikleri henüz etkin değil.'}</p>
+            {isAdmin && enabled && <button type="button" onClick={() => setAdminUsingCommunity(true)} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-sky-700 px-4 text-sm font-semibold text-white">Topluluk alanını görüntüle</button>}
           </div>
           <div className={`inline-flex items-center gap-2 self-start rounded-full border px-3 py-2 text-xs font-semibold ${enabled ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300'}`}>
             <span className={`h-2 w-2 rounded-full ${enabled ? 'bg-emerald-500' : 'bg-amber-500'}`} />
@@ -198,7 +200,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
         {error && <div role="alert" className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</div>}
         {notice && <div role="status" className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"><Check size={17} className="mt-0.5 shrink-0" />{notice}</div>}
 
-        {isAdmin ? (
+        {isAdmin && !adminUsingCommunity ? (
           <>
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-4"><div className="flex items-center gap-2 text-xs text-[var(--mu)]"><Users size={15} /> Kayıtlı üyeler</div><div className="mt-2 text-3xl font-bold text-[var(--ink)]">{memberCount}</div></div>
@@ -243,7 +245,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
             </section>
           </>
         ) : (
-          <CommunityMemberSpace userId={userId} notes={notes} pendingPaper={pendingPaper} onPendingPaperHandled={onPendingPaperHandled} />
+          <CommunityMemberSpace userId={userId} notes={notes} pendingPaper={pendingPaper} onPendingPaperHandled={onPendingPaperHandled} onReturnToAdmin={isAdmin ? () => setAdminUsingCommunity(false) : undefined} />
         )}
       </div>
     </div>
