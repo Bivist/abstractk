@@ -83,11 +83,12 @@ export default function App() {
 
   // Kapalı topluluk sekmesi yalnızca sunucu tarafında yetkilendirilmiş hesaplara gösterilir.
   const [communityNavVisible, setCommunityNavVisible] = useState(false);
+  const [communityCanPost, setCommunityCanPost] = useState(false);
   useEffect(() => {
     let active = true;
     const checkCommunityAccess = async () => {
       if (!supabase || !auth.ready || !auth.user) {
-        if (active) setCommunityNavVisible(false);
+        if (active) { setCommunityNavVisible(false); setCommunityCanPost(false); }
         return;
       }
       try {
@@ -100,10 +101,10 @@ export default function App() {
           throw adminResult.error || memberResult.error || enabledResult.error;
         }
         const allowed = Boolean(adminResult.data) || (Boolean(memberResult.data) && Boolean(enabledResult.data));
-        if (active) setCommunityNavVisible(allowed);
+        if (active) { setCommunityNavVisible(allowed); setCommunityCanPost(Boolean(memberResult.data)); }
       } catch (error) {
         console.warn('Topluluk erişimi doğrulanamadı:', error);
-        if (active) setCommunityNavVisible(false);
+        if (active) { setCommunityNavVisible(false); setCommunityCanPost(false); }
       }
     };
     void checkCommunityAccess();
@@ -575,6 +576,31 @@ export default function App() {
     if (result === 'copied') setToast(langDict.share_copied || 'Bağlantı kopyalandı');
     else if (result === 'failed') setToast(langDict.share_failed || 'Bağlantı paylaşılamadı');
   }, [settings.translate, langDict]);
+
+  const handleSharePaperToCommunity = useCallback(async (paper: Paper) => {
+    if (!supabase || !auth.user || !communityCanPost) {
+      setToast('Topluluk paylaşımı için etkin üyelik gerekiyor.');
+      return;
+    }
+    const confirmed = window.confirm('Bu makale kartını kapalı topluluk akışında paylaşmak istiyor musun? Yalnızca topluluk üyeleri görebilir.');
+    if (!confirmed) return;
+    const { error } = await supabase.from('community_posts').insert({
+      author_id: auth.user.id,
+      body: '',
+      paper: {
+        id: paper.id,
+        title: paper.title,
+        url: paper.link,
+        authors: paper.authors,
+        journal: paper.journal,
+        year: paper.year,
+        field: paper.sub || paper.field,
+        abstract: paper.abs
+      }
+    });
+    if (error) setToast('Makale toplulukta paylaşılamadı: ' + error.message);
+    else { setToast('Makale topluluk akışında paylaşıldı.'); setDetailPaper(null); }
+  }, [auth.user?.id, communityCanPost]);
 
   const handleAddPaperNote = useCallback((paper: Paper, type: PaperNote['type'], content: string) => {
     const now = Date.now();
@@ -1218,6 +1244,7 @@ export default function App() {
         isTranslating={settings.translate}
         langDict={langDict}
         onShare={handleSharePaper}
+        onShareToCommunity={communityCanPost ? handleSharePaperToCommunity : undefined}
         isLiked={!!detailPaper && likedPapers.some(p => p.id === detailPaper.id)}
         onToggleLike={handleToggleLikeInDetail}
         notes={detailPaper ? paperNotes.filter(note => note.paperId === detailPaper.id) : []}
