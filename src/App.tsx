@@ -81,7 +81,8 @@ export default function App() {
   // Active Tab
   const [currentTab, setCurrentTab] = useState<TabId>('home');
 
-  // Kapalı topluluk sekmesi yalnızca sunucu tarafında yetkilendirilmiş hesaplara gösterilir.
+  // Topluluk erişimi: kullanıcının kendi üyelik satırını RLS üzerinden oku.
+  // Böylece yönetici tespiti için ayrı RPC çağrısına bağımlı kalınmaz.
   const [communityNavVisible, setCommunityNavVisible] = useState(false);
   const [communityCanPost, setCommunityCanPost] = useState(false);
   const [communityPendingPaper, setCommunityPendingPaper] = useState<Paper | null>(null);
@@ -97,48 +98,57 @@ export default function App() {
         }
         return;
       }
-      if (active) setCommunityDiagnostic(`Hesap UID: ${auth.user.id} · Yönetici yetkisi sorgulanıyor…`);
-      try {
-        const adminResult = await supabase.rpc('community_is_admin');
-        if (adminResult.error) {
-          if (active) setCommunityDiagnostic(`Yönetici RPC HATASI: ${adminResult.error.message} (kod: ${adminResult.error.code || 'yok'}) · UID: ${auth.user.id}`);
-          throw adminResult.error;
-        }
 
-        if (Boolean(adminResult.data)) {
+      const uid = auth.user.id;
+      if (active) {
+        setCommunityNavVisible(false);
+        setCommunityCanPost(false);
+        setCommunityDiagnostic(`Hesap UID: ${uid} · Üyelik kaydı kontrol ediliyor…`);
+      }
+
+      try {
+        // Migration 002, kullanıcının kendi üyelik satırını authenticated rolüne açar;
+        // RLS politikası da user_id = auth.uid() koşuluyla erişimi sınırlar.
+        const { data: membership, error: membershipError } = await supabase
+          .from('community_memberships')
+          .select('role')
+          .eq('user_id', uid)
+          .maybeSingle();
+
+        if (membershipError) throw membershipError;
+
+        const role = membership?.role as 'admin' | 'member' | 'disabled' | undefined;
+        if (role === 'admin') {
           if (active) {
             setCommunityNavVisible(true);
             setCommunityCanPost(true);
-            setCommunityDiagnostic(`Yönetici RPC sonucu: TRUE · Topluluk sekmesi açıldı · UID: ${auth.user.id}`);
+            setCommunityDiagnostic(`Üyelik kaydı: ADMIN · Topluluk sekmesi açıldı (genel etkinlik anahtarından bağımsız) · UID: ${uid}`);
           }
           return;
         }
 
-        if (active) setCommunityDiagnostic(`Yönetici RPC sonucu: FALSE · Üyelik kontrol ediliyor · UID: ${auth.user.id}`);
-        const [memberResult, enabledResult] = await Promise.all([
-          supabase.rpc('community_is_member'),
-          supabase.rpc('community_is_enabled')
-        ]);
-        if (memberResult.error || enabledResult.error) {
-          const err = memberResult.error || enabledResult.error;
-          if (active) setCommunityDiagnostic(`Üyelik/etkinlik RPC HATASI: ${err.message} (kod: ${err.code || 'yok'}) · UID: ${auth.user.id}`);
-          throw err;
+        if (role !== 'member') {
+          if (active) {
+            setCommunityNavVisible(false);
+            setCommunityCanPost(false);
+            setCommunityDiagnostic(`Üyelik kaydı bulunamadı veya erişim kapalı (rol: ${role || 'yok'}) · UID: ${uid}`);
+          }
+          return;
         }
 
-        const allowed = Boolean(memberResult.data) && Boolean(enabledResult.data);
+        const { data: enabled, error: enabledError } = await supabase.rpc('community_is_enabled');
+        if (enabledError) throw enabledError;
+        const allowed = Boolean(enabled);
         if (active) {
           setCommunityNavVisible(allowed);
           setCommunityCanPost(allowed);
-          setCommunityDiagnostic(`Yönetici: FALSE · Üye: ${String(memberResult.data)} · Topluluk etkin: ${String(enabledResult.data)} · Sekme: ${allowed ? 'AÇIK' : 'KAPALI'} · UID: ${auth.user.id}`);
+          setCommunityDiagnostic(`Üyelik kaydı: MEMBER · Topluluk etkin: ${String(enabled)} · Sekme: ${allowed ? 'AÇIK' : 'KAPALI'} · UID: ${uid}`);
         }
       } catch (error) {
         console.warn('Topluluk erişimi doğrulanamadı:', error);
         if (active) {
           setCommunityNavVisible(false);
           setCommunityCanPost(false);
-          // React state güncellemesi asenkron olduğundan burada effect'in eski
-          // communityDiagnostic değerine bakma. RPC hatasını doğrudan yakalanan
-          // hata nesnesinden oluştur; böylece gerçek mesaj ve PostgreSQL kodu kaybolmaz.
           const rpcError = error as { message?: unknown; code?: unknown };
           const errorMessage = typeof rpcError?.message === 'string'
             ? rpcError.message
@@ -147,7 +157,7 @@ export default function App() {
               : String(error);
           const errorCode = typeof rpcError?.code === 'string' ? rpcError.code : '';
           setCommunityDiagnostic(
-            `Erişim kontrolü başarısız: ${errorMessage}${errorCode ? ` (kod: ${errorCode})` : ''} · UID: ${auth.user.id}`
+            `Erişim kontrolü başarısız: ${errorMessage}${errorCode ? ` (kod: ${errorCode})` : ''} · UID: ${uid}`
           );
         }
       }
@@ -155,7 +165,6 @@ export default function App() {
     void checkCommunityAccess();
     return () => { active = false; };
   }, [auth.ready, auth.user?.id]);
-
   useEffect(() => {
     if (currentTab === 'community' && !communityNavVisible) setCurrentTab('home');
   }, [currentTab, communityNavVisible]);
