@@ -10,6 +10,7 @@ interface BottomNavProps {
   langDict: Record<string, string>;
   likesCount: number;
   desktop?: boolean;
+  showCommunity?: boolean;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
@@ -17,7 +18,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onSelectTab,
   langDict,
   likesCount,
-  desktop = false
+  desktop = false,
+  showCommunity = false
 }) => {
   // Lighthouse SVG Icon for "Ana sayfa" matching reference image
   const LighthouseIcon = ({ active }: { active: boolean }) => (
@@ -114,7 +116,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       </div>
 
       <div className={desktop ? "flex flex-col gap-2" : "flex items-center justify-around max-w-md mx-auto"}>
-        {tabs.map((tab) => {
+        {tabs.filter(tab => tab.id !== 'community' || showCommunity).map((tab) => {
           const isActive = currentTab === tab.id;
           return (
             <button
