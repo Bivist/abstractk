@@ -49,7 +49,7 @@ begin
   if auth.uid() is null or not public.community_is_admin() then
     raise exception 'admin_only' using errcode='42501';
   end if;
-  if p_report_id is null or p_status not in ('reviewing','resolved','dismissed') then
+  if p_report_id is null or p_status is null or p_status not in ('reviewing','resolved','dismissed') then
     raise exception 'invalid_report_update' using errcode='22023';
   end if;
   update public.community_reports
