@@ -398,6 +398,71 @@ export const RAW_TAXONOMY: TaxonomyNode[] = [
     N("Diş Hekimliği", { s: { f: 35 } })
   ]),
 
+  // ── SANAT (Görsel, İşitsel, Sahne ve Tasarım Alanları) ──
+  N("Sanat", { s: { f: 12 }, q: 'art OR arts OR "visual arts" OR "fine arts" OR "performing arts" OR music OR architecture OR design OR cinema' }, [
+    N("Görsel Sanatlar", { q: '"visual arts" OR "fine arts" OR painting OR sculpture' }, C([
+      ["Resim ve Boya Sanatları", 'painting OR "oil painting" OR watercolor OR "acrylic painting" OR drawing'],
+      ["Heykel ve Üç Boyutlu Sanat", 'sculpture OR sculpting OR "three-dimensional art" OR installation'],
+      ["Baskıresim ve Grafik Sanatlar", '"printmaking" OR "graphic arts" OR engraving OR lithography'],
+      ["Çağdaş Sanat ve Kavramsal Sanat", '"contemporary art" OR "conceptual art" OR "new media art"'],
+      ["Seramik ve Cam Sanatı", 'ceramics OR "ceramic art" OR "glass art" OR glassblowing']
+    ])),
+    N("Müzik", { q: 'music OR musical OR musicianship' }, C([
+      ["Müzikoloji ve Müzik Tarihi", 'musicology OR "music history" OR "historical musicology"'],
+      ["Müzik Teorisi ve Analizi", '"music theory" OR "musical analysis" OR harmony OR counterpoint'],
+      ["Performans ve Yorumculuk", '"musical performance" OR musicianship OR virtuosity OR interpretation'],
+      ["Etnomüzikoloji ve Geleneksel Müzikler", 'ethnomusicology OR "traditional music" OR "world music"'],
+      ["Bestecilik ve Elektronik Müzik", 'composition OR "electronic music" OR orchestration OR improvisation'],
+      ["Müzik Eğitimi", '"music education" OR "instrumental teaching" OR "music pedagogy"']
+    ])),
+    N("Sahne ve Gösteri Sanatları", { q: '"performing arts" OR theatre OR dance OR opera' }, C([
+      ["Tiyatro ve Dramaturji", 'theatre OR theater OR dramaturgy OR playwriting OR "performance studies"'],
+      ["Dans ve Koreografi", 'dance OR choreography OR ballet OR "contemporary dance"'],
+      ["Opera ve Müzikal Tiyatro", 'opera OR "musical theatre" OR "music theatre"'],
+      ["Performans Sanatı", '"performance art" OR "live art" OR "body art"'],
+      ["Sahne Tasarımı ve Dekor", '"stage design" OR scenography OR "set design" OR "lighting design"']
+    ])),
+    N("Mimarlık ve Mekân Sanatları", { q: 'architecture OR architectural OR "spatial design"' }, C([
+      ["Mimarlık Tarihi ve Kuramı", '"architectural history" OR "architecture theory" OR "history of architecture"'],
+      ["Peyzaj Mimarlığı", '"landscape architecture" OR "landscape design"'],
+      ["İç Mimarlık ve Mekân Tasarımı", '"interior architecture" OR "interior design" OR "spatial design"'],
+      ["Kentsel Tasarım ve Kamusal Mekân", '"urban design" OR "public space" OR placemaking'],
+      ["Mimari Koruma ve Restorasyon", '"architectural conservation" OR "building restoration" OR "heritage conservation"']
+    ])),
+    N("Tasarım", { q: 'design OR "design studies"' }, C([
+      ["Grafik Tasarım ve Görsel İletişim", '"graphic design" OR "visual communication design" OR typography'],
+      ["Endüstriyel Ürün Tasarımı", '"industrial design" OR "product design" OR "design engineering"'],
+      ["Moda ve Tekstil Tasarımı", '"fashion design" OR "textile design" OR clothing design'],
+      ["Etkileşim ve Dijital Tasarım", '"interaction design" OR "digital design" OR "user experience design"'],
+      ["Oyun Tasarımı", '"game design" OR "level design" OR "game art"']
+    ])),
+    N("Sinema, Televizyon ve Yeni Medya", { q: 'cinema OR film OR filmmaking OR "media arts"' }, C([
+      ["Film Çalışmaları ve Sinema Kuramı", '"film studies" OR "film theory" OR "cinema studies"'],
+      ["Belgesel Sinema", 'documentary OR "documentary filmmaking" OR "creative documentary"'],
+      ["Film Yapımı ve Yönetmenlik", 'filmmaking OR "film directing" OR cinematography'],
+      ["Animasyon ve Görsel Efekt", 'animation OR "visual effects" OR CGI OR "computer animation"'],
+      ["Dijital ve Yeni Medya Sanatı", '"digital art" OR "new media art" OR "interactive art"']
+    ])),
+    N("Sanat Tarihi ve Eleştirisi", { q: '"art history" OR "art criticism" OR aesthetics' }, C([
+      ["Antik ve Ortaçağ Sanatı", '"ancient art" OR "medieval art" OR Byzantine art'],
+      ["Rönesans ve Barok Sanatı", 'Renaissance art OR "Baroque art" OR "early modern art"'],
+      ["Modern ve Çağdaş Sanat Tarihi", '"modern art" OR "contemporary art history" OR modernism'],
+      ["Sanat Kuramı ve Estetik", '"art theory" OR aesthetics OR "philosophy of art"'],
+      ["Sanat Eleştirisi ve Küratörlük", '"art criticism" OR curatorship OR curatorial studies OR exhibition']
+    ])),
+    N("Sanat Koruma ve Restorasyon", { q: '"art conservation" OR "art restoration" OR conservation science' }, C([
+      ["Resim ve Tablo Konservasyonu", '"painting conservation" OR "paintings restoration"'],
+      ["Heykel ve Obje Konservasyonu", '"sculpture conservation" OR "object conservation"'],
+      ["Kâğıt, Fotoğraf ve Arşiv Koruma", '"paper conservation" OR "photograph conservation" OR "archive preservation"'],
+      ["Kültürel Miras ve Müze Çalışmaları", '"cultural heritage" OR museology OR "museum studies"']
+    ])),
+    N("Fotoğrafçılık", { q: 'photography OR photographic' }, C([
+      ["Fotoğraf Tarihi ve Kuramı", '"history of photography" OR "photographic theory"'],
+      ["Belgesel ve Sanatsal Fotoğraf", '"documentary photography" OR "fine art photography"'],
+      ["Dijital Fotoğraf ve Görüntüleme", '"digital photography" OR "computational photography" OR imaging']
+    ]))
+  ]),
+
   // ── MATEMATİK VE İSTATİSTİK ──
   N("Matematik ve İstatistik", { s: { f: 26 } }, C([
     ["Uygulamalı Matematik ve Analiz", '"applied mathematics" OR "numerical analysis" OR differential equations'],
