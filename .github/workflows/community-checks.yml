@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/controlled-community-foundation
+      - feature/realtime-community-messages
   pull_request:
     branches:
       - main
