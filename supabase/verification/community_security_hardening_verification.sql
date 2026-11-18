@@ -65,3 +65,33 @@ select
 select
   has_schema_privilege('anon','public','CREATE') as anon_can_create_public,
   has_schema_privilege('authenticated','public','CREATE') as authenticated_can_create_public;
+
+
+-- 7) Verify the collaborative recommendation input bounds and scoring guard.
+select conname
+from pg_constraint
+where conrelid='public.community_interest_profiles'::regclass
+  and conname in (
+    'community_interest_profiles_liked_ids_bounds',
+    'community_interest_profiles_viewed_ids_bounds',
+    'community_interest_profiles_terms_bounds'
+  )
+order by conname;
+
+select
+  position('count(DISTINCT term)' in pg_get_functiondef(
+    'public.get_community_recommendations()'::regprocedure
+  )) > 0 as duplicate_terms_do_not_inflate_scores,
+  has_function_privilege('anon','public.get_community_recommendations()','EXECUTE') as anon_can_execute;
+
+-- 8) Verify the admin-role race guard and that no direct-update policies remain.
+select
+  position('pg_advisory_xact_lock' in pg_get_functiondef(
+    'public.community_admin_set_member(uuid,text)'::regprocedure
+  )) > 0 as admin_role_changes_are_serialized;
+
+select tablename, policyname, cmd
+from pg_policies
+where schemaname='public'
+  and tablename in ('community_posts','community_notifications')
+  and cmd='UPDATE';
