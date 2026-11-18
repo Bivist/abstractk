@@ -35,7 +35,7 @@ function friendlyError(error: unknown) {
   return 'İşlem tamamlanamadı. Lütfen tekrar dene.';
 }
 
-export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote[]; pendingPaper?: Paper | null; onPendingPaperHandled?: () => void }> = ({ userId, notes, pendingPaper, onPendingPaperHandled }) => {
+export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: string | null; notes: PaperNote[]; pendingPaper?: Paper | null; onPendingPaperHandled?: () => void }> = ({ userId, avatarUrl, notes, pendingPaper, onPendingPaperHandled }) => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMember, setIsMember] = useState(false);
@@ -184,7 +184,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
   }
 
   if (!isAdmin && !isMember) {
-    return <div className="flex flex-1 items-center justify-center overflow-y-auto p-6"><div className="w-full max-w-lg rounded-3xl border border-sky-200 bg-white p-8 text-center shadow-sm dark:border-sky-900 dark:bg-[#071828]"><div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"><ShieldCheck size={28} /></div><p className="text-xs font-bold uppercase tracking-[.2em] text-sky-700 dark:text-sky-300">Abstract · Kapalı beta</p><h2 className="mt-3 text-2xl font-bold">Bilimsel topluluk</h2><p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">Bu alan yalnızca davet edilen üyelere açıktır. Hesabına henüz topluluk erişimi tanımlanmamış.</p><div className="mt-6 rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:bg-slate-900/60">Erişim durumu: Yetkilendirme bekleniyor</div></div></div>;
+    return <div className="flex flex-1 items-center justify-center overflow-y-auto p-6"><div className="w-full max-w-lg rounded-3xl border border-sky-200 bg-white p-8 text-center shadow-sm dark:border-sky-900 dark:bg-[#071828]"><div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"><ShieldCheck size={28} /></div><p className="text-xs font-bold uppercase tracking-[.2em] text-sky-700 dark:text-sky-300">Abstract · Kapalı beta</p><h2 className="mt-3 text-2xl font-bold">Bilimsel topluluk</h2><p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">Topluluk erişimi şu anda hesabında etkin değil. Hesabına yeniden erişim vermek için yöneticiyle iletişime geçebilirsin.</p><div className="mt-6 rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:bg-slate-900/60">Erişim durumu: Yetkilendirme bekleniyor</div></div></div>;
   }
 
   return (
@@ -194,7 +194,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
           <div>
             <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-sky-700 dark:text-sky-300"><Waves size={15} /> Abstract / Topluluk</div>
             <h1 className="font-serif text-3xl font-bold tracking-tight text-[var(--ink)] sm:text-4xl">{isAdmin ? 'Topluluk yönetimi' : 'Bilimsel topluluk'}</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--mu)]">{isAdmin ? 'Kapalı beta erişimini, üyeleri ve yönetim kayıtlarını buradan kontrol et.' : 'Akademik topluluk alanı hazırlanıyor. Paylaşım ve iletişim özellikleri henüz etkin değil.'}</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--mu)]">{isAdmin ? 'Üyeleri ve erişim izinlerini buradan yönet. Yeni hesaplar otomatik olarak topluluğa üye olur; bireysel erişim kararları sende kalır.' : 'Akademik topluluk alanı hazırlanıyor. Paylaşım ve iletişim özellikleri henüz etkin değil.'}</p>
             {isAdmin && enabled && <button type="button" onClick={() => setAdminUsingCommunity(true)} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-sky-700 px-4 text-sm font-semibold text-white">Topluluk alanını görüntüle</button>}
           </div>
           <div className={`inline-flex items-center gap-2 self-start rounded-full border px-3 py-2 text-xs font-semibold ${enabled ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300'}`}>
@@ -216,7 +216,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
 
             <section className="rounded-3xl border border-[var(--ln)] bg-[var(--sf)] p-5 shadow-sm sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div><h2 className="text-lg font-bold text-[var(--ink)]">Genel erişim kontrolü</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Bu anahtar yalnızca topluluk modülünü etkiler; Abstract'ın diğer bölümlerini kapatmaz.</p></div>
+                <div><h2 className="text-lg font-bold text-[var(--ink)]">Genel erişim kontrolü</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Bu anahtar topluluk modülünü tüm üyeler için açar veya kapatır. Kullanıcı erişimini ayrıca aşağıdaki bölümden kişi bazında yönetebilirsin.</p></div>
                 <button
                   type="button"
                   onClick={() => void toggleCommunity()}
@@ -260,7 +260,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
             </section>
           </>
         ) : (
-          <CommunityMemberSpace userId={userId} notes={notes} pendingPaper={pendingPaper} onPendingPaperHandled={onPendingPaperHandled} onReturnToAdmin={isAdmin ? () => setAdminUsingCommunity(false) : undefined} />
+          <CommunityMemberSpace userId={userId} avatarUrl={avatarUrl} notes={notes} pendingPaper={pendingPaper} onPendingPaperHandled={onPendingPaperHandled} onReturnToAdmin={isAdmin ? () => setAdminUsingCommunity(false) : undefined} />
         )}
       </div>
     </div>

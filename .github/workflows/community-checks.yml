@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - feature/controlled-community-foundation
+      - feature/realtime-community-messages
+      - feature/community-mobile-auto-membership
   pull_request:
     branches:
       - main
+      - feature/controlled-community-foundation
     paths:
       - "src/**"
       - "supabase/**"
