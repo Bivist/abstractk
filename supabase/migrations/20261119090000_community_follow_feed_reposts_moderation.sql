@@ -1,6 +1,10 @@
 -- Curated, follow-based community feed, reposts, and audited post moderation.
 begin;
 
+alter table public.community_notifications drop constraint if exists community_notifications_kind_check;
+alter table public.community_notifications add constraint community_notifications_kind_check
+  check (kind in ('follow','like','comment','message','share','message_request','message_request_accepted','message_request_declined','connection_admin_created','post_removed'));
+
 alter table public.community_posts
   add column if not exists is_featured boolean not null default false,
   add column if not exists featured_at timestamptz,
