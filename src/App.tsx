@@ -86,7 +86,7 @@ export default function App() {
   const [communityNavVisible, setCommunityNavVisible] = useState(false);
   const [communityCanPost, setCommunityCanPost] = useState(false);
   const [communityPendingPaper, setCommunityPendingPaper] = useState<Paper | null>(null);
-  const [communityDiagnostic, setCommunityDiagnostic] = useState('Topluluk erişimi kontrol ediliyor…');
+  const [, setCommunityDiagnostic] = useState('Topluluk erişimi kontrol ediliyor…');
   useEffect(() => {
     let active = true;
 
