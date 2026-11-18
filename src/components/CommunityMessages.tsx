@@ -212,12 +212,20 @@ export const CommunityMessages: React.FC<{
         }
         void loadConversations();
       })
-      .subscribe();
+      .subscribe(status => {
+        // Reconcile the inbox after the socket is ready to cover any event that
+        // may have arrived while the first snapshot was loading or reconnecting.
+        if(status==='SUBSCRIBED'){
+          void loadConversations();
+          const current=activeConversationRef.current;
+          if(current)void openConversation(current);
+        }
+      });
     return () => {
       active = false;
       void supabase!.removeChannel(channel);
     };
-  }, [userId, loadConversations]);
+  }, [userId, loadConversations, openConversation]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
