@@ -217,7 +217,16 @@ export const CommunityScreen: React.FC<{ userId: string | null; notes: PaperNote
             <section className="rounded-3xl border border-[var(--ln)] bg-[var(--sf)] p-5 shadow-sm sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div><h2 className="text-lg font-bold text-[var(--ink)]">Genel erişim kontrolü</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Bu anahtar yalnızca topluluk modülünü etkiler; Abstract'ın diğer bölümlerini kapatmaz.</p></div>
-                <button type="button" disabled title="Topluluk akışı ve mesajlaşma tamamlanmadan genel erişim açılamaz." className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-[var(--ln)] bg-[var(--bg)] px-4 text-sm font-bold text-[var(--mu)] opacity-80">Geliştirme tamamlanınca etkinleştirilecek</button>
+                <button
+                  type="button"
+                  onClick={() => void toggleCommunity()}
+                  disabled={busy}
+                  aria-pressed={enabled}
+                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${enabled ? 'border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200' : 'bg-sky-700 text-white hover:bg-sky-800'}`}
+                >
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : enabled ? <UserX size={16} /> : <Check size={16} />}
+                  {busy ? 'İşleniyor…' : enabled ? 'Topluluğu kapat' : 'Topluluğu etkinleştir'}
+                </button>
               </div>
             </section>
 
