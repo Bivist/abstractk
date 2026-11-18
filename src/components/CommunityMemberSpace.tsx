@@ -301,14 +301,14 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
         setNotice('Mesaj isteğin gönderildi. Karşı taraf kabul ederse sohbet açılacak.');
         return;
       }
-      const {data,error}=await supabase.rpc('community_create_conversation',{p_user_ids:[otherId],p_kind:'direct',p_title:null});
+      const {data,error}=await supabase.rpc('community_create_approved_conversation',{p_user_ids:[otherId],p_kind:'direct',p_title:null});
       if(error)throw error;
       await loadConversations();setActiveConversation(data as string);setSection('messages');
     }catch(e){setError(errorText(e));}finally{setBusy(false);}
   };
   const startGroupConversation=async()=>{
     if(!supabase||selectedPeople.size<2)return;setBusy(true);setError('');
-    try{const {data,error}=await supabase.rpc('community_create_conversation',{p_user_ids:[...selectedPeople],p_kind:'group',p_title:groupTitle.trim()||'Akademik grup'});if(error)throw error;setSelectedPeople(new Set());setGroupTitle('');await loadConversations();setActiveConversation(data as string);setSection('messages');}
+    try{const {data,error}=await supabase.rpc('community_create_approved_conversation',{p_user_ids:[...selectedPeople],p_kind:'group',p_title:groupTitle.trim()||'Akademik grup'});if(error)throw error;setSelectedPeople(new Set());setGroupTitle('');await loadConversations();setActiveConversation(data as string);setSection('messages');}
     catch(e){setError(errorText(e));}finally{setBusy(false);}
   };
   const openConversation=async(id:string)=>{
@@ -322,7 +322,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     setBusy(true);setError('');
     try{
       const recipients=[...selectedPeople];
-      const {data:conversationId,error:createError}=await supabase.rpc('community_create_conversation',{p_user_ids:recipients,p_kind:recipients.length===1?'direct':'group',p_title:recipients.length===1?null:(groupTitle.trim()||'Makale paylaşımı')});
+      const {data:conversationId,error:createError}=await supabase.rpc('community_create_approved_conversation',{p_user_ids:recipients,p_kind:recipients.length===1?'direct':'group',p_title:recipients.length===1?null:(groupTitle.trim()||'Makale paylaşımı')});
       if(createError)throw createError;
       const attachment={id:pendingPaper.id,title:pendingPaper.title,url:pendingPaper.link,authors:pendingPaper.authors,journal:pendingPaper.journal,year:pendingPaper.year,field:pendingPaper.sub||pendingPaper.field,abstract:pendingPaper.abs};
       const {error:sendError}=await supabase.rpc('community_send_message',{p_conversation_id:conversationId,p_body:'Seninle bir akademik makale paylaştı.',p_attachment_type:'paper',p_attachment:attachment});
