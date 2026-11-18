@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, AlertCircle, Check, ChevronDown, Clock3, Loader2, Search, ShieldCheck, Users, UserX, Waves } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { CommunityMemberSpace } from './CommunityMemberSpace';
+import { CommunityPostModeration } from './CommunityPostModeration';
 import type { Paper, PaperNote } from '../types';
 
 type CommunityRole = 'admin' | 'member' | 'disabled';
@@ -224,6 +225,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
         {error && <div role="alert" className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</div>}
         {notice && <div role="status" className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"><Check size={17} className="mt-0.5 shrink-0" />{notice}</div>}
 
+        <CommunityPostModeration />
         {isAdmin && !adminUsingCommunity ? (
           <>
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
