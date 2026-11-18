@@ -289,9 +289,22 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     if(error)setError(errorText(error));else setNotifications(prev=>prev.map(n=>({...n,read_at:n.read_at||new Date().toISOString()})));
   };
   const startConversation=async(otherId:string)=>{
-    if(!supabase)return;setBusy(true);setError('');
-    try{const {data,error}=await supabase.rpc('community_create_conversation',{p_user_ids:[otherId],p_kind:'direct',p_title:null});if(error)throw error;await loadConversations();setActiveConversation(data as string);setSection('messages');}
-    catch(e){setError(errorText(e));}finally{setBusy(false);}
+    if(!supabase)return;setBusy(true);setError('');setNotice('');
+    try{
+      const {data:canMessage,error:checkError}=await supabase.rpc('community_can_message',{p_other:otherId});
+      if(checkError)throw checkError;
+      if(!canMessage){
+        const firstMessage=window.prompt('Bu üyeyle henüz bağlantınız yok. Mesaj isteği olarak göndermek istediğin ilk mesajı yaz:');
+        if(!firstMessage?.trim())return;
+        const {error:requestError}=await supabase.rpc('community_create_message_request',{p_recipient:otherId,p_body:firstMessage.trim(),p_attachment_type:null,p_attachment:null});
+        if(requestError)throw requestError;
+        setNotice('Mesaj isteğin gönderildi. Karşı taraf kabul ederse sohbet açılacak.');
+        return;
+      }
+      const {data,error}=await supabase.rpc('community_create_conversation',{p_user_ids:[otherId],p_kind:'direct',p_title:null});
+      if(error)throw error;
+      await loadConversations();setActiveConversation(data as string);setSection('messages');
+    }catch(e){setError(errorText(e));}finally{setBusy(false);}
   };
   const startGroupConversation=async()=>{
     if(!supabase||selectedPeople.size<2)return;setBusy(true);setError('');
