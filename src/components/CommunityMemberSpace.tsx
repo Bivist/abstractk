@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Bell, Bookmark, Check, Heart, Loader2, MessageCircle, MessageSquare, Plus, Search, Send, ShieldAlert, Users, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { PaperNote } from '../types';
+import { CommunityMessages } from './CommunityMessages';
 
-type Profile = { user_id:string; username:string; display_name:string; avatar_url:string|null; bio:string; affiliation:string; research_interests:string[]; };
+type Profile = { user_id:string; username:string; display_name:string; avatar_url:string|null; bio:string; affiliation:string; research_interests:string[]; profile_visibility?:'community'|'private'; searchable?:boolean; };
 type Post = { id:string; author_id:string; body:string; paper:Record<string,unknown>|null; created_at:string; };
 type Conversation = { id:string; kind:'direct'|'group'; title:string|null; updated_at:string; };
 type Message = { id:string; conversation_id:string; sender_id:string; body:string; attachment_type:string|null; attachment:Record<string,unknown>|null; created_at:string; };
@@ -17,7 +18,7 @@ function errorText(error:unknown) { return error && typeof error==='object' && '
 function shortId(id:string) { return id.slice(0,8); }
 function safeHttpUrl(value:unknown):string|null { try { const url=new URL(String(value)); return url.protocol==='https:'||url.protocol==='http:'?url.href:null; } catch { return null; } }
 
-export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pendingPaper?:import('../types').Paper|null; onPendingPaperHandled?:()=>void; onReturnToAdmin?:()=>void}> = ({userId,notes,pendingPaper,onPendingPaperHandled,onReturnToAdmin}) => {
+export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|null; notes:PaperNote[]; pendingPaper?:import('../types').Paper|null; onPendingPaperHandled?:()=>void; onReturnToAdmin?:()=>void}> = ({userId,avatarUrl,notes,pendingPaper,onPendingPaperHandled,onReturnToAdmin}) => {
   const [section,setSection]=useState<'feed'|'messages'|'people'|'notes'|'profile'>('feed');
   const [profile,setProfile]=useState<Profile|null>(null);
   const [profileVisibility,setProfileVisibility]=useState<'community'|'private'>('community');
@@ -30,6 +31,10 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
   const [followedPeople,setFollowedPeople]=useState<Set<string>>(new Set());
   const [notifications,setNotifications]=useState<{id:string;kind:string;actor_id:string|null;created_at:string;read_at:string|null}[]>([]);
   const [showNotifications,setShowNotifications]=useState(false);
+  const [viewedProfileId,setViewedProfileId]=useState<string|null>(null);
+  const [viewedProfile,setViewedProfile]=useState<Profile|null>(null);
+  const [viewedProfilePrivate,setViewedProfilePrivate]=useState(false);
+  const [profileLoading,setProfileLoading]=useState(false);
   const [bookmarks,setBookmarks]=useState<Set<string>>(new Set());
   const [commentCounts,setCommentCounts]=useState<Record<string,number>>({});
   const [comments,setComments]=useState<Record<string,{id:string;author_id:string;parent_id:string|null;body:string;created_at:string}[]>>({});
@@ -164,6 +169,39 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
     finally{setLoading(false);}
   },[loadProfile,loadFeed,loadConversations]);
   useEffect(()=>{void loadAll();},[loadAll]);
+
+  // Realtime bildirimleri yenileme gerektirmeden mevcut bildirim listesine eklenir.
+  useEffect(()=>{
+    if(!supabase||!userId)return;
+    let active=true;
+    const channel=supabase.channel('community-notifications-'+userId)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'community_notifications',filter:'user_id=eq.'+userId},payload=>{
+        if(!active)return;
+        const incoming=payload.new as {id:string;kind:string;actor_id:string|null;created_at:string;read_at:string|null};
+        if(!incoming?.id)return;
+        setNotifications(prev=>[incoming,...prev.filter(item=>item.id!==incoming.id)].slice(0,50));
+        setNotice('Yeni bir topluluk bildirimin var.');
+      })
+      .subscribe();
+    return()=>{active=false;void supabase!.removeChannel(channel);};
+  },[userId]);
+
+  // Hesap fotoğrafını topluluk profilinde de sakla; diğer kullanıcılar bu URL'yi
+  // yalnızca topluluk profilini görüntüleme izni varsa okuyabilir.
+  useEffect(()=>{
+    if(!supabase||!profile)return;
+    const nextAvatar=avatarUrl||null;
+    if((profile.avatar_url||null)===nextAvatar)return;
+    let cancelled=false;
+    void supabase.from('community_profiles').update({avatar_url:nextAvatar}).eq('user_id',userId).then(({error})=>{
+      if(cancelled)return;
+      if(error){setError(errorText(error));return;}
+      setProfile(current=>current?{...current,avatar_url:nextAvatar}:current);
+      setProfiles(current=>({...current,[userId]:current[userId]?{...current[userId],avatar_url:nextAvatar}:current[userId]}));
+    });
+    return()=>{cancelled=true;};
+  },[avatarUrl,profile?.user_id,profile?.avatar_url,userId]);
+
   useEffect(()=>{if(pendingPaper)setSection('people');},[pendingPaper?.id]);
 
   const saveProfile=async()=>{
@@ -172,7 +210,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
     if(!/^[a-zA-Z0-9_.-]{3,30}$/.test(username)){setError('Kullanıcı adı 3–30 karakter olmalı; harf, sayı, nokta, alt çizgi ve tire kullanılabilir.');return;}
     setBusy(true);setError('');setNotice('');
     try{
-      const payload={user_id:userId,username,display_name:profileDraft.display_name.trim().slice(0,80),bio:profileDraft.bio.trim().slice(0,500),affiliation:profileDraft.affiliation.trim().slice(0,120),research_interests:profileDraft.research_interests.split(',').map(x=>x.trim()).filter(Boolean).slice(0,12),profile_visibility:profileVisibility,searchable:profileVisibility==='community'};
+      const payload={user_id:userId,username,display_name:profileDraft.display_name.trim().slice(0,80),avatar_url:avatarUrl||null,bio:profileDraft.bio.trim().slice(0,500),affiliation:profileDraft.affiliation.trim().slice(0,120),research_interests:profileDraft.research_interests.split(',').map(x=>x.trim()).filter(Boolean).slice(0,12),profile_visibility:profileVisibility,searchable:profileVisibility==='community'};
       const {error}=await supabase.from('community_profiles').upsert(payload,{onConflict:'user_id'});if(error)throw error;
       await loadProfile();setNotice('Topluluk profilin kaydedildi.');
     }catch(e){setError(errorText(e));}finally{setBusy(false);}
@@ -271,6 +309,39 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
     try{const sharedNote=sharedNotes.find(n=>n.id===selectedSharedNoteId);const extraType=extraAttachmentType==='none'?null:extraAttachmentType;const extraPayload=extraType?{title:attachmentTitle.trim().slice(0,180),url:extraType==='research_summary'?null:safeHttpUrl(attachmentUrl),content:attachmentContent.trim().slice(0,12000)}:null;if(extraType&&extraType!=='research_summary'&&!extraPayload?.url)throw new Error('Geçerli bir https:// veya http:// bağlantısı gir.');if(extraType==='research_summary'&&!extraPayload?.content)throw new Error('Araştırma özeti boş olamaz.');const {error}=await supabase.rpc('community_send_message',{p_conversation_id:activeConversation,p_body:messageDraft.trim()||(sharedNote?'Seninle bir araştırma notu paylaştı.':extraType?'Seninle bir akademik içerik paylaştı.':''),p_attachment_type:sharedNote?'note_snapshot':extraType,p_attachment:sharedNote?{shared_note_id:sharedNote.id,snapshot:sharedNote.snapshot}:extraPayload});if(error)throw error;setMessageDraft('');setSelectedSharedNoteId('');setExtraAttachmentType('none');setAttachmentTitle('');setAttachmentUrl('');setAttachmentContent('');await openConversation(activeConversation);await loadConversations();}
     catch(e){setError(errorText(e));}finally{setBusy(false);}
   };
+  const openMemberProfile=async(otherId:string)=>{
+    if(otherId===userId){setSection('profile');return;}
+    if(!supabase)return;
+    setViewedProfileId(otherId);
+    setViewedProfile(null);
+    setViewedProfilePrivate(false);
+    setProfileLoading(true);
+    try{
+      const {data,error}=await supabase.from('community_profiles')
+        .select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests,profile_visibility,searchable')
+        .eq('user_id',otherId).maybeSingle();
+      if(error)throw error;
+      if(!data||data.profile_visibility!=='community'||data.searchable===false){
+        setViewedProfilePrivate(true);
+        return;
+      }
+      const visible=data as Profile;
+      setViewedProfile(visible);
+      setProfiles(prev=>({...prev,[otherId]:visible}));
+    }catch(e){
+      setViewedProfilePrivate(true);
+      setError(errorText(e));
+    }finally{
+      setProfileLoading(false);
+    }
+  };
+
+  const closeViewedProfile=()=>{
+    setViewedProfileId(null);
+    setViewedProfile(null);
+    setViewedProfilePrivate(false);
+  };
+
   const reportPost=async(postId:string)=>{
     if(!supabase)return;const reason=window.prompt('Bu gönderiyi neden bildirmek istiyorsun?');if(!reason?.trim())return;
     const {error}=await supabase.from('community_reports').insert({reporter_id:userId,target_type:'post',target_id:postId,reason:reason.trim().slice(0,1000)});
@@ -329,9 +400,25 @@ export const CommunityMemberSpace:React.FC<{userId:string; notes:PaperNote[]; pe
 
       {section==='people'&&<section className={card+' p-4'}>{pendingPaper&&<div className="mb-3 rounded-xl border border-sky-300 bg-sky-50 p-3 dark:border-sky-900 dark:bg-sky-950/30"><div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Makale gönderimi</div><div className="mt-1 text-sm font-semibold text-[var(--ink)]">{pendingPaper.title}</div><p className="mt-1 text-xs text-[var(--mu)]">Bir veya daha fazla alıcı seç. Tek alıcıya birebir, birden fazla alıcıya grup mesajı gönderilir.</p><button className={button+' mt-2'} disabled={busy||selectedPeople.size<1} onClick={()=>void sendPendingPaper()}><Send size={15}/> Seçilenlere makaleyi gönder ({selectedPeople.size})</button></div>}<h2 className="font-bold text-[var(--ink)]">Topluluk üyeleri</h2><p className="mt-1 text-xs text-[var(--mu)]">Yalnızca toplulukta görünür olmayı seçen üyeler listelenir.</p><div className="mt-3 flex gap-2"><input className={field} value={peopleQuery} onChange={e=>setPeopleQuery(e.target.value)} placeholder="Ad, kullanıcı adı veya kurum…"/><button className={button} disabled={busy} onClick={()=>void searchPeople()}><Search size={16}/> Ara</button></div><div className="mt-3 space-y-2">{selectedPeople.size>=2&&<div className="flex flex-wrap items-center gap-2 rounded-xl bg-[var(--bg)] p-3"><input className={field+' max-w-[220px]'} value={groupTitle} onChange={e=>setGroupTitle(e.target.value)} placeholder="Grup adı (isteğe bağlı)"/><button className={button} disabled={busy} onClick={()=>void startGroupConversation()}>Seçilenlerle grup kur ({selectedPeople.size})</button></div>}{people.map(p=><div key={p.user_id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--ln)] p-3"><div className="min-w-0"><div className="truncate text-sm font-bold text-[var(--ink)]">{p.display_name||p.username}</div><div className="text-xs text-[var(--mu)]">@{p.username} {p.affiliation?'· '+p.affiliation:''}</div><div className="mt-1 text-xs text-[var(--mu)]">{(p.research_interests||[]).join(' · ')}</div></div><div className="flex items-center gap-2"><label className="flex items-center gap-1 text-[10px] text-[var(--mu)]"><input type="checkbox" checked={selectedPeople.has(p.user_id)} onChange={e=>setSelectedPeople(prev=>{const n=new Set(prev);e.target.checked?n.add(p.user_id):n.delete(p.user_id);return n;})}/> Grup</label><button className="rounded-xl border border-[var(--ln)] px-3 py-2 text-xs font-semibold text-[var(--mu)]" onClick={()=>void toggleFollow(p.user_id)}>{followedPeople.has(p.user_id)?'Takibi bırak':'Takip et'}</button><button className="rounded-xl border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-600" onClick={()=>void blockMember(p.user_id)}>Engelle</button><button className={button} disabled={busy} onClick={()=>void startConversation(p.user_id)}><MessageCircle size={15}/> Mesaj</button></div></div>)}</div></section>}
 
-      {section==='messages'&&<div className="grid gap-3 md:grid-cols-[minmax(190px,0.8fr)_minmax(0,1.5fr)]">
-        <section className={card+' p-3'}><h2 className="mb-2 px-1 text-sm font-bold text-[var(--ink)]">Sohbetler</h2>{conversations.map(c=>{const other=(conversationMembers[c.id]||[]).find(x=>x!==userId);const p=other?profiles[other]:null;return <button key={c.id} onClick={()=>void openConversation(c.id)} className={`mb-1 w-full rounded-xl p-3 text-left ${activeConversation===c.id?'bg-sky-100 dark:bg-sky-950/50':'hover:bg-[var(--bg)]'}`}><div className="truncate text-sm font-semibold text-[var(--ink)]">{c.title||p?.display_name||p?.username||'Sohbet'}</div><div className="text-[10px] text-[var(--mu)]">{new Date(c.updated_at).toLocaleString('tr-TR')}</div></button>;})}{!conversations.length&&<p className="px-1 py-3 text-xs text-[var(--mu)]">Henüz sohbetin yok. Üyeler bölümünden mesaj başlatabilirsin.</p>}</section>
-        <section className={card+' flex min-h-[360px] flex-col p-3'}><div className="mb-2 flex items-center gap-2 border-b border-[var(--ln)] pb-2"><MessageCircle size={16} className="text-sky-700"/><h2 className="text-sm font-bold text-[var(--ink)]">Özel mesajlar</h2></div><div className="flex-1 space-y-2 overflow-y-auto py-2">{messages.map(m=><div key={m.id} className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.sender_id===userId?'ml-auto bg-sky-700 text-white':'bg-[var(--bg)] text-[var(--ink)]'}`}><p className="whitespace-pre-wrap break-words">{m.body}</p>{m.attachment_type==='paper'&&m.attachment&&<div className="mt-2 rounded-xl border border-white/20 bg-black/5 p-2"><div className="text-[9px] font-bold uppercase tracking-wider opacity-80">Akademik makale</div><div className="mt-1 font-semibold">{String(m.attachment.title||'Makale')}</div><div className="text-[10px] opacity-80">{String(m.attachment.authors||'')} · {String(m.attachment.journal||'')}</div>{safeHttpUrl(m.attachment.url)&&<a className="mt-1 inline-block text-[10px] underline" href={safeHttpUrl(m.attachment.url)!} target="_blank" rel="noopener noreferrer">Makaleyi aç</a>}</div>}{m.attachment_type==='note_snapshot'&&m.attachment&&<div className="mt-2 rounded-xl border border-white/20 bg-black/5 p-2"><div className="text-[9px] font-bold uppercase tracking-wider opacity-80">Paylaşılmış araştırma notu</div><div className="mt-1 font-semibold">{String((m.attachment.snapshot as Record<string,unknown>)?.paperTitle||'Bilim Defterim notu')}</div><p className="mt-1 whitespace-pre-wrap text-xs">{String((m.attachment.snapshot as Record<string,unknown>)?.content||'')}</p></div>}{(m.attachment_type==='citation'||m.attachment_type==='collection')&&m.attachment&&<div className="mt-2 rounded-xl border border-white/20 bg-black/5 p-2"><div className="text-[9px] font-bold uppercase tracking-wider opacity-80">{m.attachment_type==='citation'?'Kaynak / Atıf':'Koleksiyon bağlantısı'}</div><div className="mt-1 font-semibold">{String(m.attachment.title||'Paylaşılan bağlantı')}</div>{safeHttpUrl(m.attachment.url)&&<a className="mt-1 inline-block text-[10px] underline" href={safeHttpUrl(m.attachment.url)!} target="_blank" rel="noopener noreferrer">Bağlantıyı aç</a>}</div>}{m.attachment_type==='research_summary'&&m.attachment&&<div className="mt-2 rounded-xl border border-white/20 bg-black/5 p-2"><div className="text-[9px] font-bold uppercase tracking-wider opacity-80">Araştırma özeti</div><div className="mt-1 font-semibold">{String(m.attachment.title||'Araştırma özeti')}</div><p className="mt-1 whitespace-pre-wrap text-xs">{String(m.attachment.content||'')}</p></div>}<time className="mt-1 block text-right text-[9px] opacity-70">{new Date(m.created_at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</time></div>)}{!activeConversation&&<p className="m-auto py-12 text-center text-xs text-[var(--mu)]">Mesajlarını görmek için bir sohbet seç.</p>}</div>{activeConversation&&<div className="border-t border-[var(--ln)] pt-2"><div className="mb-2 flex gap-2"><select className={field+' max-w-[210px]'} value={selectedSharedNoteId} onChange={e=>{setSelectedSharedNoteId(e.target.value);if(e.target.value)setExtraAttachmentType('none');}}><option value="">Not ekleme</option>{sharedNotes.map(n=><option key={n.id} value={n.id}>{String(n.snapshot.paperTitle||'Paylaşılmış not')}</option>)}</select><span className="self-center text-[10px] text-[var(--mu)]">Önceden açıkça paylaşılmış notlardan</span></div><div className="mb-2 flex flex-wrap gap-2"><select className={field+' max-w-[210px]'} value={extraAttachmentType} onChange={e=>{setExtraAttachmentType(e.target.value as typeof extraAttachmentType);if(e.target.value!=='none')setSelectedSharedNoteId('');}}><option value="none">Ek içerik yok</option><option value="citation">Kaynak / DOI</option><option value="collection">Koleksiyon bağlantısı</option><option value="research_summary">Araştırma özeti</option></select>{extraAttachmentType!=='none'&&<input className={field+' min-w-[140px] flex-1'} value={attachmentTitle} onChange={e=>setAttachmentTitle(e.target.value)} placeholder="Başlık"/>}</div>{extraAttachmentType!=='none'&&<div className="mb-2 space-y-2">{extraAttachmentType!=='research_summary'&&<input className={field} value={attachmentUrl} onChange={e=>setAttachmentUrl(e.target.value)} placeholder="https://…"/>}<textarea className={field} rows={2} maxLength={12000} value={attachmentContent} onChange={e=>setAttachmentContent(e.target.value)} placeholder={extraAttachmentType==='research_summary'?'Araştırma özetini yaz…':'İsteğe bağlı kısa açıklama…'}/></div>}<div className="flex gap-2"><input className={field} value={messageDraft} onChange={e=>setMessageDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();void sendMessage();}}} placeholder="Mesaj yaz…" maxLength={5000}/><button className={button} disabled={busy||(!messageDraft.trim()&&!selectedSharedNoteId&&extraAttachmentType==='none')} onClick={()=>void sendMessage()} aria-label="Mesajı gönder"><Send size={16}/></button></div></div>}</section>
+      {section==='messages'&&<CommunityMessages userId={userId} initialConversationId={activeConversation} onOpenProfile={openMemberProfile}/>}
+      {viewedProfileId&&<div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4" onClick={closeViewedProfile}>
+        <section role="dialog" aria-modal="true" aria-label="Üye profili" onClick={e=>e.stopPropagation()} className="relative w-full max-w-md rounded-3xl border border-[var(--ln)] bg-[var(--sf)] p-5 shadow-2xl sm:p-6">
+          <button type="button" onClick={closeViewedProfile} className="absolute right-3 top-3 rounded-full p-2 text-[var(--mu)] hover:bg-[var(--bg)]" aria-label="Profili kapat">✕</button>
+          {profileLoading?<div className="flex items-center justify-center gap-2 py-14 text-sm text-[var(--mu)]"><Loader2 className="animate-spin" size={18}/> Profil yükleniyor…</div>
+          :viewedProfilePrivate||!viewedProfile?<div className="py-10 text-center"><div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800"><UserPlus size={24}/></div><h2 className="text-lg font-bold text-[var(--ink)]">Profil gizli</h2><p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-[var(--mu)]">Bu üye profilini toplulukla paylaşmayı seçmemiş.</p></div>
+          :<div className="pt-5 text-center">
+            <div className="relative mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-[var(--ln)] bg-sky-100 text-2xl font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-200">
+              {(viewedProfile.display_name||viewedProfile.username||'A').charAt(0).toLocaleUpperCase('tr-TR')}
+              {viewedProfile.avatar_url&&<img src={viewedProfile.avatar_url} alt="" className="absolute inset-0 h-full w-full object-cover" onError={e=>e.currentTarget.remove()}/>}
+            </div>
+            <h2 className="mt-3 text-xl font-bold text-[var(--ink)]">{viewedProfile.display_name||viewedProfile.username}</h2>
+            <div className="mt-1 text-xs text-[var(--mu)]">@{viewedProfile.username}</div>
+            {viewedProfile.affiliation&&<p className="mt-3 text-sm font-medium text-[var(--ink)]">{viewedProfile.affiliation}</p>}
+            {viewedProfile.bio&&<p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--mu)]">{viewedProfile.bio}</p>}
+            {!!viewedProfile.research_interests?.length&&<div className="mt-4"><div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--mu)]">Araştırma alanları</div><div className="flex flex-wrap justify-center gap-2">{viewedProfile.research_interests.map(item=><span key={item} className="rounded-full bg-sky-50 px-3 py-1.5 text-[11px] font-medium text-sky-800 dark:bg-sky-950/50 dark:text-sky-200">{item}</span>)}</div></div>}
+            <button type="button" className={button+' mt-5 w-full'} onClick={()=>{const id=viewedProfile.user_id;closeViewedProfile();void startConversation(id);}}><MessageCircle size={15}/> Mesaj gönder</button>
+          </div>}
+        </section>
       </div>}
       <p className="px-1 text-[10px] leading-5 text-[var(--mu)]">Topluluk gönderileri ve mesajları yalnızca yetkili üyeler içindir. Özel notların otomatik paylaşılmaz; paylaşım için ayrıca açık onay gereklidir.</p>
     </div>
