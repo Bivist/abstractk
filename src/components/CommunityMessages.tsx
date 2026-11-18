@@ -298,15 +298,15 @@ export const CommunityMessages: React.FC<{
   if (loading) return <div className="flex min-h-[420px] items-center justify-center gap-2 text-sm text-[var(--mu)]"><Loader2 size={18} className="animate-spin" /> Sohbetlerin yükleniyor…</div>;
 
   return (
-    <div className="grid min-h-[520px] grid-cols-1 gap-3 md:grid-cols-[300px_minmax(0,1fr)]">
-      <section className={card + ' ' + (activeConversation ? 'hidden md:flex' : 'flex') + ' min-h-[520px] flex-col overflow-hidden'}>
+    <div className="grid h-[min(68dvh,680px)] min-h-[360px] grid-cols-1 gap-3 md:h-[min(72dvh,680px)] md:min-h-[520px] md:grid-cols-[300px_minmax(0,1fr)]">
+      <section className={card + ' ' + (activeConversation ? 'hidden md:flex' : 'flex') + ' h-full min-h-0 flex-col overflow-hidden'}>
         <div className="border-b border-[var(--ln)] p-4">
           <div className="flex items-center justify-between gap-2">
             <div><h2 className="text-base font-bold text-[var(--ink)]">Mesajlar</h2><p className="mt-1 text-xs text-[var(--mu)]">Özel sohbetlerin</p></div>
             <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">{conversations.length} sohbet</span>
           </div>
         </div>
-        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain p-2">
           {conversations.map(conversation => {
             const ids = (participants[conversation.id] || []).filter(id => id !== userId);
             const otherId = conversation.kind === 'direct' ? ids[0] : null;
@@ -340,9 +340,9 @@ export const CommunityMessages: React.FC<{
         </div>
       </section>
 
-      <section className={card + ' ' + (activeConversation ? 'flex' : 'hidden md:flex') + ' min-h-[520px] flex-col overflow-hidden'}>
+      <section className={card + ' ' + (activeConversation ? 'flex' : 'hidden md:flex') + ' h-full min-h-0 flex-col overflow-hidden'}>
         {activeConversation ? <>
-          <header className="flex items-center gap-3 border-b border-[var(--ln)] px-3 py-3 sm:px-4">
+          <header className="flex shrink-0 items-center gap-2 border-b border-[var(--ln)] px-2.5 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
             <button type="button" className="rounded-lg p-2 text-[var(--mu)] hover:bg-[var(--bg)] md:hidden" onClick={() => setActiveConversation(null)} aria-label="Sohbet listesine dön"><ArrowLeft size={18} /></button>
             {activeRecord?.kind === 'group'
               ? <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"><Users size={17} /></span>
@@ -356,7 +356,7 @@ export const CommunityMessages: React.FC<{
             {directOtherId && <button type="button" onClick={() => onOpenProfile(directOtherId)} className="rounded-xl border border-[var(--ln)] px-3 py-2 text-[10px] font-semibold text-[var(--mu)]">Profili gör</button>}
           </header>
 
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:px-4">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain touch-pan-y px-2.5 py-3 sm:px-4 sm:py-4">
             {loadingMessages && <div className="flex items-center justify-center gap-2 py-8 text-xs text-[var(--mu)]"><Loader2 size={16} className="animate-spin" /> Mesajlar yükleniyor…</div>}
             {!loadingMessages && messages.map(message => {
               const mine = message.sender_id === userId;
@@ -381,7 +381,7 @@ export const CommunityMessages: React.FC<{
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="border-t border-[var(--ln)] p-3 sm:p-4">
+          <div className="shrink-0 border-t border-[var(--ln)] p-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4">
             {showExtras && <div className="mb-3 space-y-2 rounded-2xl bg-[var(--bg)] p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <select className={field + ' min-w-0 flex-1'} value={selectedSharedNoteId} onChange={e => { setSelectedSharedNoteId(e.target.value); if (e.target.value) setExtraAttachmentType('none'); }}>
@@ -400,8 +400,8 @@ export const CommunityMessages: React.FC<{
             </div>}
             <div className="flex items-end gap-2">
               <button type="button" onClick={() => setShowExtras(value => !value)} className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl border border-[var(--ln)] px-3 text-[var(--mu)] hover:bg-[var(--bg)]" aria-label="Akademik içerik ekle" title="Akademik içerik ekle"><Paperclip size={17} /></button>
-              <textarea className={field + ' min-h-[44px] max-h-28 flex-1 resize-y'} rows={1} value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} placeholder="Mesaj yaz…" maxLength={5000} />
-              <button className={button + ' h-11 min-h-11 w-11 shrink-0 px-0'} disabled={sending || (!draft.trim() && !selectedSharedNoteId && extraAttachmentType === 'none')} onClick={() => void sendMessage()} aria-label="Mesajı gönder">{sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}</button>
+              <textarea className={field + ' min-h-[44px] max-h-28 min-w-0 flex-1 resize-y px-3 py-2.5'} rows={1} value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage(); } }} placeholder="Mesaj yaz…" maxLength={5000} />
+              <button className={button + ' h-11 min-h-11 w-11 shrink-0 rounded-xl px-0'} disabled={sending || (!draft.trim() && !selectedSharedNoteId && extraAttachmentType === 'none')} onClick={() => void sendMessage()} aria-label="Mesajı gönder">{sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}</button>
             </div>
             <div className="mt-1.5 px-1 text-[9px] text-[var(--mu)]">Enter ile gönder · Shift + Enter ile alt satıra geç</div>
           </div>
