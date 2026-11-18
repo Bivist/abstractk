@@ -110,7 +110,16 @@ export default function App() {
       // Bu hesap için yönetici sekmesini RPC yanıtını beklemeden görünür yap.
       // Bu yalnızca arayüz gezinmesini açar; yönetim verileri ve işlemleri Supabase
       // SECURITY DEFINER/RLS kontrolleriyle korunmaya devam eder.
-      const knownAdmin = uid === '3e547aac-78be-4e40-b293-0cd55a4c31bd';
+      // Yönetici hesabını hem kalıcı Supabase UID'si hem de doğrulanmış e-posta
+      // üzerinden tanı. Google ve e-posta/şifre girişleri aynı Supabase kullanıcısına
+      // bağlı olsa da OAuth oturumunda UID farklı gelirse erişim kaybolmasın.
+      const normalizedEmail = (auth.user.email || '').trim().toLocaleLowerCase('en-US');
+      const isVerifiedAdminEmail =
+        normalizedEmail === 'binalifurkana@gmail.com' &&
+        Boolean(auth.user.email_confirmed_at);
+      const knownAdmin =
+        uid === '3e547aac-78be-4e40-b293-0cd55a4c31bd' ||
+        isVerifiedAdminEmail;
       if (active) {
         setCommunityNavVisible(knownAdmin);
         setCommunityCanPost(knownAdmin);
