@@ -89,12 +89,17 @@ export default function App() {
   const [communityDiagnostic, setCommunityDiagnostic] = useState('Topluluk erişimi kontrol ediliyor…');
   useEffect(() => {
     let active = true;
+
     const checkCommunityAccess = async () => {
       if (!supabase || !auth.ready || !auth.user) {
         if (active) {
           setCommunityNavVisible(false);
           setCommunityCanPost(false);
-          setCommunityDiagnostic(!supabase ? 'Supabase istemcisi başlatılamadı.' : !auth.ready ? 'Oturum henüz hazır değil.' : 'Bu tarayıcıda giriş yapılmamış.');
+          setCommunityDiagnostic(!supabase
+            ? 'Supabase istemcisi başlatılamadı.'
+            : !auth.ready
+              ? 'Oturum henüz hazır değil.'
+              : 'Bu tarayıcıda giriş yapılmamış.');
         }
         return;
       }
@@ -103,46 +108,59 @@ export default function App() {
       if (active) {
         setCommunityNavVisible(false);
         setCommunityCanPost(false);
-        setCommunityDiagnostic(`Hesap UID: ${uid} · Üyelik kaydı kontrol ediliyor…`);
+        setCommunityDiagnostic(`Hesap UID: ${uid} · Yönetici ve üyelik yetkisi kontrol ediliyor…`);
       }
 
       try {
-        // Migration 002, kullanıcının kendi üyelik satırını authenticated rolüne açar;
-        // RLS politikası da user_id = auth.uid() koşuluyla erişimi sınırlar.
-        const { data: membership, error: membershipError } = await supabase
-          .from('community_memberships')
-          .select('role')
-          .eq('user_id', uid)
-          .maybeSingle();
+        // Admin kontrolünü güvenli RPC ile yap; üyelik satırını da ikinci,
+        // bağımsız sinyal olarak oku. Böylece tek bir RLS/tablo okuma sorunu
+        // gerçek yöneticinin sekmesini yanlışlıkla gizleyemez.
+        const [adminResult, membershipResult] = await Promise.all([
+          supabase.rpc('community_is_admin'),
+          supabase
+            .from('community_memberships')
+            .select('role')
+            .eq('user_id', uid)
+            .maybeSingle()
+        ]);
 
-        if (membershipError) throw membershipError;
+        const role = membershipResult.data?.role as 'admin' | 'member' | 'disabled' | undefined;
+        const isAdmin = adminResult.data === true || role === 'admin';
 
-        const role = membership?.role as 'admin' | 'member' | 'disabled' | undefined;
-        if (role === 'admin') {
+        if (isAdmin) {
           if (active) {
             setCommunityNavVisible(true);
             setCommunityCanPost(true);
-            setCommunityDiagnostic(`Üyelik kaydı: ADMIN · Topluluk sekmesi açıldı (genel etkinlik anahtarından bağımsız) · UID: ${uid}`);
+            setCommunityDiagnostic(`Yönetici yetkisi doğrulandı · Topluluk sekmesi açık · UID: ${uid}`);
           }
           return;
         }
 
-        if (role !== 'member') {
+        // Admin sinyallerinden hiçbiri olumlu değilse, üye erişimini yalnızca
+        // genel beta anahtarı açık olduğunda ver.
+        if (membershipResult.error && adminResult.error) {
+          throw membershipResult.error;
+        }
+
+        if (role === 'member') {
+          const { data: enabled, error: enabledError } = await supabase.rpc('community_is_enabled');
+          if (enabledError) throw enabledError;
+          const allowed = enabled === true;
           if (active) {
-            setCommunityNavVisible(false);
-            setCommunityCanPost(false);
-            setCommunityDiagnostic(`Üyelik kaydı bulunamadı veya erişim kapalı (rol: ${role || 'yok'}) · UID: ${uid}`);
+            setCommunityNavVisible(allowed);
+            setCommunityCanPost(allowed);
+            setCommunityDiagnostic(`Üyelik: MEMBER · Topluluk etkin: ${String(enabled)} · Sekme: ${allowed ? 'AÇIK' : 'KAPALI'} · UID: ${uid}`);
           }
           return;
         }
 
-        const { data: enabled, error: enabledError } = await supabase.rpc('community_is_enabled');
-        if (enabledError) throw enabledError;
-        const allowed = Boolean(enabled);
+        if (membershipResult.error) throw membershipResult.error;
+        if (adminResult.error) throw adminResult.error;
+
         if (active) {
-          setCommunityNavVisible(allowed);
-          setCommunityCanPost(allowed);
-          setCommunityDiagnostic(`Üyelik kaydı: MEMBER · Topluluk etkin: ${String(enabled)} · Sekme: ${allowed ? 'AÇIK' : 'KAPALI'} · UID: ${uid}`);
+          setCommunityNavVisible(false);
+          setCommunityCanPost(false);
+          setCommunityDiagnostic(`Yönetici/üye yetkisi bulunamadı (rol: ${role || 'yok'}) · UID: ${uid}`);
         }
       } catch (error) {
         console.warn('Topluluk erişimi doğrulanamadı:', error);
@@ -162,6 +180,7 @@ export default function App() {
         }
       }
     };
+
     void checkCommunityAccess();
     return () => { active = false; };
   }, [auth.ready, auth.user?.id]);
@@ -1241,13 +1260,6 @@ export default function App() {
         onDismiss={() => setIsPolarNight(false)}
         durationSeconds={60}
       />
-
-      {/* Geçici topluluk erişim tanılaması: yalnızca oturum açmış kullanıcıya gösterilir. */}
-      {auth.user && (
-        <div role="status" className="absolute left-3 right-3 top-3 z-[80] rounded-xl border border-amber-300 bg-amber-50/95 px-3 py-2 text-[11px] leading-relaxed text-amber-950 shadow-lg dark:border-amber-700 dark:bg-[#2b2414]/95 dark:text-amber-100">
-          <strong>Topluluk tanılaması:</strong> {communityDiagnostic}
-        </div>
-      )}
 
       {/* Küçük uyarı kutusu (ortak yayın bulunamadı vb.) */}
       {notice && (
