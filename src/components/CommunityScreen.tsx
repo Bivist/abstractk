@@ -13,6 +13,7 @@ type CommunityUser = {
   created_at: string;
   role?: CommunityRole;
 };
+type AdminMemberDirectoryItem = { user_id: string; role: CommunityRole; created_at: string; display_name: string; username: string; };
 type ReportEntry = { id:string; reporter_id:string; target_type:string; target_id:string; reason:string; status:string; created_at:string; };
 type AuditEntry = {
   id: number;
@@ -45,6 +46,9 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
   const [query, setQuery] = useState('');
   const [users, setUsers] = useState<CommunityUser[]>([]);
   const [selectedConnectionUsers, setSelectedConnectionUsers] = useState<Set<string>>(new Set());
+  const [memberDirectory, setMemberDirectory] = useState<AdminMemberDirectoryItem[]>([]);
+  const [showMemberDirectory, setShowMemberDirectory] = useState(false);
+  const [memberDirectoryQuery, setMemberDirectoryQuery] = useState('');
   const [selectedConnectionAccounts, setSelectedConnectionAccounts] = useState<Record<string, CommunityUser>>({});
   const [memberships, setMemberships] = useState<Record<string, CommunityRole>>({});
   const [audit, setAudit] = useState<AuditEntry[]>([]);
@@ -77,7 +81,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
 
       if (admin) {
         const [memberRows, auditRows, reportRows] = await Promise.all([
-          supabase.from('community_memberships').select('user_id, role').order('updated_at', { ascending: false }).limit(200),
+          supabase.from('community_memberships').select('user_id, role, created_at').order('created_at', { ascending: false }).limit(1000),
           supabase.from('community_admin_audit').select('id, actor_id, action, target_user_id, details, created_at').order('created_at', { ascending: false }).limit(30),
           supabase.from('community_reports').select('id,reporter_id,target_type,target_id,reason,status,created_at').order('created_at',{ascending:false}).limit(50)
         ]);
@@ -87,6 +91,22 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
         const next: Record<string, CommunityRole> = {};
         (memberRows.data || []).forEach((row: any) => { next[row.user_id] = row.role as CommunityRole; });
         setMemberships(next);
+        const activeMemberRows = (memberRows.data || []).filter((row: any) => row.role === 'member');
+        const memberIds = activeMemberRows.map((row: any) => row.user_id);
+        if (memberIds.length) {
+          const { data: profileRows, error: profileError } = await supabase
+            .from('community_profiles')
+            .select('user_id, display_name, username')
+            .in('user_id', memberIds);
+          if (profileError) throw profileError;
+          const profileMap = new Map((profileRows || []).map((profile: any) => [profile.user_id, profile]));
+          setMemberDirectory(activeMemberRows.map((row: any) => {
+            const profile = profileMap.get(row.user_id) as any;
+            return { user_id: row.user_id, role: row.role as CommunityRole, created_at: row.created_at, display_name: profile?.display_name || '', username: profile?.username || '' };
+          }));
+        } else {
+          setMemberDirectory([]);
+        }
         setAudit((auditRows.data || []) as AuditEntry[]);
         setReports((reportRows.data || []) as ReportEntry[]);
       }
@@ -223,6 +243,8 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
           </div>
         </header>
 
+        {showMemberDirectory && isAdmin && <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-3 sm:p-6" onClick={() => setShowMemberDirectory(false)}><section role="dialog" aria-modal="true" aria-labelledby="community-member-directory-title" onClick={e => e.stopPropagation()} className="flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-[var(--ln)] bg-[var(--sf)] shadow-2xl"><header className="flex items-start justify-between gap-3 border-b border-[var(--ln)] p-4 sm:p-5"><div><h2 id="community-member-directory-title" className="text-lg font-bold text-[var(--ink)]">Kayıtlı üyeler</h2><p className="mt-1 text-xs text-[var(--mu)]">Topluluğa katılan üyeler ve katılım tarihleri</p></div><button type="button" onClick={() => setShowMemberDirectory(false)} aria-label="Pencereyi kapat" className="rounded-xl p-2 text-xl leading-none text-[var(--mu)] hover:bg-[var(--bg)]">×</button></header><div className="border-b border-[var(--ln)] p-3 sm:p-4"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--mu)]"/><input autoFocus value={memberDirectoryQuery} onChange={e => setMemberDirectoryQuery(e.target.value)} placeholder="Üye adı veya kullanıcı adı ara…" className="h-10 w-full rounded-xl border border-[var(--ln)] bg-[var(--bg)] pl-10 pr-3 text-sm text-[var(--ink)] outline-none focus:border-sky-500"/></div><div className="mt-2 text-[11px] text-[var(--mu)]">{memberDirectory.filter(member => `${member.display_name} ${member.username}`.toLocaleLowerCase('tr-TR').includes(memberDirectoryQuery.trim().toLocaleLowerCase('tr-TR'))).length} üye listeleniyor</div></div><div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4"><div className="space-y-2">{memberDirectory.filter(member => `${member.display_name} ${member.username}`.toLocaleLowerCase('tr-TR').includes(memberDirectoryQuery.trim().toLocaleLowerCase('tr-TR'))).map(member => <div key={member.user_id} className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--ln)] bg-[var(--bg)] p-3"><div className="min-w-0"><div className="truncate text-sm font-semibold text-[var(--ink)]">{member.display_name || 'İsimsiz üye'}</div><div className="truncate text-xs text-[var(--mu)]">{member.username ? `@${member.username}` : 'Kullanıcı adı yok'}</div></div><div className="shrink-0 text-right"><div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--mu)]">Katılım tarihi</div><time className="mt-0.5 block text-xs font-semibold text-[var(--ink)]">{member.created_at ? new Date(member.created_at).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) : 'Tarih bilgisi yok'}</time></div></div>)}{!memberDirectory.length && <p className="rounded-xl bg-[var(--bg)] p-4 text-center text-sm text-[var(--mu)]">Henüz kayıtlı üye bulunmuyor.</p>}{memberDirectory.length > 0 && !memberDirectory.some(member => `${member.display_name} ${member.username}`.toLocaleLowerCase('tr-TR').includes(memberDirectoryQuery.trim().toLocaleLowerCase('tr-TR'))) && <p className="rounded-xl bg-[var(--bg)] p-4 text-center text-sm text-[var(--mu)]">Aramayla eşleşen üye bulunamadı.</p>}</div></div><footer className="border-t border-[var(--ln)] p-3 text-right"><button type="button" onClick={() => setShowMemberDirectory(false)} className="rounded-xl bg-sky-700 px-4 py-2.5 text-xs font-bold text-white">Kapat</button></footer></section></div>}
+
         {error && <div role="alert" className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200"><AlertCircle size={17} className="mt-0.5 shrink-0" />{error}</div>}
         {notice && <div role="status" className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"><Check size={17} className="mt-0.5 shrink-0" />{notice}</div>}
 
@@ -230,7 +252,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
         {isAdmin && !adminUsingCommunity ? (
           <>
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-4"><div className="flex items-center gap-2 text-xs text-[var(--mu)]"><Users size={15} /> Kayıtlı üyeler</div><div className="mt-2 text-3xl font-bold text-[var(--ink)]">{memberCount}</div></div>
+              <button type="button" onClick={() => { setMemberDirectoryQuery(''); setShowMemberDirectory(true); }} aria-haspopup="dialog" className="rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-4 text-left transition hover:border-sky-400 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"><div className="flex items-center justify-between gap-2"><div className="flex items-center gap-2 text-xs text-[var(--mu)]"><Users size={15} /> Kayıtlı üyeler</div><span className="text-[10px] font-semibold text-sky-700 dark:text-sky-300">Listeyi görüntüle →</span></div><div className="mt-2 text-3xl font-bold text-[var(--ink)]">{memberCount}</div></button>
               <div className="rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-4"><div className="flex items-center gap-2 text-xs text-[var(--mu)]"><ShieldCheck size={15} /> Yöneticiler</div><div className="mt-2 text-3xl font-bold text-[var(--ink)]">{adminCount}</div></div>
               <div className="rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-4"><div className="flex items-center gap-2 text-xs text-[var(--mu)]"><Activity size={15} /> Son yönetim kaydı</div><div className="mt-2 text-sm font-semibold text-[var(--ink)]">{audit[0] ? new Date(audit[0].created_at).toLocaleString('tr-TR') : 'Henüz kayıt yok'}</div></div>
             </section>
