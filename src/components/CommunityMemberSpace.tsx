@@ -294,9 +294,17 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     setNotice('Üye engellendi.');
   };
   const toggleFollow=async(otherId:string)=>{
-    if(!supabase||otherId===userId)return;const active=followedPeople.has(otherId);setFollowedPeople(prev=>{const n=new Set(prev);active?n.delete(otherId):n.add(otherId);return n;});
-    const result=active?await supabase.from('community_follows').delete().eq('follower_id',userId).eq('followed_id',otherId):await supabase.from('community_follows').insert({follower_id:userId,followed_id:otherId});
-    if(result.error){setError(errorText(result.error));setFollowedPeople(prev=>{const n=new Set(prev);active?n.add(otherId):n.delete(otherId);return n;});}
+    if(!supabase||otherId===userId)return;
+    const active=followedPeople.has(otherId);
+    setError('');
+    setFollowedPeople(prev=>{const n=new Set(prev);active?n.delete(otherId):n.add(otherId);return n;});
+    const {error}=await supabase.rpc('community_toggle_follow',{p_followed_id:otherId,p_follow:!active});
+    if(error){
+      setError(error.message.includes('follow_target_unavailable')?'Bu hesap şu anda takip edilebilir durumda değil.':error.message.includes('follow_blocked')?'Engelleme nedeniyle bu hesabı takip edemezsin.':errorText(error));
+      setFollowedPeople(prev=>{const n=new Set(prev);active?n.add(otherId):n.delete(otherId);return n;});
+    }else{
+      setNotice(active?'Takipten çıktın.':'Kullanıcı takip ediliyor.');
+    }
   };
   const markNotificationsRead=async()=>{
     if(!supabase)return;const unread=notifications.filter(n=>!n.read_at).map(n=>n.id);if(!unread.length)return;
