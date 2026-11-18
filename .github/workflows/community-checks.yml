@@ -6,6 +6,7 @@ on:
       - feature/controlled-community-foundation
       - feature/realtime-community-messages
       - feature/community-mobile-auto-membership
+      - feature/community-sharing-requests
   pull_request:
     branches:
       - main
