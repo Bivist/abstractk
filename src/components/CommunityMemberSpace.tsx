@@ -32,7 +32,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   const [profiles,setProfiles]=useState<Record<string,Profile>>({});
   const [likes,setLikes]=useState<Set<string>>(new Set());
   const [followedPeople,setFollowedPeople]=useState<Set<string>>(new Set());
-  const [notifications,setNotifications]=useState<{id:string;kind:string;actor_id:string|null;created_at:string;read_at:string|null}[]>([]);
+  const [notifications,setNotifications]=useState<{id:string;kind:string;actor_id:string|null;created_at:string;read_at:string|null;payload?:Record<string,unknown>}[]>([]);
   const [showNotifications,setShowNotifications]=useState(false);
   const [viewedProfileId,setViewedProfileId]=useState<string|null>(null);
   const [viewedProfile,setViewedProfile]=useState<Profile|null>(null);
@@ -83,7 +83,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     if(error) throw error;
     const rows=(data||[]) as Post[]; setPosts(rows); setFeedHasMore(rows.length===40);
     const sourceIds=[...new Set(rows.map(p=>p.repost_of).filter((id):id is string=>!!id))];
-    if(sourceIds.length){const {data:sourceRows,error:sourceError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').in('id',sourceIds);if(sourceError)throw sourceError;setSourcePosts(prev=>({...prev,...Object.fromEntries(((sourceRows||[]) as Post[]).map(p=>[p.id,p]))}));}
+    if(sourceIds.length){const {data:sourceRows,error:sourceError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').in('id',sourceIds);if(sourceError)throw sourceError;const sourceList=(sourceRows||[]) as Post[];setSourcePosts(prev=>({...prev,...Object.fromEntries(sourceList.map(p=>[p.id,p]))}));const sourceAuthors=[...new Set(sourceList.map(p=>p.author_id))];if(sourceAuthors.length){const {data:sourceProfiles,error:sourceProfileError}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',sourceAuthors);if(sourceProfileError)throw sourceProfileError;setProfiles(prev=>({...prev,...Object.fromEntries((sourceProfiles||[]).map((p:any)=>[p.user_id,p as Profile]))}));}}
     const ids=rows.map(p=>p.id);
     if(!ids.length) {setProfiles({});setLikes(new Set());setBookmarks(new Set());setCommentCounts({});}
     if(ids.length){
@@ -129,7 +129,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
       if(error)throw error;
       const rows=(data||[]) as Post[];setPosts(prev=>[...prev,...rows]);if(rows.length<40)setFeedHasMore(false);
       const sourceIds=[...new Set(rows.map(p=>p.repost_of).filter((id):id is string=>!!id))];
-      if(sourceIds.length){const {data:sourceRows,error:sourceError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').in('id',sourceIds);if(sourceError)throw sourceError;setSourcePosts(prev=>({...prev,...Object.fromEntries(((sourceRows||[]) as Post[]).map(p=>[p.id,p]))}));}
+      if(sourceIds.length){const {data:sourceRows,error:sourceError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').in('id',sourceIds);if(sourceError)throw sourceError;const sourceList=(sourceRows||[]) as Post[];setSourcePosts(prev=>({...prev,...Object.fromEntries(sourceList.map(p=>[p.id,p]))}));const sourceAuthors=[...new Set(sourceList.map(p=>p.author_id))];if(sourceAuthors.length){const {data:sourceProfiles,error:sourceProfileError}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',sourceAuthors);if(sourceProfileError)throw sourceProfileError;setProfiles(prev=>({...prev,...Object.fromEntries((sourceProfiles||[]).map((p:any)=>[p.user_id,p as Profile]))}));}}
       const ids=rows.map(p=>p.id);
       if(ids.length){
         const [pr,lr,br,cr]=await Promise.all([
@@ -173,7 +173,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   const loadAll=useCallback(async()=>{
     if(!supabase){setLoading(false);return;}
     setLoading(true);setError('');
-    try { await Promise.all([loadProfile(),loadFeed(),loadConversations()]); const [n,b]=await Promise.all([supabase.from('community_notifications').select('id,kind,actor_id,created_at,read_at').eq('user_id',userId).order('created_at',{ascending:false}).limit(20),supabase.from('community_blocks').select('blocked_id').eq('blocker_id',userId)]); if(n.error)throw n.error;if(b.error)throw b.error;setNotifications((n.data||[]) as any[]);const blockedIds=(b.data||[]).map((x:any)=>x.blocked_id);if(blockedIds.length){const {data:bp,error:be}=await supabase.from('community_profiles').select('user_id,username,display_name').in('user_id',blockedIds);if(be)throw be;const pmap:Record<string,any>={};(bp||[]).forEach((x:any)=>pmap[x.user_id]=x);setBlockedMembers(blockedIds.map((id:string)=>({blocked_id:id,username:pmap[id]?.username,display_name:pmap[id]?.display_name})));}else setBlockedMembers([]); }
+    try { await Promise.all([loadProfile(),loadFeed(),loadConversations()]); const [n,b]=await Promise.all([supabase.from('community_notifications').select('id,kind,actor_id,created_at,read_at,payload').eq('user_id',userId).order('created_at',{ascending:false}).limit(20),supabase.from('community_blocks').select('blocked_id').eq('blocker_id',userId)]); if(n.error)throw n.error;if(b.error)throw b.error;setNotifications((n.data||[]) as any[]);const blockedIds=(b.data||[]).map((x:any)=>x.blocked_id);if(blockedIds.length){const {data:bp,error:be}=await supabase.from('community_profiles').select('user_id,username,display_name').in('user_id',blockedIds);if(be)throw be;const pmap:Record<string,any>={};(bp||[]).forEach((x:any)=>pmap[x.user_id]=x);setBlockedMembers(blockedIds.map((id:string)=>({blocked_id:id,username:pmap[id]?.username,display_name:pmap[id]?.display_name})));}else setBlockedMembers([]); }
     catch(e){setError(errorText(e));}
     finally{setLoading(false);}
   },[loadProfile,loadFeed,loadConversations]);
@@ -186,7 +186,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     const channel=supabase.channel('community-notifications-'+userId)
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'community_notifications',filter:'user_id=eq.'+userId},payload=>{
         if(!active)return;
-        const incoming=payload.new as {id:string;kind:string;actor_id:string|null;created_at:string;read_at:string|null};
+        const incoming=payload.new as {id:string;kind:string;actor_id:string|null;created_at:string;read_at:string|null;payload?:Record<string,unknown>};
         if(!incoming?.id)return;
         setNotifications(prev=>[incoming,...prev.filter(item=>item.id!==incoming.id)].slice(0,50));
         setNotice('Yeni bir topluluk bildirimin var.');
@@ -402,7 +402,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   return <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--bg)] px-3 py-4 sm:px-6 sm:py-6">
     <div className="mx-auto max-w-4xl space-y-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><div className="text-xs font-bold uppercase tracking-[.18em] text-sky-700 dark:text-sky-300">Abstract · Kapalı topluluk</div><h1 className="mt-1 font-serif text-2xl font-bold text-[var(--ink)] sm:text-3xl">Bilimsel topluluk</h1><p className="mt-1 text-sm text-[var(--mu)]">Akademik paylaşım ve araştırmacılar arası iletişim alanı.</p></div><div className="flex items-center gap-3">{onReturnToAdmin&&<button className="rounded-xl border border-[var(--ln)] px-3 py-2 text-xs font-semibold text-[var(--mu)]" onClick={onReturnToAdmin}>Yönetim paneli</button>}<button className="relative rounded-xl border border-[var(--ln)] p-2 text-[var(--mu)]" onClick={()=>{setShowNotifications(v=>!v);void markNotificationsRead();}} aria-label="Bildirimler"><Bell size={18}/>{notifications.some(n=>!n.read_at)&&<span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-rose-500"/>}</button><div className="text-xs text-[var(--mu)]">{profile?'@'+profile.username:'Profilini tamamla'}</div></div></header>
-      {showNotifications&&<section className={card+' p-3'}><div className="mb-2 text-sm font-bold text-[var(--ink)]">Bildirimler</div>{notifications.map(n=><div key={n.id} className="border-t border-[var(--ln)] py-2 text-xs text-[var(--mu)]">{n.kind==='like'?'Gönderin beğenildi.':n.kind==='comment'?'Gönderine yorum yapıldı.':n.kind==='follow'?'Yeni bir takipçin var.':n.kind==='message'?'Yeni mesajın var.':n.kind==='post_removed'?'Bir gönderin yönetim tarafından kaldırıldı.':'Yeni topluluk bildirimi.'} · {new Date(n.created_at).toLocaleString('tr-TR')}</div>)}{!notifications.length&&<p className="text-xs text-[var(--mu)]">Henüz bildirimin yok.</p>}</section>}
+      {showNotifications&&<section className={card+' p-3'}><div className="mb-2 text-sm font-bold text-[var(--ink)]">Bildirimler</div>{notifications.map(n=><div key={n.id} className="border-t border-[var(--ln)] py-2 text-xs text-[var(--mu)]">{n.kind==='like'?'Gönderin beğenildi.':n.kind==='comment'?'Gönderine yorum yapıldı.':n.kind==='follow'?'Yeni bir takipçin var.':n.kind==='message'?'Yeni mesajın var.':n.kind==='post_removed'?'Bir gönderin kaldırıldı. Gerekçe: '+String(n.payload?.reason||'Topluluk kuralları'):'Yeni topluluk bildirimi.'} · {new Date(n.created_at).toLocaleString('tr-TR')}</div>)}{!notifications.length&&<p className="text-xs text-[var(--mu)]">Henüz bildirimin yok.</p>}</section>}
       <nav className="grid grid-cols-5 gap-1 rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-1">{tabs.map(t=><button key={t.id} onClick={()=>{setSection(t.id);setError('');}} className={`flex min-h-12 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-semibold leading-tight sm:min-h-10 sm:flex-row sm:gap-2 sm:px-2 sm:text-sm ${section===t.id?'bg-sky-700 text-white':'text-[var(--mu)] hover:bg-[var(--bg)]'}`}><t.icon size={15}/><span className="max-w-full truncate">{t.label}</span></button>)}</nav>
       {error&&<div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">{error}</div>}
       {notice&&<div role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">{notice}</div>}
