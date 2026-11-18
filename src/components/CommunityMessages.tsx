@@ -54,8 +54,9 @@ const MemberAvatar: React.FC<{ profile?: Profile | null; label?: string; size?: 
 export const CommunityMessages: React.FC<{
   userId: string;
   initialConversationId?: string | null;
+  onInitialConversationHandled?: () => void;
   onOpenProfile: (userId: string) => void;
-}> = ({ userId, initialConversationId, onOpenProfile }) => {
+}> = ({ userId, initialConversationId, onInitialConversationHandled, onOpenProfile }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [participants, setParticipants] = useState<Record<string, string[]>>({});
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
@@ -63,6 +64,7 @@ export const CommunityMessages: React.FC<{
   const [latestMessages, setLatestMessages] = useState<Record<string, Message>>({});
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const activeConversationRef = useRef<string | null>(null);
+  const initialConversationHandledRef = useRef<string | null>(null);
   activeConversationRef.current = activeConversation;
   const [messages, setMessages] = useState<Message[]>([]);
   const [sharedNotes, setSharedNotes] = useState<SharedNote[]>([]);
@@ -184,8 +186,15 @@ export const CommunityMessages: React.FC<{
   }, [loadConversations]);
 
   useEffect(() => {
-    if (initialConversationId) void openConversation(initialConversationId);
-  }, [initialConversationId, openConversation]);
+    if (!initialConversationId) {
+      initialConversationHandledRef.current = null;
+      return;
+    }
+    if (initialConversationHandledRef.current === initialConversationId) return;
+    initialConversationHandledRef.current = initialConversationId;
+    void openConversation(initialConversationId);
+    onInitialConversationHandled?.();
+  }, [initialConversationId, openConversation, onInitialConversationHandled]);
 
   // RLS, her mesaj olayını yalnızca o konuşmayı okuyabilen üyelere iletir.
   useEffect(() => {
