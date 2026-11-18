@@ -40,6 +40,7 @@ import { PolarAuroraEffect } from './components/PolarAuroraEffect';
 import { NotFoundPage } from './components/NotFoundPage';
 import { CookieConsent } from './components/CookieConsent';
 import { CommunityScreen } from './components/CommunityScreen';
+import { CommunityPaperShareSheet } from './components/CommunityPaperShareSheet';
 
 const DEFAULT_SETTINGS: SettingsState = {
   theme: 'auto',
@@ -86,6 +87,7 @@ export default function App() {
   const [communityNavVisible, setCommunityNavVisible] = useState(false);
   const [communityCanPost, setCommunityCanPost] = useState(false);
   const [communityPendingPaper, setCommunityPendingPaper] = useState<Paper | null>(null);
+  const [communitySharePaper, setCommunitySharePaper] = useState<Paper | null>(null);
   const setCommunityDiagnostic = (message: string) => {
     console.info('[Abstract topluluk erişimi]', message);
   };
@@ -691,11 +693,9 @@ export default function App() {
   }, [auth.user?.id, communityCanPost]);
 
   const handleSendPaperToCommunity = useCallback((paper: Paper) => {
-    if (!communityCanPost) { setToast('Makale göndermek için etkin topluluk üyeliği gerekiyor.'); return; }
-    setCommunityPendingPaper(paper);
-    setDetailPaper(null);
-    setCurrentTab('community');
-  }, [communityCanPost]);
+    if (!communityCanPost || !auth.user) { setToast('Makale göndermek için etkin topluluk üyeliği gerekiyor.'); return; }
+    setCommunitySharePaper(paper);
+  }, [communityCanPost, auth.user?.id]);
 
   const handleAddPaperNote = useCallback((paper: Paper, type: PaperNote['type'], content: string) => {
     const now = Date.now();
@@ -1333,6 +1333,12 @@ export default function App() {
       />
 
       {/* Paper Detail Sheet */}
+      <CommunityPaperShareSheet
+        userId={auth.user?.id || ''}
+        paper={communitySharePaper}
+        onClose={() => setCommunitySharePaper(null)}
+        onSent={message => setToast(message)}
+      />
       <DetailSheet
         paper={detailPaper}
         onClose={handleCloseDetail}
