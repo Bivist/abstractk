@@ -107,9 +107,13 @@ export default function App() {
       }
 
       const uid = auth.user.id;
+      // Bu hesap için yönetici sekmesini RPC yanıtını beklemeden görünür yap.
+      // Bu yalnızca arayüz gezinmesini açar; yönetim verileri ve işlemleri Supabase
+      // SECURITY DEFINER/RLS kontrolleriyle korunmaya devam eder.
+      const knownAdmin = uid === '3e547aac-78be-4e40-b293-0cd55a4c31bd';
       if (active) {
-        setCommunityNavVisible(false);
-        setCommunityCanPost(false);
+        setCommunityNavVisible(knownAdmin);
+        setCommunityCanPost(knownAdmin);
         setCommunityDiagnostic(`Hesap UID: ${uid} · Yönetici ve üyelik yetkisi kontrol ediliyor…`);
       }
 
@@ -127,7 +131,7 @@ export default function App() {
         ]);
 
         const role = membershipResult.data?.role as 'admin' | 'member' | 'disabled' | undefined;
-        const isAdmin = adminResult.data === true || role === 'admin';
+        const isAdmin = knownAdmin || adminResult.data === true || role === 'admin';
 
         if (isAdmin) {
           if (active) {
@@ -167,8 +171,8 @@ export default function App() {
       } catch (error) {
         console.warn('Topluluk erişimi doğrulanamadı:', error);
         if (active) {
-          setCommunityNavVisible(false);
-          setCommunityCanPost(false);
+          setCommunityNavVisible(knownAdmin);
+          setCommunityCanPost(knownAdmin);
           const rpcError = error as { message?: unknown; code?: unknown };
           const errorMessage = typeof rpcError?.message === 'string'
             ? rpcError.message
