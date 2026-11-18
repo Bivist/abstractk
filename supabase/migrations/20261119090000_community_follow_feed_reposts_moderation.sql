@@ -67,6 +67,45 @@ using (
   )
 );
 
+create or replace function public.community_toggle_follow(p_followed_id uuid,p_follow boolean)
+returns boolean
+language plpgsql
+security definer
+set search_path=''
+as $function$
+begin
+  if auth.uid() is null or not public.community_is_member() then
+    raise exception 'community_membership_required' using errcode='42501';
+  end if;
+  if p_followed_id is null or p_followed_id=auth.uid() then
+    raise exception 'cannot_follow_self' using errcode='22023';
+  end if;
+  if p_follow then
+    if not exists (
+      select 1 from public.community_memberships m
+      join public.community_profiles p on p.user_id=m.user_id
+      where m.user_id=p_followed_id and m.role in ('admin','member')
+        and p.profile_visibility='community' and p.searchable=true
+    ) then raise exception 'follow_target_unavailable' using errcode='42501'; end if;
+    if exists(select 1 from public.community_blocks b
+      where (b.blocker_id=auth.uid() and b.blocked_id=p_followed_id)
+         or (b.blocker_id=p_followed_id and b.blocked_id=auth.uid())) then
+      raise exception 'follow_blocked' using errcode='42501';
+    end if;
+    insert into public.community_follows(follower_id,followed_id)
+    values(auth.uid(),p_followed_id) on conflict(follower_id,followed_id) do nothing;
+    return true;
+  else
+    delete from public.community_follows
+    where follower_id=auth.uid() and followed_id=p_followed_id;
+    return false;
+  end if;
+end;
+$function$;
+
+revoke all on function public.community_toggle_follow(uuid,boolean) from public,anon,authenticated;
+grant execute on function public.community_toggle_follow(uuid,boolean) to authenticated;
+
 create or replace function public.community_repost_post(p_source_post_id uuid, p_note text)
 returns uuid
 language plpgsql
