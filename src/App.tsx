@@ -88,6 +88,7 @@ export default function App() {
   const [communityCanPost, setCommunityCanPost] = useState(false);
   const [communityPendingPaper, setCommunityPendingPaper] = useState<Paper | null>(null);
   const [communitySharePaper, setCommunitySharePaper] = useState<Paper | null>(null);
+  const [communityShareConfirmPaper, setCommunityShareConfirmPaper] = useState<Paper | null>(null);
   const setCommunityDiagnostic = (message: string) => {
     console.info('[Abstract topluluk erişimi]', message);
   };
@@ -672,8 +673,13 @@ export default function App() {
       setToast('Topluluk paylaşımı için etkin üyelik gerekiyor.');
       return;
     }
-    const confirmed = window.confirm('Bu makale kartını kapalı topluluk akışında paylaşmak istiyor musun? Yalnızca topluluk üyeleri görebilir.');
-    if (!confirmed) return;
+    setCommunityShareConfirmPaper(paper);
+  }, [auth.user?.id, communityCanPost]);
+
+  const confirmSharePaperToCommunity = useCallback(async () => {
+    const paper = communityShareConfirmPaper;
+    if (!supabase || !auth.user || !paper) return;
+    setCommunityShareConfirmPaper(null);
     const { error } = await supabase.from('community_posts').insert({
       author_id: auth.user.id,
       body: '',
@@ -690,7 +696,7 @@ export default function App() {
     });
     if (error) setToast('Makale toplulukta paylaşılamadı: ' + error.message);
     else { setToast('Makale topluluk akışında paylaşıldı.'); setDetailPaper(null); }
-  }, [auth.user?.id, communityCanPost]);
+  }, [auth.user?.id, communityShareConfirmPaper]);
 
   const handleSendPaperToCommunity = useCallback((paper: Paper) => {
     if (!communityCanPost || !auth.user) { setToast('Makale göndermek için etkin topluluk üyeliği gerekiyor.'); return; }
@@ -1339,6 +1345,15 @@ export default function App() {
         onClose={() => setCommunitySharePaper(null)}
         onSent={message => setToast(message)}
       />
+      {communityShareConfirmPaper&&<div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/45 p-4" onClick={()=>setCommunityShareConfirmPaper(null)}>
+        <section role="dialog" aria-modal="true" aria-labelledby="community-share-title" onClick={event=>event.stopPropagation()} className="w-full max-w-sm rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-5 shadow-2xl">
+          <div className="text-[10px] font-bold uppercase tracking-[.18em] text-sky-700 dark:text-sky-300">Abstract · Topluluk</div>
+          <h2 id="community-share-title" className="mt-2 text-lg font-bold text-[var(--ink)]">Akışta paylaş</h2>
+          <p className="mt-1 text-sm leading-6 text-[var(--mu)]">Bu makale, topluluk akışında takipçilerinle paylaşılacak.</p>
+          <div className="mt-3 rounded-xl bg-[var(--bg)] p-3 text-sm font-semibold text-[var(--ink)]">{communityShareConfirmPaper.title}</div>
+          <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={()=>setCommunityShareConfirmPaper(null)} className="rounded-xl border border-[var(--ln)] px-4 py-2.5 text-sm font-semibold text-[var(--mu)]">Vazgeç</button><button type="button" onClick={()=>void confirmSharePaperToCommunity()} className="rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white">Paylaş</button></div>
+        </section>
+      </div>}
       <DetailSheet
         paper={detailPaper}
         onClose={handleCloseDetail}
