@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -19,19 +19,27 @@ export function useAuth(): AuthState {
   useEffect(() => {
     if (!supabase) return;
     let active = true;
+    // INITIAL_SESSION / SIGNED_IN olayları, getSession cevabından sonra gelirse
+    // eski bir oturum cevabının yeni Google oturumunu ezmesini engelle.
+    const authEventSeen = { current: false };
 
-    supabase.auth.getSession().then(({ data }) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return;
-      setSession(data.session);
-      setReady(true);
-    }).catch(() => { if (active) setReady(true); });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-      if (!active) return;
-      setSession(s);
+      authEventSeen.current = true;
+      setSession(nextSession);
       if (event === 'PASSWORD_RECOVERY') setRecovery(true);
       if (event === 'SIGNED_OUT') setRecovery(false);
       setReady(true);
+    });
+
+    // Bazı istemci başlangıçlarında INITIAL_SESSION olayı gelmeyebilir;
+    // getSession yalnızca henüz auth olayı alınmadıysa başlangıç yedeğidir.
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active || authEventSeen.current) return;
+      setSession(data.session);
+      setReady(true);
+    }).catch(() => {
+      if (active && !authEventSeen.current) setReady(true);
     });
 
     return () => {
