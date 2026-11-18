@@ -86,7 +86,9 @@ export default function App() {
   const [communityNavVisible, setCommunityNavVisible] = useState(false);
   const [communityCanPost, setCommunityCanPost] = useState(false);
   const [communityPendingPaper, setCommunityPendingPaper] = useState<Paper | null>(null);
-  const [, setCommunityDiagnostic] = useState('Topluluk erişimi kontrol ediliyor…');
+  const setCommunityDiagnostic = (message: string) => {
+    console.info('[Abstract topluluk erişimi]', message);
+  };
   useEffect(() => {
     let active = true;
 
