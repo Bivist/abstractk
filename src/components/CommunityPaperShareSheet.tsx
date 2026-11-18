@@ -44,8 +44,6 @@ export const CommunityPaperShareSheet: React.FC<{
   const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-  const [sent, setSent] = useState(0);
-  const [requested, setRequested] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -154,8 +152,6 @@ export const CommunityPaperShareSheet: React.FC<{
           failed.push(person?.display_name || person?.username || 'Bir üye');
         }
       }
-      setSent(directCount);
-      setRequested(requestCount);
       if (failed.length) {
         setError('Şu kişilere gönderilemedi: ' + failed.join(', ') + '. Daha önce bekleyen istek veya engelleme olabilir.');
       }
