@@ -182,7 +182,20 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
         setNotifications(prev=>[incoming,...prev.filter(item=>item.id!==incoming.id)].slice(0,50));
         setNotice('Yeni bir topluluk bildirimin var.');
       })
-      .subscribe();
+      .subscribe(status=>{
+        if(status==='SUBSCRIBED'){
+          void supabase!.from('community_notifications')
+            .select('id,kind,actor_id,created_at,read_at')
+            .eq('user_id',userId)
+            .order('created_at',{ascending:false})
+            .limit(50)
+            .then(({data,error})=>{
+              if(!active)return;
+              if(error){setError(errorText(error));return;}
+              setNotifications((data||[]) as any[]);
+            });
+        }
+      });
     return()=>{active=false;void supabase!.removeChannel(channel);};
   },[userId]);
 
