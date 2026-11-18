@@ -102,7 +102,103 @@ begin
 end;
 $$;
 
--- 4) Serialize admin-role changes to prevent concurrent removal of the last admin.
+-- 4) Bound collaborative-recommendation input and prevent duplicate-term score inflation.
+-- The app intentionally uses collaborative recommendations for signed-in users.
+-- Only aggregate paper IDs/relevance are returned; raw profiles and user IDs stay private.
+do $
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.community_interest_profiles'::regclass
+      and conname = 'community_interest_profiles_liked_ids_bounds'
+  ) then
+    alter table public.community_interest_profiles
+      add constraint community_interest_profiles_liked_ids_bounds
+      check (
+        cardinality(liked_paper_ids) <= 500
+        and pg_column_size(liked_paper_ids) <= 65536
+        and array_position(liked_paper_ids, null) is null
+      );
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.community_interest_profiles'::regclass
+      and conname = 'community_interest_profiles_viewed_ids_bounds'
+  ) then
+    alter table public.community_interest_profiles
+      add constraint community_interest_profiles_viewed_ids_bounds
+      check (
+        cardinality(viewed_paper_ids) <= 500
+        and pg_column_size(viewed_paper_ids) <= 65536
+        and array_position(viewed_paper_ids, null) is null
+      );
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.community_interest_profiles'::regclass
+      and conname = 'community_interest_profiles_terms_bounds'
+  ) then
+    alter table public.community_interest_profiles
+      add constraint community_interest_profiles_terms_bounds
+      check (
+        cardinality(interest_terms) <= 300
+        and pg_column_size(interest_terms) <= 65536
+        and array_position(interest_terms, null) is null
+      );
+  end if;
+end;
+$;
+
+-- A user may only read/write their own raw interest profile (existing RLS).
+-- This RPC deliberately computes recommendations across profiles without
+-- returning another user's identity or raw interest terms. DISTINCT prevents
+-- duplicate array entries from artificially inflating a profile's score.
+create or replace function public.get_community_recommendations()
+returns table (paper_id text, relevance bigint)
+language sql
+security definer
+set search_path = public, pg_temp
+as $
+  with mine as (
+    select liked_paper_ids, viewed_paper_ids, interest_terms
+    from public.community_interest_profiles
+    where user_id = auth.uid()
+      and auth.uid() is not null
+  ),
+  similar_users as (
+    select
+      other.user_id,
+      other.liked_paper_ids,
+      (
+        select count(distinct term)::bigint
+        from unnest(other.interest_terms) as terms(term)
+        where term = any(mine.interest_terms)
+      ) as overlap
+    from public.community_interest_profiles other
+    cross join mine
+    where other.user_id <> auth.uid()
+      and other.interest_terms && mine.interest_terms
+  ),
+  candidates as (
+    select distinct liked.paper_id as candidate_id, s.overlap
+    from similar_users s
+    cross join lateral unnest(s.liked_paper_ids) as liked(paper_id)
+    where s.overlap > 0
+      and liked.paper_id is not null
+      and length(trim(liked.paper_id)) > 0
+  )
+  select c.candidate_id as paper_id, sum(c.overlap)::bigint as relevance
+  from candidates c
+  cross join mine
+  where not (c.candidate_id = any(mine.liked_paper_ids || mine.viewed_paper_ids))
+  group by c.candidate_id
+  order by relevance desc
+  limit 100;
+$;
+
+-- 5) Serialize admin-role changes to prevent concurrent removal of the last admin.
 -- Re-check the caller's admin role after acquiring the transaction-scoped lock.
 create or replace function public.community_admin_set_member(
   p_user_id uuid,
