@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
@@ -6,4 +7,10 @@ interface ImportMetaEnv {
 
 interface ImportMeta {
   readonly env: ImportMetaEnv;
+}
+
+
+declare module '*?inline' {
+  const dataUrl: string;
+  export default dataUrl;
 }

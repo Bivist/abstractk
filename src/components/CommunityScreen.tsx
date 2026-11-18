@@ -45,6 +45,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
   const [query, setQuery] = useState('');
   const [users, setUsers] = useState<CommunityUser[]>([]);
   const [selectedConnectionUsers, setSelectedConnectionUsers] = useState<Set<string>>(new Set());
+  const [selectedConnectionAccounts, setSelectedConnectionAccounts] = useState<Record<string, CommunityUser>>({});
   const [memberships, setMemberships] = useState<Record<string, CommunityRole>>({});
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [reports, setReports] = useState<ReportEntry[]>([]);
@@ -122,7 +123,6 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
         setMemberships(prev=>({...prev,...roleMap}));
       }
       setUsers(found.map(row=>({...row,role:roleMap[row.user_id]||memberships[row.user_id]})));
-      setSelectedConnectionUsers(new Set());
       if (!data?.length) setNotice('Bu aramayla eşleşen hesap bulunamadı.');
     } catch (e) {
       setError(friendlyError(e));
@@ -161,6 +161,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
       if(connectionError)throw connectionError;
       setNotice('Seçtiğin iki üye arasında onaylı bağlantı kuruldu. Artık birbirlerine doğrudan mesaj gönderebilirler.');
       setSelectedConnectionUsers(new Set());
+      setSelectedConnectionAccounts({});
     } catch(e) {
       setError(friendlyError(e));
     } finally {
@@ -257,13 +258,19 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
                 <button type="submit" disabled={busy || query.trim().length < 2} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-sky-700 px-5 text-sm font-bold text-white disabled:opacity-50">{busy ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />} Ara</button>
               </form>
               <div className="mt-4 space-y-2">
-                {users.length > 0 && <div className="flex flex-col gap-2 rounded-2xl border border-sky-200 bg-sky-50 p-3 dark:border-sky-900 dark:bg-sky-950/20 sm:flex-row sm:items-center sm:justify-between"><div className="text-xs leading-5 text-sky-900 dark:text-sky-200">İki hesabı seçerek aralarında yönetici onaylı arkadaşlık/mesajlaşma bağlantısı kurabilirsin. ({selectedConnectionUsers.size}/2 seçili)</div><button type="button" disabled={busy||selectedConnectionUsers.size!==2} onClick={()=>void createAdminConnection()} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 text-xs font-semibold text-white disabled:opacity-50">{busy?<Loader2 size={14} className="animate-spin"/>:<Users size={14}/>} İki üyeyi bağla</button></div>}
+                {(users.length > 0 || selectedConnectionUsers.size > 0) && <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3 dark:border-sky-900 dark:bg-sky-950/20">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div><div className="text-sm font-bold text-sky-950 dark:text-sky-100">Bağlantı için seçilen hesaplar</div><p className="mt-0.5 text-xs leading-5 text-sky-900 dark:text-sky-200">Yeni arama yaptığında seçimlerin korunur. En fazla iki hesap seçebilirsin. ({selectedConnectionUsers.size}/2)</p></div>
+                    <button type="button" disabled={busy||selectedConnectionUsers.size!==2} onClick={()=>void createAdminConnection()} className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-sky-700 px-3 text-xs font-semibold text-white disabled:opacity-50">{busy?<Loader2 size={14} className="animate-spin"/>:<Users size={14}/>} Seçilen iki hesabı bağla</button>
+                  </div>
+                  {selectedConnectionUsers.size>0 && <div className="mt-3 flex flex-wrap gap-2">{[...selectedConnectionUsers].map(id=>{const account=selectedConnectionAccounts[id];return <span key={id} className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-900 dark:border-sky-800 dark:bg-slate-900 dark:text-sky-100">{account?.display_name||account?.email||id.slice(0,8)}<button type="button" aria-label="Seçimi kaldır" onClick={()=>{setSelectedConnectionUsers(prev=>{const n=new Set(prev);n.delete(id);return n;});setSelectedConnectionAccounts(prev=>{const n={...prev};delete n[id];return n;});}} className="rounded-full p-0.5 hover:bg-sky-100 dark:hover:bg-sky-900"><span aria-hidden="true">×</span></button></span>;})}</div>}
+                </div>}
                 {users.map(account => {
                   const role = memberships[account.user_id] || account.role;
                   const pairSelected = selectedConnectionUsers.has(account.user_id);
                   return <div key={account.user_id} className="flex flex-col gap-3 rounded-2xl border border-[var(--ln)] p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 items-start gap-2"><input type="checkbox" aria-label={account.display_name + ' bağlantı için seç'} checked={pairSelected} disabled={!pairSelected&&selectedConnectionUsers.size>=2} onChange={e=>setSelectedConnectionUsers(prev=>{const next=new Set(prev);e.target.checked?next.add(account.user_id):next.delete(account.user_id);return next;})} className="mt-1 h-4 w-4 shrink-0 accent-sky-700"/><div className="min-w-0"><div className="truncate text-sm font-semibold text-[var(--ink)]">{account.display_name || 'İsimsiz hesap'}</div><div className="truncate text-xs text-[var(--mu)]">{account.email || 'E-posta yok'}</div><div className="mt-1 break-all font-mono text-[10px] text-[var(--mu)]">{account.user_id}</div></div></div>
-                    <div className="flex shrink-0 items-center gap-2"><span className="text-[11px] text-[var(--mu)]">{role ? roleLabels[role] : 'Yetkisiz'}</span><div className="relative"><select aria-label="Kullanıcı rolü" disabled={busy || account.user_id === userId && role === 'admin' && adminCount <= 1} value={role || 'none'} onChange={e => { if (e.target.value !== 'none') void changeRole(account.user_id, e.target.value as CommunityRole); }} className="h-10 max-w-[155px] appearance-none rounded-xl border border-[var(--ln)] bg-[var(--bg)] py-2 pl-3 pr-8 text-xs font-semibold text-[var(--ink)] disabled:opacity-50"><option value="none">Erişim verme</option><option value="member">Üye yap</option><option value="admin">Yönetici yap</option><option value="disabled">Erişimi kapat</option></select><ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--mu)]" /></div></div>
+                    <div className="flex min-w-0 items-start gap-3"><input type="checkbox" aria-label={account.display_name + ' bağlantı için seç'} checked={pairSelected} disabled={!pairSelected&&selectedConnectionUsers.size>=2} onChange={e=>{const checked=e.target.checked;setSelectedConnectionUsers(prev=>{const next=new Set(prev);checked?next.add(account.user_id):next.delete(account.user_id);return next;});setSelectedConnectionAccounts(prev=>{const next={...prev};if(checked)next[account.user_id]=account;else delete next[account.user_id];return next;});}} className="mt-1 h-4 w-4 shrink-0 accent-sky-700"/><div className="min-w-0"><div className="truncate text-sm font-semibold text-[var(--ink)]">{account.display_name || 'İsimsiz hesap'}</div><div className="truncate text-xs text-[var(--mu)]">{account.email || 'E-posta yok'}</div><div className="mt-1 break-all font-mono text-[10px] text-[var(--mu)]">{account.user_id}</div></div></div>
+                    <div className="flex shrink-0 flex-col gap-1.5 sm:items-end"><span className="text-[10px] font-bold uppercase tracking-wide text-[var(--mu)]">Atanmış rol / erişim</span><div className="flex items-center gap-2"><span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${role==='admin'?'border-violet-200 bg-violet-50 text-violet-800':role==='member'?'border-emerald-200 bg-emerald-50 text-emerald-800':role==='disabled'?'border-rose-200 bg-rose-50 text-rose-800':'border-amber-200 bg-amber-50 text-amber-800'}`}>{role ? roleLabels[role] : 'Henüz yetki yok'}</span><div className="relative"><select aria-label={account.display_name+' için erişim rolü ata'} disabled={busy || account.user_id === userId && role === 'admin' && adminCount <= 1} value={role || 'none'} onChange={e => { if (e.target.value !== 'none') void changeRole(account.user_id, e.target.value as CommunityRole); }} className="h-10 max-w-[170px] appearance-none rounded-xl border border-[var(--ln)] bg-[var(--bg)] py-2 pl-3 pr-8 text-xs font-semibold text-[var(--ink)] disabled:opacity-50"><option value="none">Rol ata…</option><option value="member">Üye erişimi ver</option><option value="admin">Yönetici yetkisi ver</option><option value="disabled">Erişimi kapat</option></select><ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--mu)]" /></div></div><span className="text-[10px] text-[var(--mu)]">Üye: topluluk özellikleri · Yönetici: tüm yönetim yetkileri · Kapalı: erişemez</span></div>
                   </div>;
                 })}
               </div>
