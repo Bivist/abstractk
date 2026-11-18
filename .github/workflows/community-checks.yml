@@ -8,6 +8,7 @@ on:
       - feature/community-mobile-auto-membership
       - feature/community-sharing-requests
       - feature/community-feed-enhancements
+      - feature/community-admin-ux
   pull_request:
     branches:
       - main
