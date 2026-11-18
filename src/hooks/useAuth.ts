@@ -15,14 +15,14 @@ export function useAuth(): AuthState {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState<boolean>(!supabase);
   const [recovery, setRecovery] = useState(false);
+  const authEventSeen = useRef(false);
 
   useEffect(() => {
     if (!supabase) return;
     let active = true;
     // INITIAL_SESSION / SIGNED_IN olayları, getSession cevabından sonra gelirse
     // eski bir oturum cevabının yeni Google oturumunu ezmesini engelle.
-    const authEventSeen = { current: false };
-
+    
     const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return;
       authEventSeen.current = true;
