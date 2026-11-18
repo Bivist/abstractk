@@ -126,7 +126,7 @@ export const CommunityPaperShareSheet: React.FC<{
           const { data: canMessage, error: canError } = await supabase.rpc('community_can_message', { p_other: recipientId });
           if (canError) throw canError;
           if (canMessage) {
-            const { data: conversationId, error: conversationError } = await supabase.rpc('community_create_conversation', {
+            const { data: conversationId, error: conversationError } = await supabase.rpc('community_create_approved_conversation', {
               p_user_ids: [recipientId], p_kind: 'direct', p_title: null
             });
             if (conversationError) throw conversationError;
