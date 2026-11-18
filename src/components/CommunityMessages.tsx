@@ -22,6 +22,7 @@ type Message = {
   created_at: string;
 };
 type SharedNote = { id: string; owner_id: string; source_note_id: string; snapshot: Record<string, unknown>; shared_at: string };
+type MessageRequest = { id: string; sender_id: string; body: string; attachment_type: string | null; attachment: Record<string, unknown> | null; created_at: string };
 
 const card = 'rounded-2xl border border-[var(--ln)] bg-[var(--sf)]';
 const field = 'w-full rounded-xl border border-[var(--ln)] bg-[var(--bg)] px-3 py-2.5 text-sm text-[var(--ink)] outline-none focus:border-sky-500';
@@ -58,6 +59,8 @@ export const CommunityMessages: React.FC<{
   onOpenProfile: (userId: string) => void;
 }> = ({ userId, initialConversationId, onInitialConversationHandled, onOpenProfile }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [requests, setRequests] = useState<MessageRequest[]>([]);
+  const [showRequests, setShowRequests] = useState(false);
   const [participants, setParticipants] = useState<Record<string, string[]>>({});
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [lastReadAt, setLastReadAt] = useState<Record<string, string | null>>({});
@@ -137,6 +140,52 @@ export const CommunityMessages: React.FC<{
     }
   }, [userId]);
 
+  const loadRequests = useCallback(async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from('community_message_requests')
+      .select('id,sender_id,body,attachment_type,attachment,created_at')
+      .eq('recipient_id', userId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    const rows = (data || []) as MessageRequest[];
+    setRequests(rows);
+    const senderIds = [...new Set(rows.map(row => row.sender_id))];
+    if (senderIds.length) {
+      const { data: profileRows, error: profileError } = await supabase
+        .from('community_profiles')
+        .select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests')
+        .in('user_id', senderIds);
+      if (profileError) throw profileError;
+      setProfiles(prev => ({ ...prev, ...Object.fromEntries((profileRows || []).map((profile: any) => [profile.user_id, profile as Profile])) }));
+    }
+  }, [userId]);
+
+  const respondToRequest = async (requestId: string, accept: boolean) => {
+    if (!supabase) return;
+    setSending(true);
+    setError('');
+    try {
+      const { data: conversationId, error } = await supabase.rpc('community_respond_message_request', {
+        p_request_id: requestId,
+        p_accept: accept
+      });
+      if (error) throw error;
+      await loadRequests();
+      if (accept && conversationId) {
+        await loadConversations();
+        setShowRequests(false);
+        await openConversation(conversationId as string);
+      }
+    } catch (e) {
+      setError(e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'Mesaj isteği işlenemedi.');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const openConversation = useCallback(async (conversationId: string) => {
     if (!supabase) return;
     setActiveConversation(conversationId);
@@ -175,6 +224,7 @@ export const CommunityMessages: React.FC<{
           loadConversations()
         ]);
         if (notesResult.error) throw notesResult.error;
+        await loadRequests();
         if (active) setSharedNotes((notesResult.data || []) as SharedNote[]);
       } catch (e) {
         if (active) setError(e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'Sohbetler yüklenemedi.');
@@ -183,7 +233,7 @@ export const CommunityMessages: React.FC<{
       }
     })();
     return () => { active = false; };
-  }, [loadConversations]);
+  }, [loadConversations, loadRequests]);
 
   useEffect(() => {
     if (!initialConversationId) {
@@ -201,6 +251,12 @@ export const CommunityMessages: React.FC<{
     if (!supabase || !userId) return;
     let active = true;
     const channel = supabase.channel('community-messages-' + userId)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_message_requests', filter: 'recipient_id=eq.' + userId }, () => {
+        if (active) {
+          setShowRequests(true);
+          void loadRequests();
+        }
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'community_messages' }, payload => {
         if (!active) return;
         const incoming = payload.new as Message;
@@ -226,6 +282,7 @@ export const CommunityMessages: React.FC<{
         // may have arrived while the first snapshot was loading or reconnecting.
         if(status==='SUBSCRIBED'){
           void loadConversations();
+          void loadRequests();
           const current=activeConversationRef.current;
           if(current)void openConversation(current);
         }
@@ -234,7 +291,7 @@ export const CommunityMessages: React.FC<{
       active = false;
       void supabase!.removeChannel(channel);
     };
-  }, [userId, loadConversations, openConversation]);
+  }, [userId, loadConversations, loadRequests, openConversation]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -300,13 +357,36 @@ export const CommunityMessages: React.FC<{
   return (
     <div className="grid h-[min(68dvh,680px)] min-h-[360px] grid-cols-1 gap-3 md:h-[min(72dvh,680px)] md:min-h-[520px] md:grid-cols-[300px_minmax(0,1fr)]">
       <section className={card + ' ' + (activeConversation ? 'hidden md:flex' : 'flex') + ' h-full min-h-0 flex-col overflow-hidden'}>
-        <div className="border-b border-[var(--ln)] p-4">
+        <div className="shrink-0 border-b border-[var(--ln)] p-3 sm:p-4">
           <div className="flex items-center justify-between gap-2">
-            <div><h2 className="text-base font-bold text-[var(--ink)]">Mesajlar</h2><p className="mt-1 text-xs text-[var(--mu)]">Özel sohbetlerin</p></div>
+            <div><h2 className="text-base font-bold text-[var(--ink)]">Mesajlar</h2><p className="mt-1 text-xs text-[var(--mu)]">Sohbetlerin ve mesaj isteklerin</p></div>
             <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">{conversations.length} sohbet</span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setShowRequests(false)} className={'min-h-10 rounded-xl px-3 text-xs font-semibold ' + (!showRequests ? 'bg-sky-700 text-white' : 'bg-[var(--bg)] text-[var(--mu)]')}>Sohbetler</button>
+            <button type="button" onClick={() => setShowRequests(true)} className={'min-h-10 rounded-xl px-3 text-xs font-semibold ' + (showRequests ? 'bg-sky-700 text-white' : 'bg-[var(--bg)] text-[var(--mu)]')}>İstekler {requests.length > 0 ? '(' + requests.length + ')' : ''}</button>
           </div>
         </div>
         <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain p-2">
+          {showRequests ? <>
+            {requests.map(request => {
+              const sender = profiles[request.sender_id] || null;
+              const senderName = sender?.display_name || sender?.username || 'Abstract üyesi';
+              return <article key={request.id} className="rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-3">
+                <div className="flex items-center gap-2">
+                  <MemberAvatar profile={sender} label={senderName} />
+                  <div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-[var(--ink)]">{senderName}</div><div className="text-[10px] text-[var(--mu)]">Mesaj isteği · {new Date(request.created_at).toLocaleDateString('tr-TR')}</div></div>
+                </div>
+                <p className="mt-3 whitespace-pre-wrap break-words text-xs leading-5 text-[var(--ink)]">{request.body}</p>
+                {request.attachment_type === 'paper' && request.attachment && <div className="mt-2 rounded-xl bg-[var(--bg)] p-3"><div className="text-[9px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Akademik makale</div><div className="mt-1 text-xs font-semibold text-[var(--ink)]">{String(request.attachment.title || 'Makale')}</div><div className="mt-1 text-[10px] text-[var(--mu)]">{String(request.attachment.authors || '')} · {String(request.attachment.journal || '')}</div>{safeHttpUrl(request.attachment.url) && <a className="mt-2 inline-block text-[10px] font-semibold text-sky-700 underline dark:text-sky-300" href={safeHttpUrl(request.attachment.url)!} target="_blank" rel="noopener noreferrer">Makaleyi önizle</a>}</div>}
+                <div className="mt-3 flex gap-2">
+                  <button type="button" disabled={sending} onClick={() => void respondToRequest(request.id, false)} className="min-h-10 flex-1 rounded-xl border border-[var(--ln)] px-3 text-xs font-semibold text-[var(--mu)] disabled:opacity-50">Reddet</button>
+                  <button type="button" disabled={sending} onClick={() => void respondToRequest(request.id, true)} className="min-h-10 flex-1 rounded-xl bg-sky-700 px-3 text-xs font-semibold text-white disabled:opacity-50">Kabul et</button>
+                </div>
+              </article>;
+            })}
+            {!requests.length && <div className="px-4 py-12 text-center"><MessageCircle size={28} className="mx-auto mb-3 text-sky-500" /><p className="text-sm font-semibold text-[var(--ink)]">Bekleyen istek yok</p><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Yeni kişilerden gelen mesaj istekleri burada görünür.</p></div>}
+          </> : <>
           {conversations.map(conversation => {
             const ids = (participants[conversation.id] || []).filter(id => id !== userId);
             const otherId = conversation.kind === 'direct' ? ids[0] : null;
@@ -336,7 +416,8 @@ export const CommunityMessages: React.FC<{
               </div>
             );
           })}
-          {!conversations.length && <div className="px-4 py-12 text-center"><MessageCircle size={28} className="mx-auto mb-3 text-sky-500" /><p className="text-sm font-semibold text-[var(--ink)]">Henüz sohbet yok</p><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Üyeler bölümünden bir araştırmacıya mesaj göndererek başlayabilirsin.</p></div>}
+          {!conversations.length && <div className="px-4 py-12 text-center"><MessageCircle size={28} className="mx-auto mb-3 text-sky-500" /><p className="text-sm font-semibold text-[var(--ink)]">Henüz sohbet yok</p><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Takip ettiğin veya bağlantı kurduğun üyelerle sohbet edebilirsin.</p></div>}
+          </>}
         </div>
       </section>
 
