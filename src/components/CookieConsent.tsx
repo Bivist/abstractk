@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Cookie, X, ShieldCheck } from 'lucide-react';
+import { LegalDocumentModal } from './LegalDocuments';
 
 const CONSENT_KEY = 'abs_cookie_consent';
 
@@ -8,6 +9,7 @@ export const CookieConsent: React.FC = () => {
     try { return localStorage.getItem(CONSENT_KEY); } catch { return null; }
   });
   const [showDetails, setShowDetails] = useState(false);
+  const [showCookiePolicy, setShowCookiePolicy] = useState(false);
 
   const saveChoice = (value: 'all' | 'necessary') => {
     try { localStorage.setItem(CONSENT_KEY, value); } catch {}
@@ -40,6 +42,9 @@ export const CookieConsent: React.FC = () => {
                 Zorunlu depolama; oturum, uygulama tercihleri ve kaydettiğin içeriklerin çalışması içindir. Analitik tercih isteğe bağlıdır ve PostHog kullanım ölçümü yalnızca kabul ettiğinde etkinleştirilir. Tercihin bu cihazda saklanır.
               </p>
             )}
+            <button type="button" onClick={() => setShowCookiePolicy(true)} className="mt-2 block text-[10px] font-semibold text-sky-700 dark:text-sky-300 underline underline-offset-2">
+              Çerez politikasını oku
+            </button>
           </div>
           <button type="button" onClick={() => saveChoice('necessary')} aria-label="Yalnızca zorunlu olanları kullan" className="w-7 h-7 rounded-full flex items-center justify-center text-[#66869a] hover:bg-sky-50 dark:hover:bg-sky-950/60 shrink-0">
             <X className="w-4 h-4" />
@@ -57,6 +62,7 @@ export const CookieConsent: React.FC = () => {
           </button>
         </div>
       </div>
+      {showCookiePolicy && <LegalDocumentModal documentKey="cookies" onClose={() => setShowCookiePolicy(false)} />}
     </aside>
   );
 };
