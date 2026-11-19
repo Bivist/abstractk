@@ -454,7 +454,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
       const visible=data as Profile;
       setViewedProfile(visible);
       setProfiles(prev=>({...prev,[otherId]:visible}));
-      const {data:postRows,error:postError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').eq('author_id',otherId).neq('moderation_status','removed').order('created_at',{ascending:false}).limit(30);
+      const {data:postRows,error:postError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').eq('author_id',otherId).eq('moderation_status','visible').order('created_at',{ascending:false}).limit(30);
       if(postError)throw postError;
       const memberPosts=(postRows||[]) as Post[];
       setViewedProfilePosts(memberPosts);
