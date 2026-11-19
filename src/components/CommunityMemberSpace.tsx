@@ -3,6 +3,8 @@ import { Bell, Bookmark, Check, Heart, Loader2, MessageCircle, MessageSquare, Pi
 import { supabase } from '../lib/supabase';
 import type { PaperNote } from '../types';
 import { CommunityMessages } from './CommunityMessages';
+import { TAXONOMY } from '../constants/taxonomy';
+import type { TaxonomyNode } from '../types';
 
 type Profile = { user_id:string; username:string; display_name:string; avatar_url:string|null; bio:string; affiliation:string; research_interests:string[]; profile_visibility?:'community'|'private'; searchable?:boolean; };
 type Post = { id:string; author_id:string; body:string; paper:Record<string,unknown>|null; created_at:string; is_featured?:boolean; repost_of?:string|null; repost_note?:string|null; moderation_status?:string; };
@@ -23,7 +25,10 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   const [profile,setProfile]=useState<Profile|null>(null);
   const [profileVisibility,setProfileVisibility]=useState<'community'|'private'>('community');
   const [profileDraft,setProfileDraft]=useState({username:'',display_name:'',bio:'',affiliation:'',research_interests:''});
+  const [selectedResearchInterests,setSelectedResearchInterests]=useState<string[]>([]);
   const [posts,setPosts]=useState<Post[]>([]);
+  const [myPosts,setMyPosts]=useState<Post[]>([]);
+  const [myPostStats,setMyPostStats]=useState<Record<string,{likes:number;comments:number;views:number}>>({});
   const [sourcePosts,setSourcePosts]=useState<Record<string,Post>>({});
   const [repostOpen,setRepostOpen]=useState<Set<string>>(new Set());
   const [repostDrafts,setRepostDrafts]=useState<Record<string,string>>({});
@@ -40,9 +45,11 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   const [showNotifications,setShowNotifications]=useState(false);
   const [viewedProfileId,setViewedProfileId]=useState<string|null>(null);
   const [viewedProfile,setViewedProfile]=useState<Profile|null>(null);
+  const [viewedProfilePosts,setViewedProfilePosts]=useState<Post[]>([]);
+  const [viewedProfilePostStats,setViewedProfilePostStats]=useState<Record<string,{likes:number;comments:number;views:number}>>({});
   const [viewedProfilePrivate,setViewedProfilePrivate]=useState(false);
   const [profileLoading,setProfileLoading]=useState(false);
-  const [bookmarks,setBookmarks]=useState<Set<string>>(new Set());
+  
   const [commentCounts,setCommentCounts]=useState<Record<string,number>>({});
   const [comments,setComments]=useState<Record<string,{id:string;author_id:string;parent_id:string|null;body:string;created_at:string}[]>>({});
   const [replyTargets,setReplyTargets]=useState<Record<string,string>>({});
@@ -73,13 +80,56 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
 
   const loadProfile=useCallback(async()=>{
     if(!supabase) return;
+    const {data:ownPostRows,error:ownPostError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').eq('author_id',userId).order('created_at',{ascending:false}).limit(60);
+    if(ownPostError)throw ownPostError;
+    setMyPosts((ownPostRows||[]) as Post[]);
     const {data,error}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests,profile_visibility').eq('user_id',userId).maybeSingle();
     if(error) throw error;
     if(data) {
       const p=data as Profile; setProfile(p);setProfileVisibility((data as any).profile_visibility==='private'?'private':'community');
+      setSelectedResearchInterests(p.research_interests||[]);
       setProfileDraft({username:p.username||'',display_name:p.display_name||'',bio:p.bio||'',affiliation:p.affiliation||'',research_interests:(p.research_interests||[]).join(', ')});
     }
   },[userId]);
+
+  useEffect(()=>{
+    if(!supabase||!posts.length)return;
+    let active=true;
+    void (async()=>{
+      const visibleIds=posts.filter(post=>post.author_id!==userId).map(post=>post.id);
+      await Promise.all(visibleIds.map(postId=>supabase!.rpc('community_record_post_view',{p_post_id:postId})));
+      if(!active||!myPosts.length)return;
+      const ownIds=myPosts.map(post=>post.id);
+      const {data,error}=await supabase!.rpc('community_post_view_counts',{p_post_ids:ownIds});
+      if(error){setError(errorText(error));return;}
+      const counts:Record<string,number>={};
+      (data||[]).forEach((row:any)=>counts[row.post_id]=Number(row.view_count)||0);
+      setMyPostStats(prev=>{const next={...prev};ownIds.forEach(id=>{next[id]={likes:next[id]?.likes||0,comments:next[id]?.comments||0,views:counts[id]||0};});return next;});
+    })();
+    return()=>{active=false;};
+  },[posts,myPosts,userId]);
+
+  useEffect(()=>{
+    if(!supabase||!myPosts.length)return;
+    let active=true;
+    void (async()=>{
+      const ids=myPosts.map(post=>post.id);
+      const [likeResult,commentResult,viewResult]=await Promise.all([
+        supabase.from('community_post_likes').select('post_id').in('post_id',ids),
+        supabase.from('community_comments').select('post_id').in('post_id',ids),
+        supabase.rpc('community_post_view_counts',{p_post_ids:ids})
+      ]);
+      if(!active)return;
+      if(likeResult.error||commentResult.error||viewResult.error){setError(errorText(likeResult.error||commentResult.error||viewResult.error));return;}
+      const stats:Record<string,{likes:number;comments:number;views:number}>={};
+      ids.forEach(id=>stats[id]={likes:0,comments:0,views:0});
+      (likeResult.data||[]).forEach((row:any)=>{if(stats[row.post_id])stats[row.post_id].likes++;});
+      (commentResult.data||[]).forEach((row:any)=>{if(stats[row.post_id])stats[row.post_id].comments++;});
+      (viewResult.data||[]).forEach((row:any)=>{if(stats[row.post_id])stats[row.post_id].views=Number(row.view_count)||0;});
+      setMyPostStats(stats);
+    })();
+    return()=>{active=false;};
+  },[myPosts,userId]);
 
   const loadFeed=useCallback(async()=>{
     if(!supabase) return;
@@ -89,24 +139,21 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     const sourceIds=[...new Set(rows.map(p=>p.repost_of).filter((id):id is string=>!!id))];
     if(sourceIds.length){const {data:sourceRows,error:sourceError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').in('id',sourceIds);if(sourceError)throw sourceError;const sourceList=(sourceRows||[]) as Post[];setSourcePosts(prev=>({...prev,...Object.fromEntries(sourceList.map(p=>[p.id,p]))}));const sourceAuthors=[...new Set(sourceList.map(p=>p.author_id))];if(sourceAuthors.length){const {data:sourceProfiles,error:sourceProfileError}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',sourceAuthors);if(sourceProfileError)throw sourceProfileError;setProfiles(prev=>({...prev,...Object.fromEntries((sourceProfiles||[]).map((p:any)=>[p.user_id,p as Profile]))}));}}
     const ids=rows.map(p=>p.id);
-    if(!ids.length) {setProfiles({});setLikes(new Set());setBookmarks(new Set());setCommentCounts({});}
+    if(!ids.length) {setProfiles({});setLikes(new Set());setCommentCounts({});}
     if(ids.length){
-    const [profileRows,likeRows,bookmarkRows,commentRows]=await Promise.all([
+    const [profileRows,likeRows,commentRows]=await Promise.all([
       supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',[...new Set(rows.map(p=>p.author_id))]),
       supabase.from('community_post_likes').select('post_id,user_id').in('post_id',ids),
-      supabase.from('community_post_bookmarks').select('post_id,user_id').eq('user_id',userId).in('post_id',ids),
       supabase.from('community_comments').select('post_id,author_id').in('post_id',ids)
     ]);
     if(profileRows.error) throw profileRows.error;
     if(likeRows.error) throw likeRows.error;
-    if(bookmarkRows.error) throw bookmarkRows.error;
     if(commentRows.error) throw commentRows.error;
     const pmap:Record<string,Profile>={}; (profileRows.data||[]).forEach((p:any)=>pmap[p.user_id]=p as Profile);
     const commentAuthorIds=[...new Set((commentRows.data||[]).map((x:any)=>x.author_id).filter((id:string)=>!pmap[id]))];
     if(commentAuthorIds.length){const {data:commentProfiles,error:commentProfileError}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',commentAuthorIds);if(commentProfileError)throw commentProfileError;(commentProfiles||[]).forEach((p:any)=>pmap[p.user_id]=p as Profile);}
     setProfiles(prev=>({...prev,...pmap}));
     setLikes(new Set((likeRows.data||[]).filter((x:any)=>x.user_id===userId).map((x:any)=>x.post_id)));
-    setBookmarks(new Set((bookmarkRows.data||[]).map((x:any)=>x.post_id)));
     const counts:Record<string,number>={}; (commentRows.data||[]).forEach((x:any)=>counts[x.post_id]=(counts[x.post_id]||0)+1); setCommentCounts(counts);
     }
     const {data:followRows,error:followError}=await supabase.from('community_follows').select('followed_id').eq('follower_id',userId);
@@ -136,16 +183,14 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
       if(sourceIds.length){const {data:sourceRows,error:sourceError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').in('id',sourceIds);if(sourceError)throw sourceError;const sourceList=(sourceRows||[]) as Post[];setSourcePosts(prev=>({...prev,...Object.fromEntries(sourceList.map(p=>[p.id,p]))}));const sourceAuthors=[...new Set(sourceList.map(p=>p.author_id))];if(sourceAuthors.length){const {data:sourceProfiles,error:sourceProfileError}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',sourceAuthors);if(sourceProfileError)throw sourceProfileError;setProfiles(prev=>({...prev,...Object.fromEntries((sourceProfiles||[]).map((p:any)=>[p.user_id,p as Profile]))}));}}
       const ids=rows.map(p=>p.id);
       if(ids.length){
-        const [pr,lr,br,cr]=await Promise.all([
+        const [pr,lr,cr]=await Promise.all([
           supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',[...new Set(rows.map(p=>p.author_id))]),
           supabase.from('community_post_likes').select('post_id,user_id').in('post_id',ids),
-          supabase.from('community_post_bookmarks').select('post_id,user_id').eq('user_id',userId).in('post_id',ids),
           supabase.from('community_comments').select('post_id,author_id').in('post_id',ids)
         ]);
-        if(pr.error)throw pr.error;if(lr.error)throw lr.error;if(br.error)throw br.error;if(cr.error)throw cr.error;
+        if(pr.error)throw pr.error;if(lr.error)throw lr.error;if(cr.error)throw cr.error;
         setProfiles(prev=>({...prev,...Object.fromEntries((pr.data||[]).map((p:any)=>[p.user_id,p as Profile]))}));
         setLikes(prev=>new Set([...prev,...(lr.data||[]).filter((x:any)=>x.user_id===userId).map((x:any)=>x.post_id)]));
-        setBookmarks(prev=>new Set([...prev,...(br.data||[]).map((x:any)=>x.post_id)]));
         setCommentCounts(prev=>{const next={...prev};(cr.data||[]).forEach((x:any)=>next[x.post_id]=(next[x.post_id]||0)+1);return next;});
         const commentAuthors=[...new Set((cr.data||[]).map((x:any)=>x.author_id))];
         if(commentAuthors.length){const {data:cp,error:ce}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',commentAuthors);if(ce)throw ce;setProfiles(prev=>({...prev,...Object.fromEntries((cp||[]).map((p:any)=>[p.user_id,p as Profile]))}));}
@@ -193,7 +238,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
         const incoming=payload.new as {id:string;kind:string;actor_id:string|null;created_at:string;read_at:string|null;payload?:Record<string,unknown>};
         if(!incoming?.id)return;
         setNotifications(prev=>[incoming,...prev.filter(item=>item.id!==incoming.id)].slice(0,50));
-        setNotice('Yeni bir topluluk bildirimin var.');
+        setNotice('Yeni bir kamara bildirimin var.');
       })
       .subscribe(status=>{
         if(status==='SUBSCRIBED'){
@@ -212,8 +257,8 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     return()=>{active=false;void supabase!.removeChannel(channel);};
   },[userId]);
 
-  // Hesap fotoğrafını topluluk profilinde de sakla; diğer kullanıcılar bu URL'yi
-  // yalnızca topluluk profilini görüntüleme izni varsa okuyabilir.
+  // Hesap fotoğrafını kamara profilinde de sakla; diğer kullanıcılar bu URL'yi
+  // yalnızca kamara profilini görüntüleme izni varsa okuyabilir.
   useEffect(()=>{
     if(!supabase||!profile)return;
     const nextAvatar=avatarUrl||null;
@@ -230,15 +275,23 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
 
   useEffect(()=>{if(pendingPaper)setSection('people');},[pendingPaper?.id]);
 
+  const toggleResearchInterest=(label:string)=>setSelectedResearchInterests(prev=>prev.includes(label)?prev.filter(item=>item!==label):[...prev,label].slice(0,60));
+  const renderInterestNode=(node:TaxonomyNode,depth=0):React.ReactNode=><div key={node.id} className={depth?'ml-3 border-l border-[var(--ln)] pl-2':''}>
+    <button type="button" aria-pressed={selectedResearchInterests.includes(node.label)} onClick={()=>toggleResearchInterest(node.label)} className={'my-0.5 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition '+(selectedResearchInterests.includes(node.label)?'bg-sky-100 font-semibold text-sky-900 dark:bg-sky-950/50 dark:text-sky-100':'text-[var(--ink)] hover:bg-[var(--bg)]')}>
+      <span className={'flex h-4 w-4 shrink-0 items-center justify-center rounded border '+(selectedResearchInterests.includes(node.label)?'border-sky-700 bg-sky-700 text-white':'border-[var(--ln)]')}>{selectedResearchInterests.includes(node.label)?<Check size={11}/>:null}</span><span className="min-w-0 flex-1">{node.label}</span>
+    </button>
+    {!!node.children?.length&&<details className="mb-1 ml-4"><summary className="cursor-pointer px-2 py-1 text-[10px] font-medium text-[var(--mu)]">Alt alanları göster ({node.children.length})</summary><div className="mt-1 space-y-0.5">{node.children.map(child=>renderInterestNode(child,depth+1))}</div></details>}
+  </div>;
+
   const saveProfile=async()=>{
     if(!supabase)return;
     const username=profileDraft.username.trim().replace(/^@/,'');
     if(!/^[a-zA-Z0-9_.-]{3,30}$/.test(username)){setError('Kullanıcı adı 3–30 karakter olmalı; harf, sayı, nokta, alt çizgi ve tire kullanılabilir.');return;}
     setBusy(true);setError('');setNotice('');
     try{
-      const payload={user_id:userId,username,display_name:profileDraft.display_name.trim().slice(0,80),avatar_url:avatarUrl||null,bio:profileDraft.bio.trim().slice(0,500),affiliation:profileDraft.affiliation.trim().slice(0,120),research_interests:profileDraft.research_interests.split(',').map(x=>x.trim()).filter(Boolean).slice(0,12),profile_visibility:profileVisibility,searchable:true};
+      const payload={user_id:userId,username,display_name:profileDraft.display_name.trim().slice(0,80),avatar_url:avatarUrl||null,bio:profileDraft.bio.trim().slice(0,500),affiliation:profileDraft.affiliation.trim().slice(0,120),research_interests:selectedResearchInterests.slice(0,60),profile_visibility:profileVisibility,searchable:true};
       const {error}=await supabase.from('community_profiles').upsert(payload,{onConflict:'user_id'});if(error)throw error;
-      await loadProfile();setNotice('Topluluk profilin kaydedildi.');
+      await loadProfile();setNotice('Kamara profilin kaydedildi.');
     }catch(e){setError(errorText(e));}finally{setBusy(false);}
   };
 
@@ -246,7 +299,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     if(!supabase)return;
     if(!postDraft.trim()){setError('Gönderi metni boş olamaz.');return;}
     setBusy(true);setError('');
-    try{const {error}=await supabase.from('community_posts').insert({author_id:userId,body:postDraft.trim()});if(error)throw error;setPostDraft('');await loadFeed();setNotice('Gönderin topluluk akışında yayımlandı.');}
+    try{const {error}=await supabase.from('community_posts').insert({author_id:userId,body:postDraft.trim()});if(error)throw error;setPostDraft('');await loadFeed();setNotice('Gönderin kamara akışında yayımlandı.');}
     catch(e){setError(errorText(e));}finally{setBusy(false);}
   };
 
@@ -260,12 +313,6 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     if(!supabase)return;
     const active=likes.has(postId);setLikes(prev=>{const n=new Set(prev);active?n.delete(postId):n.add(postId);return n;});
     const result=active?await supabase.from('community_post_likes').delete().eq('post_id',postId).eq('user_id',userId):await supabase.from('community_post_likes').insert({post_id:postId,user_id:userId});
-    if(result.error){setError(errorText(result.error));await loadFeed();}
-  };
-  const toggleBookmark=async(postId:string)=>{
-    if(!supabase)return;
-    const active=bookmarks.has(postId);setBookmarks(prev=>{const n=new Set(prev);active?n.delete(postId):n.add(postId);return n;});
-    const result=active?await supabase.from('community_post_bookmarks').delete().eq('post_id',postId).eq('user_id',userId):await supabase.from('community_post_bookmarks').insert({post_id:postId,user_id:userId});
     if(result.error){setError(errorText(result.error));await loadFeed();}
   };
   const loadComments=async(postId:string)=>{
@@ -349,15 +396,36 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   };
   const sendPendingPaper=async()=>{
     if(!supabase||!pendingPaper||selectedPeople.size<1)return;
-    setBusy(true);setError('');
+    setBusy(true);setError('');setNotice('');
     try{
       const recipients=[...selectedPeople];
-      const {data:conversationId,error:createError}=await supabase.rpc('community_create_approved_conversation',{p_user_ids:recipients,p_kind:recipients.length===1?'direct':'group',p_title:recipients.length===1?null:(groupTitle.trim()||'Makale paylaşımı')});
-      if(createError)throw createError;
-      const attachment={id:pendingPaper.id,title:pendingPaper.title,url:pendingPaper.link,authors:pendingPaper.authors,journal:pendingPaper.journal,year:pendingPaper.year,field:pendingPaper.sub||pendingPaper.field,abstract:pendingPaper.abs};
-      const {error:sendError}=await supabase.rpc('community_send_message',{p_conversation_id:conversationId,p_body:'Seninle bir akademik makale paylaştı.',p_attachment_type:'paper',p_attachment:attachment});
-      if(sendError)throw sendError;
-      setSelectedPeople(new Set());setGroupTitle('');onPendingPaperHandled?.();await loadConversations();await openConversation(conversationId as string);setNotice('Makale seçtiğin üyelere özel mesajla gönderildi.');
+      const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if(recipients.some(id=>!uuidPattern.test(id)))throw new Error('Alıcı listesinde geçersiz hesap kimliği var. Lütfen kişileri yeniden seç.');
+      const attachment={id:pendingPaper.id,title:String(pendingPaper.title||'Akademik makale').slice(0,500),url:safeHttpUrl(pendingPaper.link),authors:String(pendingPaper.authors||'').slice(0,1000),journal:String(pendingPaper.journal||'').slice(0,300),year:pendingPaper.year,field:String(pendingPaper.sub||pendingPaper.field||'').slice(0,200),abstract:String(pendingPaper.abs||'').slice(0,12000)};
+      let sent=0,requested=0;let firstConversationId:string|null=null;const failed:string[]=[];
+      for(const recipientId of recipients){
+        try{
+          const {data:allowed,error:permissionError}=await supabase.rpc('community_can_message',{p_other:recipientId});
+          if(permissionError)throw permissionError;
+          if(allowed){
+            const {data:conversationId,error:createError}=await supabase.rpc('community_create_approved_conversation',{p_user_ids:[recipientId],p_kind:'direct',p_title:null});
+            if(createError)throw createError;
+            if(typeof conversationId!=='string'||!uuidPattern.test(conversationId))throw new Error('Sohbet kimliği geçerli UUID değil.');
+            const {error:sendError}=await supabase.rpc('community_send_message',{p_conversation_id:conversationId,p_body:'Seninle bir akademik makale paylaştı.',p_attachment_type:'paper',p_attachment:attachment});
+            if(sendError)throw sendError;
+            sent++;if(!firstConversationId)firstConversationId=conversationId;
+          }else{
+            const {error:requestError}=await supabase.rpc('community_create_message_request',{p_recipient:recipientId,p_body:'Seninle bir akademik makale paylaştı.',p_attachment_type:'paper',p_attachment:attachment});
+            if(requestError)throw requestError;
+            requested++;
+          }
+        }catch(e){failed.push(profiles[recipientId]?.display_name||profiles[recipientId]?.username||'Bir alıcı');}
+      }
+      setSelectedPeople(new Set());setGroupTitle('');onPendingPaperHandled?.();
+      await loadConversations();
+      if(sent+requested>0)setNotice(sent&&requested? 'Makale '+sent+' kişiye doğrudan, '+requested+' kişiye mesaj isteği olarak gönderildi.':sent?'Makale seçtiğin üyelere gönderildi.':'Makale mesaj isteği olarak gönderildi.');
+      if(failed.length)setError('Şu alıcılara gönderilemedi: '+failed.join(', ')+'.');
+      if(firstConversationId)await openConversation(firstConversationId);
     }catch(e){setError(errorText(e));}finally{setBusy(false);}
   };
   const sendMessage=async()=>{
@@ -370,6 +438,8 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     if(!supabase)return;
     setViewedProfileId(otherId);
     setViewedProfile(null);
+    setViewedProfilePosts([]);
+    setViewedProfilePostStats({});
     setViewedProfilePrivate(false);
     setProfileLoading(true);
     try{
@@ -384,6 +454,27 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
       const visible=data as Profile;
       setViewedProfile(visible);
       setProfiles(prev=>({...prev,[otherId]:visible}));
+      const {data:postRows,error:postError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').eq('author_id',otherId).eq('moderation_status','visible').order('created_at',{ascending:false}).limit(30);
+      if(postError)throw postError;
+      const memberPosts=(postRows||[]) as Post[];
+      setViewedProfilePosts(memberPosts);
+      if(memberPosts.length){
+        const ids=memberPosts.map(post=>post.id);
+        const [likesResult,commentsResult,viewsResult]=await Promise.all([
+          supabase.from('community_post_likes').select('post_id').in('post_id',ids),
+          supabase.from('community_comments').select('post_id').in('post_id',ids),
+          supabase.rpc('community_post_view_counts',{p_post_ids:ids})
+        ]);
+        if(likesResult.error)throw likesResult.error;
+        if(commentsResult.error)throw commentsResult.error;
+        if(viewsResult.error)throw viewsResult.error;
+        const stats:Record<string,{likes:number;comments:number;views:number}>={};
+        ids.forEach(id=>stats[id]={likes:0,comments:0,views:0});
+        (likesResult.data||[]).forEach((row:any)=>{if(stats[row.post_id])stats[row.post_id].likes++;});
+        (commentsResult.data||[]).forEach((row:any)=>{if(stats[row.post_id])stats[row.post_id].comments++;});
+        (viewsResult.data||[]).forEach((row:any)=>{if(stats[row.post_id])stats[row.post_id].views=Number(row.view_count)||0;});
+        setViewedProfilePostStats(stats);
+      }
     }catch(e){
       setViewedProfilePrivate(true);
       setError(errorText(e));
@@ -395,6 +486,8 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   const closeViewedProfile=()=>{
     setViewedProfileId(null);
     setViewedProfile(null);
+    setViewedProfilePosts([]);
+    setViewedProfilePostStats({});
     setViewedProfilePrivate(false);
   };
 
@@ -405,68 +498,72 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   };
   const tabs=[{id:'feed',label:'Akış',icon:MessageSquare},{id:'requests',label:'İstekler',icon:UserPlus},{id:'messages',label:'Mesajlar',icon:MessageCircle},{id:'people',label:'Üyeler',icon:Users},{id:'notes',label:'Notlar',icon:Bookmark},{id:'profile',label:'Profilim',icon:UserPlus}] as const;
 
-  if(loading)return <div className="flex flex-1 items-center justify-center gap-2 text-[var(--mu)]"><Loader2 className="animate-spin" size={18}/> Topluluk yükleniyor…</div>;
+  if(loading)return <div className="flex flex-1 items-center justify-center gap-2 text-[var(--mu)]"><Loader2 className="animate-spin" size={18}/> Kamara yükleniyor…</div>;
   return <div className="min-h-0 flex-1 overflow-y-auto bg-[var(--bg)] px-3 py-4 sm:px-6 sm:py-6">
     <div className="mx-auto max-w-4xl space-y-4">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><div className="text-xs font-bold uppercase tracking-[.18em] text-sky-700 dark:text-sky-300">Abstract · Kapalı topluluk</div><h1 className="mt-1 font-serif text-2xl font-bold text-[var(--ink)] sm:text-3xl">Bilimsel topluluk</h1><p className="mt-1 text-sm text-[var(--mu)]">Akademik paylaşım ve araştırmacılar arası iletişim alanı.</p></div><div className="flex items-center gap-3">{onReturnToAdmin&&<button className="rounded-xl border border-[var(--ln)] px-3 py-2 text-xs font-semibold text-[var(--mu)]" onClick={onReturnToAdmin}>Yönetim paneli</button>}<button className="relative rounded-xl border border-[var(--ln)] p-2 text-[var(--mu)]" onClick={()=>{setShowNotifications(v=>!v);void markNotificationsRead();}} aria-label="Bildirimler"><Bell size={18}/>{notifications.some(n=>!n.read_at)&&<span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-rose-500"/>}</button><div className="text-xs text-[var(--mu)]">{profile?'@'+profile.username:'Profilini tamamla'}</div></div></header>
-      {showNotifications&&<section className={card+' p-3'}><div className="mb-2 text-sm font-bold text-[var(--ink)]">Bildirimler</div>{notifications.map(n=><div key={n.id} className="border-t border-[var(--ln)] py-2 text-xs text-[var(--mu)]">{n.kind==='like'?'Gönderin beğenildi.':n.kind==='comment'?'Gönderine yorum yapıldı.':n.kind==='follow'?'Yeni bir takipçin var.':n.kind==='follow_request'?'Yeni bir takip isteğin var.':n.kind==='follow_request_accepted'?'Takip isteğin kabul edildi.':n.kind==='message'?'Yeni mesajın var.':n.kind==='post_removed'?'Bir gönderin kaldırıldı. Gerekçe: '+String(n.payload?.reason||'Topluluk kuralları'):'Yeni topluluk bildirimi.'} · {new Date(n.created_at).toLocaleString('tr-TR')}</div>)}{!notifications.length&&<p className="text-xs text-[var(--mu)]">Henüz bildirimin yok.</p>}</section>}
-      <nav aria-label="Topluluk bölümleri" className="grid grid-cols-3 gap-1 rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-1 sm:grid-cols-6">{tabs.map(t=><button key={t.id} onClick={()=>{setSection(t.id);setError('');}} className={`relative flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-semibold leading-tight transition-colors sm:min-h-10 sm:flex-row sm:gap-2 sm:px-2 sm:text-xs ${section===t.id?'bg-sky-700 text-white shadow-sm':'text-[var(--mu)] hover:bg-[var(--bg)]'}`}><t.icon size={15}/><span className="max-w-full truncate">{t.label}</span>{t.id==='requests'&&followRequests.length>0&&<span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500"/>}</button>)}</nav>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><div className="text-xs font-bold uppercase tracking-[.18em] text-sky-700 dark:text-sky-300">Abstract · Kapalı kamara</div><h1 className="mt-1 font-serif text-2xl font-bold text-[var(--ink)] sm:text-3xl">Bilimsel kamara</h1><p className="mt-1 text-sm text-[var(--mu)]">Akademik paylaşım ve araştırmacılar arası iletişim alanı.</p></div><div className="flex items-center gap-3">{onReturnToAdmin&&<button className="rounded-xl border border-[var(--ln)] px-3 py-2 text-xs font-semibold text-[var(--mu)]" onClick={onReturnToAdmin}>Yönetim paneli</button>}<button className="relative rounded-xl border border-[var(--ln)] p-2 text-[var(--mu)]" onClick={()=>{setShowNotifications(v=>!v);void markNotificationsRead();}} aria-label="Bildirimler"><Bell size={18}/>{notifications.some(n=>!n.read_at)&&<span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-rose-500"/>}</button><div className="text-xs text-[var(--mu)]">{profile?'@'+profile.username:'Profilini tamamla'}</div></div></header>
+      {showNotifications&&<section className={card+' p-3'}><div className="mb-2 text-sm font-bold text-[var(--ink)]">Bildirimler</div>{notifications.map(n=><div key={n.id} className="border-t border-[var(--ln)] py-2 text-xs text-[var(--mu)]">{n.kind==='like'?'Gönderin beğenildi.':n.kind==='comment'?'Gönderine yorum yapıldı.':n.kind==='follow'?'Yeni bir takipçin var.':n.kind==='follow_request'?'Yeni bir takip isteğin var.':n.kind==='follow_request_accepted'?'Takip isteğin kabul edildi.':n.kind==='message'?'Yeni mesajın var.':n.kind==='post_removed'?'Bir gönderin kaldırıldı. Gerekçe: '+String(n.payload?.reason||'Kamara kuralları'):'Yeni kamara bildirimi.'} · {new Date(n.created_at).toLocaleString('tr-TR')}</div>)}{!notifications.length&&<p className="text-xs text-[var(--mu)]">Henüz bildirimin yok.</p>}</section>}
+      <nav aria-label="Kamara bölümleri" className="grid grid-cols-3 gap-1 rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-1 sm:grid-cols-6">{tabs.map(t=><button key={t.id} onClick={()=>{setSection(t.id);setError('');}} className={`relative flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-semibold leading-tight transition-colors sm:min-h-10 sm:flex-row sm:gap-2 sm:px-2 sm:text-xs ${section===t.id?'bg-sky-700 text-white shadow-sm':'text-[var(--mu)] hover:bg-[var(--bg)]'}`}><t.icon size={15}/><span className="max-w-full truncate">{t.label}</span>{t.id==='requests'&&followRequests.length>0&&<span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500"/>}</button>)}</nav>
       {error&&<div role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-800 dark:bg-rose-950/30 dark:text-rose-200">{error}</div>}
       {notice&&<div role="status" className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">{notice}</div>}
 
       {section==='notes'&&<section className={card+' space-y-3 p-4'}>
-        <div><h2 className="font-bold text-[var(--ink)]">Bilim Defterim notları</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Notların varsayılan olarak özeldir. Yalnızca aşağıdaki paylaş düğmesine basıp onay verdiğin notlar topluluk üyelerine açılır. Paylaşım, notun o andaki içeriğinin ayrı bir kopyasını oluşturur.</p></div>
+        <div><h2 className="font-bold text-[var(--ink)]">Bilim Defterim notları</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Notların varsayılan olarak özeldir. Yalnızca aşağıdaki paylaş düğmesine basıp onay verdiğin notlar kamara üyelerine açılır. Paylaşım, notun o andaki içeriğinin ayrı bir kopyasını oluşturur.</p></div>
         {notes.map(note=><div key={note.id} className="rounded-xl border border-[var(--ln)] p-3"><div className="text-xs font-semibold text-[var(--ink)]">{note.paperTitle||'Başlıksız makale notu'} · {note.type==='quote'?'Alıntı':note.type==='question'?'Soru':'Not'}</div><p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-[var(--mu)]">{note.content}</p><button className={button+' mt-3'} onClick={async()=>{
           if(!supabase)return;
-          if(!window.confirm('Bu notun mevcut içeriğinin bir kopyası topluluk üyeleriyle paylaşılacak. Özel notunun kendisi değişmeyecek. Devam edilsin mi?'))return;
+          if(!window.confirm('Bu notun mevcut içeriğinin bir kopyası kamara üyeleriyle paylaşılacak. Özel notunun kendisi değişmeyecek. Devam edilsin mi?'))return;
           setBusy(true);setError('');
           try{
             const {data,error}=await supabase.rpc('community_share_note_snapshot',{p_source_note_id:note.id,p_snapshot:{type:note.type,content:note.content,paperTitle:note.paperTitle||'',paperJournal:note.paperJournal||'',paperField:note.paperField||'',paperLink:note.paperLink||'',paperAuthors:note.paperAuthors||'',createdAt:note.createdAt}});
             if(error)throw error;
-            setSharedNoteIds(prev=>new Set(prev).add(note.id));setNotice('Notun kopyası toplulukla paylaşıldı.');await loadFeed();
+            setSharedNoteIds(prev=>new Set(prev).add(note.id));setNotice('Notun kopyası kamarala paylaşıldı.');await loadFeed();
           }catch(e){setError(errorText(e));}finally{setBusy(false);}
         }} disabled={busy||sharedNoteIds.has(note.id)}><Check size={15}/>{sharedNoteIds.has(note.id)?'Bu oturumda paylaşıldı':'Açık onayla paylaş'}</button></div>)}
         {!notes.length&&<p className="rounded-xl bg-[var(--bg)] p-4 text-xs text-[var(--mu)]">Bilim Defterim’de henüz notun bulunmuyor.</p>}
       </section>}
 
-      {section==='profile'&&<section className={`${card} space-y-3 p-4 sm:p-5`}><div><h2 className="font-bold text-[var(--ink)]">Topluluk profilin</h2><p className="mt-1 text-xs text-[var(--mu)]">E-posta adresin burada gösterilmez. Profil yalnızca topluluk üyelerine açıktır.</p></div>
+      {section==='profile'&&<section className={`${card} space-y-3 p-4 sm:p-5`}><div><h2 className="font-bold text-[var(--ink)]">Kamara profilin</h2><p className="mt-1 text-xs text-[var(--mu)]">E-posta adresin burada gösterilmez. Profil yalnızca kamara üyelerine açıktır.</p></div>
         <label className="block text-xs font-semibold text-[var(--mu)]">Kullanıcı adı<input className={field+' mt-1'} value={profileDraft.username} onChange={e=>setProfileDraft(p=>({...p,username:e.target.value}))} placeholder="ornek.kullanici"/></label>
         <label className="block text-xs font-semibold text-[var(--mu)]">Görünen ad<input className={field+' mt-1'} value={profileDraft.display_name} onChange={e=>setProfileDraft(p=>({...p,display_name:e.target.value}))} maxLength={80}/></label>
         <label className="block text-xs font-semibold text-[var(--mu)]">Kurum / üniversite<input className={field+' mt-1'} value={profileDraft.affiliation} onChange={e=>setProfileDraft(p=>({...p,affiliation:e.target.value}))} maxLength={120}/></label>
         <label className="block text-xs font-semibold text-[var(--mu)]">Kısa biyografi<textarea className={field+' mt-1'} rows={3} value={profileDraft.bio} onChange={e=>setProfileDraft(p=>({...p,bio:e.target.value}))} maxLength={500}/></label>
-        <label className="block text-xs font-semibold text-[var(--mu)]">Araştırma alanları (virgülle ayır)<input className={field+' mt-1'} value={profileDraft.research_interests} onChange={e=>setProfileDraft(p=>({...p,research_interests:e.target.value}))} maxLength={1200} placeholder="Deniz ekolojisi, moleküler biyoloji"/></label>
-        <div className="space-y-2"><div className="text-xs font-semibold text-[var(--mu)]">Hesap görünürlüğü</div><div className="grid grid-cols-2 gap-2"><button type="button" aria-pressed={profileVisibility==='community'} onClick={()=>setProfileVisibility('community')} className={'rounded-xl border px-3 py-3 text-left transition '+(profileVisibility==='community'?'border-sky-500 bg-sky-50 text-sky-900 dark:bg-sky-950/40 dark:text-sky-100':'border-[var(--ln)] bg-[var(--bg)] text-[var(--mu)]')}><span className="block text-sm font-bold">Herkese açık</span><span className="mt-1 block text-[10px] leading-4">Topluluk üyeleri profilini bulabilir ve takip edebilir.</span></button><button type="button" aria-pressed={profileVisibility==='private'} onClick={()=>setProfileVisibility('private')} className={'rounded-xl border px-3 py-3 text-left transition '+(profileVisibility==='private'?'border-sky-500 bg-sky-50 text-sky-900 dark:bg-sky-950/40 dark:text-sky-100':'border-[var(--ln)] bg-[var(--bg)] text-[var(--mu)]')}><span className="block text-sm font-bold">Gizli hesap</span><span className="mt-1 block text-[10px] leading-4">Takip etmek isteyenler önce istek gönderir.</span></button></div></div>
+        <div className="space-y-2"><div className="text-xs font-semibold text-[var(--mu)]">İlgilendiğim alanlar</div><p className="text-[10px] leading-4 text-[var(--mu)]">Ana sayfadaki filtrelerle aynı bilimsel alan ağacından seçim yapabilirsin. Birden fazla alan seçebilirsin.</p><div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-2">{TAXONOMY.map(node=><div key={node.id} className="rounded-lg border border-[var(--ln)] p-2"><div className="font-semibold">{renderInterestNode(node)}</div></div>)}</div><div className="text-[10px] text-[var(--mu)]">{selectedResearchInterests.length} alan seçildi</div></div>
+        <div className="space-y-2"><div className="text-xs font-semibold text-[var(--mu)]">Hesap görünürlüğü</div><div className="grid grid-cols-2 gap-2"><button type="button" aria-pressed={profileVisibility==='community'} onClick={()=>setProfileVisibility('community')} className={'rounded-xl border px-3 py-3 text-left transition '+(profileVisibility==='community'?'border-sky-500 bg-sky-50 text-sky-900 dark:bg-sky-950/40 dark:text-sky-100':'border-[var(--ln)] bg-[var(--bg)] text-[var(--mu)]')}><span className="block text-sm font-bold">Herkese açık</span><span className="mt-1 block text-[10px] leading-4">Kamara üyeleri profilini bulabilir ve takip edebilir.</span></button><button type="button" aria-pressed={profileVisibility==='private'} onClick={()=>setProfileVisibility('private')} className={'rounded-xl border px-3 py-3 text-left transition '+(profileVisibility==='private'?'border-sky-500 bg-sky-50 text-sky-900 dark:bg-sky-950/40 dark:text-sky-100':'border-[var(--ln)] bg-[var(--bg)] text-[var(--mu)]')}><span className="block text-sm font-bold">Gizli hesap</span><span className="mt-1 block text-[10px] leading-4">Takip etmek isteyenler önce istek gönderir.</span></button></div></div>
         <button className={button} disabled={busy} onClick={()=>void saveProfile()}>{busy?<Loader2 className="animate-spin" size={16}/>:<Check size={16}/>} Profili kaydet</button>
+        <div className="border-t border-[var(--ln)] pt-4"><div className="flex items-center justify-between gap-2"><h3 className="text-sm font-bold text-[var(--ink)]">Paylaşımlarım</h3><span className="text-[10px] text-[var(--mu)]">{myPosts.length} gönderi</span></div>
+          <div className="mt-3 grid grid-cols-3 gap-2"><div className="rounded-xl bg-[var(--bg)] p-2 text-center"><div className="text-lg font-bold text-[var(--ink)]">{myPosts.length}</div><div className="text-[10px] text-[var(--mu)]">Gönderi</div></div><div className="rounded-xl bg-[var(--bg)] p-2 text-center"><div className="text-lg font-bold text-[var(--ink)]">{Object.values(myPostStats).reduce((n,v)=>n+v.likes,0)}</div><div className="text-[10px] text-[var(--mu)]">Beğeni</div></div><div className="rounded-xl bg-[var(--bg)] p-2 text-center"><div className="text-lg font-bold text-[var(--ink)]">{Object.values(myPostStats).reduce((n,v)=>n+v.views,0)}</div><div className="text-[10px] text-[var(--mu)]">Görüntülenme</div></div></div>
+          <div className="mt-3 space-y-3">{myPosts.map(post=><article key={post.id} className="rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-3"><div className="text-[10px] text-[var(--mu)]">{new Date(post.created_at).toLocaleString('tr-TR')}</div>{post.body&&<p className="mt-1 whitespace-pre-wrap text-sm text-[var(--ink)]">{post.body}</p>}{post.paper&&<div className="mt-2 rounded-lg border border-[var(--ln)] bg-[var(--sf)] p-2"><div className="text-xs font-semibold text-[var(--ink)]">{String(post.paper.title||'Paylaşılan makale')}</div>{post.paper.journal&&<div className="mt-1 text-[10px] text-[var(--mu)]">{String(post.paper.journal)}</div>}</div>}<div className="mt-3 flex flex-wrap gap-3 border-t border-[var(--ln)] pt-2 text-[10px] text-[var(--mu)]"><span className="inline-flex items-center gap-1"><Heart size={13}/> {myPostStats[post.id]?.likes||0} beğeni</span><span className="inline-flex items-center gap-1"><MessageCircle size={13}/> {myPostStats[post.id]?.comments||0} yorum</span><span className="inline-flex items-center gap-1"><Users size={13}/> {myPostStats[post.id]?.views||0} görüntülenme</span></div></article>)}{!myPosts.length&&<p className="rounded-xl bg-[var(--bg)] p-3 text-xs text-[var(--mu)]">Henüz paylaşım yapmadın.</p>}</div>
+        </div>
         <div className="border-t border-[var(--ln)] pt-3"><h3 className="text-sm font-bold text-[var(--ink)]">Engellediğim üyeler</h3>{blockedMembers.map(member=><div key={member.blocked_id} className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-[var(--bg)] p-2.5"><span className="truncate text-xs text-[var(--mu)]">{member.display_name||member.username||shortId(member.blocked_id)}</span><button className="text-xs font-semibold text-sky-700 dark:text-sky-300" onClick={()=>void unblockMember(member.blocked_id)}>Engeli kaldır</button></div>)}{!blockedMembers.length&&<p className="mt-1 text-xs text-[var(--mu)]">Engellediğin üye yok.</p>}</div>
       </section>}
 
       {section==='feed'&&<div className="space-y-3">
-        <section className={card+' overflow-hidden'}><button type="button" onClick={()=>setComposerOpen(v=>!v)} aria-expanded={composerOpen} className="flex w-full items-center gap-3 p-3.5 text-left"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200"><Plus size={20}/></div><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-[var(--ink)]">Toplulukla ne paylaşmak istersin?</div><div className="mt-0.5 text-[11px] text-[var(--mu)]">Kısa bir not, fikir veya makale paylaş.</div></div><span className="rounded-full bg-sky-700 px-3 py-1.5 text-xs font-semibold text-white">Yaz</span></button>{composerOpen&&<div className="border-t border-[var(--ln)] p-3.5"><textarea autoFocus className={field+' resize-y'} rows={3} maxLength={5000} value={postDraft} onChange={e=>setPostDraft(e.target.value)} placeholder="Akademik bir fikir, araştırma notu veya bilimsel tartışma başlat…"/><div className="mt-2 flex items-center justify-between gap-2"><span className="text-[10px] text-[var(--mu)]">{postDraft.length}/5000</span><div className="flex gap-2"><button type="button" className="rounded-xl px-3 py-2 text-xs font-semibold text-[var(--mu)]" onClick={()=>{setComposerOpen(false);setPostDraft('');}}>Vazgeç</button><button className={button} disabled={busy||!postDraft.trim()} onClick={()=>void publishPost()}><Plus size={16}/> Paylaş</button></div></div></div>}</section>
+        <section className={card+' overflow-hidden'}><button type="button" onClick={()=>setComposerOpen(v=>!v)} aria-expanded={composerOpen} className="flex w-full items-center gap-3 p-3.5 text-left"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200"><Plus size={20}/></div><div className="min-w-0 flex-1"><div className="text-sm font-semibold text-[var(--ink)]">Kamarada ne paylaşmak istersin?</div><div className="mt-0.5 text-[11px] text-[var(--mu)]">Kısa bir not, fikir veya makale paylaş.</div></div><span className="rounded-full bg-sky-700 px-3 py-1.5 text-xs font-semibold text-white">Yaz</span></button>{composerOpen&&<div className="border-t border-[var(--ln)] p-3.5"><textarea autoFocus className={field+' resize-y'} rows={3} maxLength={5000} value={postDraft} onChange={e=>setPostDraft(e.target.value)} placeholder="Akademik bir fikir, araştırma notu veya bilimsel tartışma başlat…"/><div className="mt-2 flex items-center justify-between gap-2"><span className="text-[10px] text-[var(--mu)]">{postDraft.length}/5000</span><div className="flex gap-2"><button type="button" className="rounded-xl px-3 py-2 text-xs font-semibold text-[var(--mu)]" onClick={()=>{setComposerOpen(false);setPostDraft('');}}>Vazgeç</button><button className={button} disabled={busy||!postDraft.trim()} onClick={()=>void publishPost()}><Plus size={16}/> Paylaş</button></div></div></div>}</section>
         {posts.map(post=><article key={post.id} className={card+' p-4'}>
           {post.is_featured&&<div className="mb-2 inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-bold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"><Pin size={12}/> Öne çıkan</div>}
-          <div className="flex items-start justify-between gap-3"><div className="min-w-0"><button type="button" onClick={()=>void openMemberProfile(post.author_id)} className="flex min-w-0 items-center gap-2.5 text-left"><span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sky-100 text-xs font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-200">{profiles[post.author_id]?.avatar_url?<img src={profiles[post.author_id].avatar_url!} alt="" className="absolute inset-0 h-full w-full object-cover"/>:(profiles[post.author_id]?.display_name||profiles[post.author_id]?.username||'A').slice(0,1).toLocaleUpperCase('tr-TR')}</span><span className="min-w-0"><span className="block truncate text-sm font-bold text-[var(--ink)]">{profiles[post.author_id]?.display_name||profiles[post.author_id]?.username||'Topluluk üyesi'}</span><span className="block text-xs text-[var(--mu)]">@{profiles[post.author_id]?.username||shortId(post.author_id)} · {new Date(post.created_at).toLocaleString('tr-TR')}</span></span></button></div><button title="Gönderiyi bildir" onClick={()=>void reportPost(post.id)} className="rounded-lg p-2 text-[var(--mu)] hover:bg-[var(--bg)]"><ShieldAlert size={16}/></button></div>
+          <div className="flex items-start justify-between gap-3"><div className="min-w-0"><button type="button" onClick={()=>void openMemberProfile(post.author_id)} className="flex min-w-0 items-center gap-2.5 text-left"><span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sky-100 text-xs font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-200">{profiles[post.author_id]?.avatar_url?<img src={profiles[post.author_id].avatar_url!} alt="" className="absolute inset-0 h-full w-full object-cover"/>:(profiles[post.author_id]?.display_name||profiles[post.author_id]?.username||'A').slice(0,1).toLocaleUpperCase('tr-TR')}</span><span className="min-w-0"><span className="block truncate text-sm font-bold text-[var(--ink)]">{profiles[post.author_id]?.display_name||profiles[post.author_id]?.username||'Kamara üyesi'}</span><span className="block text-xs text-[var(--mu)]">@{profiles[post.author_id]?.username||shortId(post.author_id)} · {new Date(post.created_at).toLocaleString('tr-TR')}</span></span></button></div><button title="Gönderiyi bildir" onClick={()=>void reportPost(post.id)} className="rounded-lg p-2 text-[var(--mu)] hover:bg-[var(--bg)]"><ShieldAlert size={16}/></button></div>
           {post.repost_note&&<p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[var(--ink)]">{post.repost_note}</p>}
           {post.repost_of&&<div className="mt-3 rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-3"><div className="mb-1 text-[10px] font-semibold text-[var(--mu)]">Yeniden paylaşılan gönderi · {profiles[sourcePosts[post.repost_of]?.author_id]?.display_name||profiles[sourcePosts[post.repost_of]?.author_id]?.username||'Kaynak gönderi'}</div>{sourcePosts[post.repost_of]?.body?.trim()&&<p className="whitespace-pre-wrap text-xs leading-5 text-[var(--ink)]">{sourcePosts[post.repost_of].body}</p>}{Boolean(sourcePosts[post.repost_of]?.paper?.title)&&<p className="mt-2 text-xs font-semibold text-sky-700">{String(sourcePosts[post.repost_of].paper?.title)}</p>}{safeHttpUrl(sourcePosts[post.repost_of]?.paper?.url)&&<a className="mt-2 inline-block text-[11px] font-semibold text-sky-700 underline dark:text-sky-300" href={safeHttpUrl(sourcePosts[post.repost_of]?.paper?.url)!} target="_blank" rel="noopener noreferrer">Makale kaynağını aç</a>}</div>}
           {post.body?.trim()&&!post.repost_of&&<p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[var(--ink)]">{post.body}</p>}
           {post.paper&&<div className="mt-3 rounded-xl border border-sky-200 bg-sky-50/70 p-3 text-sm dark:border-sky-900 dark:bg-sky-950/20"><div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Paylaşılan makale</div><div className="mt-1 font-semibold text-[var(--ink)]">{String(post.paper.title||'Akademik makale')}</div>{safeHttpUrl(post.paper.url)&&<a className="mt-2 inline-block text-xs font-semibold text-sky-700 underline dark:text-sky-300" href={safeHttpUrl(post.paper.url)!} target="_blank" rel="noopener noreferrer">Makale kaynağını aç</a>}</div>}
-          <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-[var(--ln)] pt-2"><button onClick={()=>void toggleLike(post.id)} className={`inline-flex items-center gap-1.5 text-xs ${likes.has(post.id)?'font-bold text-rose-600':'text-[var(--mu)]'}`}><Heart size={16} fill={likes.has(post.id)?'currentColor':'none'}/> Beğen</button><button onClick={()=>{const next=new Set(openComments);if(next.has(post.id))next.delete(post.id);else{next.add(post.id);void loadComments(post.id);}setOpenComments(next);}} className="inline-flex items-center gap-1.5 text-xs text-[var(--mu)]"><MessageCircle size={16}/> Yorum ({commentCounts[post.id]||0})</button><button onClick={()=>setRepostOpen(prev=>{const next=new Set(prev);next.has(post.id)?next.delete(post.id):next.add(post.id);return next;})} className="inline-flex items-center gap-1.5 text-xs text-[var(--mu)]"><Repeat2 size={16}/> Yeniden paylaş</button><button onClick={()=>void toggleBookmark(post.id)} className={`ml-auto inline-flex items-center gap-1.5 text-xs ${bookmarks.has(post.id)?'font-bold text-sky-700':'text-[var(--mu)]'}`}><Bookmark size={16} fill={bookmarks.has(post.id)?'currentColor':'none'}/> Kaydet</button></div>
+          <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-[var(--ln)] pt-2"><button onClick={()=>void toggleLike(post.id)} className={`inline-flex items-center gap-1.5 text-xs ${likes.has(post.id)?'font-bold text-rose-600':'text-[var(--mu)]'}`}><Heart size={16} fill={likes.has(post.id)?'currentColor':'none'}/> Beğen</button><button onClick={()=>{const next=new Set(openComments);if(next.has(post.id))next.delete(post.id);else{next.add(post.id);void loadComments(post.id);}setOpenComments(next);}} className="inline-flex items-center gap-1.5 text-xs text-[var(--mu)]"><MessageCircle size={16}/> Yorum ({commentCounts[post.id]||0})</button><button onClick={()=>setRepostOpen(prev=>{const next=new Set(prev);next.has(post.id)?next.delete(post.id):next.add(post.id);return next;})} className="inline-flex items-center gap-1.5 text-xs text-[var(--mu)]"><Repeat2 size={16}/> Yeniden paylaş</button></div>
           {repostOpen.has(post.id)&&<div className="mt-3 rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-3"><textarea className={field} rows={2} maxLength={1000} value={repostDrafts[post.id]||''} onChange={e=>setRepostDrafts(prev=>({...prev,[post.id]:e.target.value}))} placeholder="Bu makale veya gönderi hakkında ne düşünüyorsun?"/><div className="mt-2 flex justify-end gap-2"><button className="rounded-lg px-3 py-2 text-xs text-[var(--mu)]" onClick={()=>setRepostOpen(prev=>{const next=new Set(prev);next.delete(post.id);return next;})}>Vazgeç</button><button className={button} disabled={busy||!(repostDrafts[post.id]||'').trim()} onClick={()=>void submitRepost(post.id)}><Repeat2 size={14}/> Notla paylaş</button></div></div>}
           {openComments.has(post.id)&&<div className="mt-3 space-y-2">{(comments[post.id]||[]).map(c=><div key={c.id} className={`rounded-lg bg-[var(--bg)] p-2.5 ${c.parent_id?'ml-5 border-l-2 border-sky-300':''}`}><div className="text-[10px] font-semibold text-[var(--mu)]">{profiles[c.author_id]?.display_name||shortId(c.author_id)} · {new Date(c.created_at).toLocaleString('tr-TR')}</div><p className="mt-1 whitespace-pre-wrap text-xs text-[var(--ink)]">{c.body}</p><button className="mt-1 text-[10px] font-semibold text-sky-700 dark:text-sky-300" onClick={()=>setReplyTargets(prev=>({...prev,[post.id]:c.id}))}>Yanıtla</button></div>)}{replyTargets[post.id]&&<div className="text-[10px] text-[var(--mu)]">Yoruma yanıt yazılıyor <button onClick={()=>setReplyTargets(prev=>({...prev,[post.id]:''}))} className="ml-2 text-rose-600">Vazgeç</button></div>}<div className="flex gap-2"><input className={field} value={commentDrafts[post.id]||''} onChange={e=>setCommentDrafts(p=>({...p,[post.id]:e.target.value}))} placeholder={replyTargets[post.id]?'Yanıt yaz…':'Yorum yaz…'} maxLength={2000}/><button className={button} onClick={()=>void addComment(post.id)} aria-label="Yorumu gönder"><Send size={15}/></button></div></div>}
         </article>)}
         {!posts.length&&<div className={card+' p-8 text-center text-sm text-[var(--mu)]'}>Henüz gönderi yok. İlk akademik paylaşımı sen başlatabilirsin.</div>}
         {feedHasMore&&<div className="flex justify-center py-2"><button className="rounded-xl border border-[var(--ln)] px-5 py-2.5 text-xs font-semibold text-[var(--mu)]" disabled={loadingMore} onClick={()=>void loadMorePosts()}>{loadingMore?'Yükleniyor…':'Daha eski gönderileri yükle'}</button></div>}
-        {sharedNotes.map(item=><article key={item.id} className={card+' p-4'}><div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Bilim Defterim · Açıkça paylaşılmış not</div><div className="mt-1 text-sm font-semibold text-[var(--ink)]">{profiles[item.owner_id]?.display_name||profiles[item.owner_id]?.username||'Topluluk üyesi'} · {String(item.snapshot.paperTitle||'Makale notu')}</div><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ink)]">{String(item.snapshot.content||'')}</p><div className="mt-2 flex items-center justify-between text-[10px] text-[var(--mu)]"><time>{new Date(item.shared_at).toLocaleString('tr-TR')}</time>{item.owner_id===userId&&<button className="font-semibold text-rose-600" onClick={async()=>{if(!supabase||!window.confirm('Bu not paylaşımını geri almak istiyor musun? Özel notun korunur.'))return;const {error}=await supabase.rpc('community_revoke_shared_note',{p_shared_note_id:item.id});if(error)setError(errorText(error));else{setSharedNotes(prev=>prev.filter(n=>n.id!==item.id));setSharedNoteIds(prev=>{const next=new Set(prev);next.delete(item.source_note_id);return next;});setNotice('Not paylaşımı geri alındı. Özel notun değişmedi.');}}}>Paylaşımı geri al</button>}</div></article>)}
+        {sharedNotes.map(item=><article key={item.id} className={card+' p-4'}><div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Bilim Defterim · Açıkça paylaşılmış not</div><div className="mt-1 text-sm font-semibold text-[var(--ink)]">{profiles[item.owner_id]?.display_name||profiles[item.owner_id]?.username||'Kamara üyesi'} · {String(item.snapshot.paperTitle||'Makale notu')}</div><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ink)]">{String(item.snapshot.content||'')}</p><div className="mt-2 flex items-center justify-between text-[10px] text-[var(--mu)]"><time>{new Date(item.shared_at).toLocaleString('tr-TR')}</time>{item.owner_id===userId&&<button className="font-semibold text-rose-600" onClick={async()=>{if(!supabase||!window.confirm('Bu not paylaşımını geri almak istiyor musun? Özel notun korunur.'))return;const {error}=await supabase.rpc('community_revoke_shared_note',{p_shared_note_id:item.id});if(error)setError(errorText(error));else{setSharedNotes(prev=>prev.filter(n=>n.id!==item.id));setSharedNoteIds(prev=>{const next=new Set(prev);next.delete(item.source_note_id);return next;});setNotice('Not paylaşımı geri alındı. Özel notun değişmedi.');}}}>Paylaşımı geri al</button>}</div></article>)}
       </div>}
 
-      {section==='people'&&<section className={card+' p-4'}>{pendingPaper&&<div className="mb-3 rounded-xl border border-sky-300 bg-sky-50 p-3 dark:border-sky-900 dark:bg-sky-950/30"><div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Makale gönderimi</div><div className="mt-1 text-sm font-semibold text-[var(--ink)]">{pendingPaper.title}</div><p className="mt-1 text-xs text-[var(--mu)]">Bir veya daha fazla alıcı seç. Tek alıcıya birebir, birden fazla alıcıya grup mesajı gönderilir.</p><button className={button+' mt-2'} disabled={busy||selectedPeople.size<1} onClick={()=>void sendPendingPaper()}><Send size={15}/> Seçilenlere makaleyi gönder ({selectedPeople.size})</button></div>}<h2 className="font-bold text-[var(--ink)]">Topluluk üyeleri</h2><p className="mt-1 text-xs text-[var(--mu)]">Açık profiller ayrıntılarıyla, gizli profiller yalnızca temel hesap bilgileriyle listelenir.</p><div className="mt-3 flex gap-2"><input className={field} value={peopleQuery} onChange={e=>setPeopleQuery(e.target.value)} placeholder="Ad, kullanıcı adı veya kurum…"/><button className={button} disabled={busy} onClick={()=>void searchPeople()}><Search size={16}/> Ara</button></div><div className="mt-3 space-y-2">{selectedPeople.size>=2&&<div className="flex flex-wrap items-center gap-2 rounded-xl bg-[var(--bg)] p-3"><input className={field+' max-w-[220px]'} value={groupTitle} onChange={e=>setGroupTitle(e.target.value)} placeholder="Grup adı (isteğe bağlı)"/><button className={button} disabled={busy} onClick={()=>void startGroupConversation()}>Seçilenlerle grup kur ({selectedPeople.size})</button></div>}{people.filter(p=>p.user_id!==userId).map(p=><div key={p.user_id} className="flex flex-col gap-3 rounded-xl border border-[var(--ln)] p-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><button type="button" onClick={()=>void openMemberProfile(p.user_id)} className="block truncate text-left text-sm font-bold text-[var(--ink)] hover:text-sky-700">{p.display_name||p.username}</button><div className="text-xs text-[var(--mu)]">@{p.username} {p.affiliation?'· '+p.affiliation:''}</div><div className="mt-1 text-xs text-[var(--mu)]">{(p.research_interests||[]).join(' · ')}</div></div><div className="flex flex-wrap items-center gap-2"><label className="flex items-center gap-1 text-[10px] text-[var(--mu)]"><input type="checkbox" checked={selectedPeople.has(p.user_id)} onChange={e=>setSelectedPeople(prev=>{const n=new Set(prev);e.target.checked?n.add(p.user_id):n.delete(p.user_id);return n;})}/> Grup</label><button className="rounded-xl border border-[var(--ln)] px-3 py-2 text-xs font-semibold text-[var(--mu)]" onClick={()=>void toggleFollow(p.user_id)} disabled={sentFollowRequests.has(p.user_id)}>{p.profile_visibility==='private'?(sentFollowRequests.has(p.user_id)?'İstek gönderildi':'İstek gönder'):(followedPeople.has(p.user_id)?'Takibi bırak':'Takip et')}</button><button className="rounded-xl border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-600" onClick={()=>void blockMember(p.user_id)}>Engelle</button><button className={button} disabled={busy} onClick={()=>void startConversation(p.user_id)}><MessageCircle size={15}/> Mesaj</button></div></div>)}</div></section>}
+      {section==='people'&&<section className={card+' p-4'}>{pendingPaper&&<div className="mb-3 rounded-xl border border-sky-300 bg-sky-50 p-3 dark:border-sky-900 dark:bg-sky-950/30"><div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Makale gönderimi</div><div className="mt-1 text-sm font-semibold text-[var(--ink)]">{pendingPaper.title}</div><p className="mt-1 text-xs text-[var(--mu)]">Bir veya daha fazla alıcı seç. Tek alıcıya birebir, birden fazla alıcıya grup mesajı gönderilir.</p><button className={button+' mt-2'} disabled={busy||selectedPeople.size<1} onClick={()=>void sendPendingPaper()}><Send size={15}/> Seçilenlere makaleyi gönder ({selectedPeople.size})</button></div>}<h2 className="font-bold text-[var(--ink)]">Kamara üyeleri</h2><p className="mt-1 text-xs text-[var(--mu)]">Açık profiller ayrıntılarıyla, gizli profiller yalnızca temel hesap bilgileriyle listelenir.</p><div className="mt-3 flex gap-2"><input className={field} value={peopleQuery} onChange={e=>setPeopleQuery(e.target.value)} placeholder="Ad, kullanıcı adı veya kurum…"/><button className={button} disabled={busy} onClick={()=>void searchPeople()}><Search size={16}/> Ara</button></div><div className="mt-3 space-y-2">{selectedPeople.size>=2&&<div className="flex flex-wrap items-center gap-2 rounded-xl bg-[var(--bg)] p-3"><input className={field+' max-w-[220px]'} value={groupTitle} onChange={e=>setGroupTitle(e.target.value)} placeholder="Grup adı (isteğe bağlı)"/><button className={button} disabled={busy} onClick={()=>void startGroupConversation()}>Seçilenlerle grup kur ({selectedPeople.size})</button></div>}{people.filter(p=>p.user_id!==userId).map(p=><div key={p.user_id} className="flex flex-col gap-3 rounded-xl border border-[var(--ln)] p-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><button type="button" onClick={()=>void openMemberProfile(p.user_id)} className="block truncate text-left text-sm font-bold text-[var(--ink)] hover:text-sky-700">{p.display_name||p.username}</button><div className="text-xs text-[var(--mu)]">@{p.username} {p.affiliation?'· '+p.affiliation:''}</div><div className="mt-1 text-xs text-[var(--mu)]">{(p.research_interests||[]).join(' · ')}</div></div><div className="flex flex-wrap items-center gap-2"><label className="flex items-center gap-1 text-[10px] text-[var(--mu)]"><input type="checkbox" checked={selectedPeople.has(p.user_id)} onChange={e=>setSelectedPeople(prev=>{const n=new Set(prev);e.target.checked?n.add(p.user_id):n.delete(p.user_id);return n;})}/> Grup</label><button className="rounded-xl border border-[var(--ln)] px-3 py-2 text-xs font-semibold text-[var(--mu)]" onClick={()=>void toggleFollow(p.user_id)} disabled={sentFollowRequests.has(p.user_id)}>{p.profile_visibility==='private'?(sentFollowRequests.has(p.user_id)?'İstek gönderildi':'İstek gönder'):(followedPeople.has(p.user_id)?'Takibi bırak':'Takip et')}</button><button className="rounded-xl border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-600" onClick={()=>void blockMember(p.user_id)}>Engelle</button><button className={button} disabled={busy} onClick={()=>void startConversation(p.user_id)}><MessageCircle size={15}/> Mesaj</button></div></div>)}</div></section>}
 
-      {section==='requests'&&<section className={card+' overflow-hidden'}><header className="border-b border-[var(--ln)] p-4"><h2 className="text-base font-bold text-[var(--ink)]">Takip istekleri</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Gizli profillerden gelen istekleri burada kabul edebilir veya reddedebilirsin.</p></header><div className="space-y-2 p-3">{followRequests.map(request=>{const person=profiles[request.requester_id];return <div key={request.id} className="flex items-center gap-3 rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sky-100 text-sm font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-200">{person?.avatar_url?<img src={person.avatar_url} alt="" className="h-full w-full object-cover"/>:(person?.display_name||person?.username||'A').slice(0,1).toLocaleUpperCase('tr-TR')}</div><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-[var(--ink)]">{person?.display_name||person?.username||'Bir topluluk üyesi'}</div><div className="text-[10px] text-[var(--mu)]">{person?.username?'@'+person.username+' · ':''}{new Date(request.created_at).toLocaleDateString('tr-TR')}</div></div><div className="flex shrink-0 gap-1.5"><button type="button" disabled={busy} onClick={()=>void respondFollowRequest(request.id,request.requester_id,false)} className="rounded-lg border border-[var(--ln)] px-2.5 py-2 text-[11px] font-semibold text-[var(--mu)]">Sil</button><button type="button" disabled={busy} onClick={()=>void respondFollowRequest(request.id,request.requester_id,true)} className="rounded-lg bg-sky-700 px-2.5 py-2 text-[11px] font-semibold text-white">Kabul et</button></div></div>})}{!followRequests.length&&<div className="px-4 py-10 text-center"><div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--bg)] text-[var(--mu)]"><UserPlus size={20}/></div><p className="text-sm font-semibold text-[var(--ink)]">Bekleyen takip isteğin yok</p><p className="mt-1 text-xs text-[var(--mu)]">Yeni istekler burada görünecek.</p></div>}{sentFollowRequestRows.length>0&&<div className="mt-4 border-t border-[var(--ln)] pt-4"><h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--mu)]">Gönderdiğin istekler</h3><div className="space-y-2">{sentFollowRequestRows.map(request=><div key={request.id} className="flex items-center justify-between gap-3 rounded-xl bg-[var(--bg)] px-3 py-2.5"><span className="truncate text-xs font-medium text-[var(--ink)]">{profiles[request.target_id]?.display_name||profiles[request.target_id]?.username||'Gizli hesap'}</span><span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">Yanıt bekleniyor</span></div>)}</div></div>}</div></section>}
+      {section==='requests'&&<section className={card+' overflow-hidden'}><header className="border-b border-[var(--ln)] p-4"><h2 className="text-base font-bold text-[var(--ink)]">Takip istekleri</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Gizli profillerden gelen istekleri burada kabul edebilir veya reddedebilirsin.</p></header><div className="space-y-2 p-3">{followRequests.map(request=>{const person=profiles[request.requester_id];return <div key={request.id} className="flex items-center gap-3 rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sky-100 text-sm font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-200">{person?.avatar_url?<img src={person.avatar_url} alt="" className="h-full w-full object-cover"/>:(person?.display_name||person?.username||'A').slice(0,1).toLocaleUpperCase('tr-TR')}</div><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-[var(--ink)]">{person?.display_name||person?.username||'Bir kamara üyesi'}</div><div className="text-[10px] text-[var(--mu)]">{person?.username?'@'+person.username+' · ':''}{new Date(request.created_at).toLocaleDateString('tr-TR')}</div></div><div className="flex shrink-0 gap-1.5"><button type="button" disabled={busy} onClick={()=>void respondFollowRequest(request.id,request.requester_id,false)} className="rounded-lg border border-[var(--ln)] px-2.5 py-2 text-[11px] font-semibold text-[var(--mu)]">Sil</button><button type="button" disabled={busy} onClick={()=>void respondFollowRequest(request.id,request.requester_id,true)} className="rounded-lg bg-sky-700 px-2.5 py-2 text-[11px] font-semibold text-white">Kabul et</button></div></div>})}{!followRequests.length&&<div className="px-4 py-10 text-center"><div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--bg)] text-[var(--mu)]"><UserPlus size={20}/></div><p className="text-sm font-semibold text-[var(--ink)]">Bekleyen takip isteğin yok</p><p className="mt-1 text-xs text-[var(--mu)]">Yeni istekler burada görünecek.</p></div>}{sentFollowRequestRows.length>0&&<div className="mt-4 border-t border-[var(--ln)] pt-4"><h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--mu)]">Gönderdiğin istekler</h3><div className="space-y-2">{sentFollowRequestRows.map(request=><div key={request.id} className="flex items-center justify-between gap-3 rounded-xl bg-[var(--bg)] px-3 py-2.5"><span className="truncate text-xs font-medium text-[var(--ink)]">{profiles[request.target_id]?.display_name||profiles[request.target_id]?.username||'Gizli hesap'}</span><span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">Yanıt bekleniyor</span></div>)}</div></div>}</div></section>}
       {section==='messages'&&<CommunityMessages userId={userId} initialConversationId={activeConversation} onInitialConversationHandled={()=>setActiveConversation(null)} onOpenProfile={openMemberProfile}/>}
       {viewedProfileId&&<div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4" onClick={closeViewedProfile}>
         <section role="dialog" aria-modal="true" aria-label="Üye profili" onClick={e=>e.stopPropagation()} className="relative w-full max-w-md rounded-3xl border border-[var(--ln)] bg-[var(--sf)] p-5 shadow-2xl sm:p-6">
           <button type="button" onClick={closeViewedProfile} className="absolute right-3 top-3 rounded-full p-2 text-[var(--mu)] hover:bg-[var(--bg)]" aria-label="Profili kapat"><X size={18}/></button>
           {profileLoading?<div className="flex items-center justify-center gap-2 py-14 text-sm text-[var(--mu)]"><Loader2 className="animate-spin" size={18}/> Profil yükleniyor…</div>
-          :viewedProfilePrivate||!viewedProfile?<div className="py-10 text-center"><div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800"><UserPlus size={24}/></div><h2 className="text-lg font-bold text-[var(--ink)]">Profil gizli</h2><p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-[var(--mu)]">Bu üye profilini toplulukla paylaşmayı seçmemiş.</p></div>
+          :viewedProfilePrivate||!viewedProfile?<div className="py-10 text-center"><div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800"><UserPlus size={24}/></div><h2 className="text-lg font-bold text-[var(--ink)]">Profil gizli</h2><p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-[var(--mu)]">Bu üye profilini kamarala paylaşmayı seçmemiş.</p></div>
           :<div className="pt-5 text-center">
             <div className="relative mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-[var(--ln)] bg-sky-100 text-2xl font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-200">
               {(viewedProfile.display_name||viewedProfile.username||'A').charAt(0).toLocaleUpperCase('tr-TR')}
@@ -477,11 +574,12 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
             {viewedProfile.affiliation&&<p className="mt-3 text-sm font-medium text-[var(--ink)]">{viewedProfile.affiliation}</p>}
             {viewedProfile.bio&&<p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--mu)]">{viewedProfile.bio}</p>}
             {!!viewedProfile.research_interests?.length&&<div className="mt-4"><div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--mu)]">Araştırma alanları</div><div className="flex flex-wrap justify-center gap-2">{viewedProfile.research_interests.map(item=><span key={item} className="rounded-full bg-sky-50 px-3 py-1.5 text-[11px] font-medium text-sky-800 dark:bg-sky-950/50 dark:text-sky-200">{item}</span>)}</div></div>}
+            <div className="mt-5 border-t border-[var(--ln)] pt-4 text-left"><div className="flex items-center justify-between"><h3 className="text-sm font-bold text-[var(--ink)]">Paylaşımları</h3><span className="text-[10px] text-[var(--mu)]">{viewedProfilePosts.length} gönderi</span></div><div className="mt-2 space-y-2">{viewedProfilePosts.map(post=><article key={post.id} className="rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-3">{post.body&&<p className="whitespace-pre-wrap text-xs leading-5 text-[var(--ink)]">{post.body}</p>}{post.paper&&<div className="mt-1 rounded-lg bg-[var(--sf)] p-2 text-xs font-semibold text-[var(--ink)]">{String(post.paper.title||'Paylaşılan makale')}</div>}<div className="mt-2 flex flex-wrap gap-3 text-[10px] text-[var(--mu)]"><span><Heart size={12} className="mr-1 inline"/> {viewedProfilePostStats[post.id]?.likes||0}</span><span><MessageCircle size={12} className="mr-1 inline"/> {viewedProfilePostStats[post.id]?.comments||0}</span><span><Users size={12} className="mr-1 inline"/> {viewedProfilePostStats[post.id]?.views||0} görüntülenme</span></div></article>)}{!viewedProfilePosts.length&&<p className="rounded-xl bg-[var(--bg)] p-3 text-xs text-[var(--mu)]">Henüz paylaşım yok.</p>}</div></div>
             <div className="mt-5 grid grid-cols-2 gap-2"><button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[var(--ln)] px-3 text-xs font-semibold text-[var(--ink)]" onClick={()=>void toggleFollow(viewedProfile.user_id)}>{followedPeople.has(viewedProfile.user_id)?'Takibi bırak':sentFollowRequests.has(viewedProfile.user_id)?'İstek gönderildi':'Takip et'}</button><button type="button" className={button} onClick={()=>{const id=viewedProfile.user_id;closeViewedProfile();void startConversation(id);}}><MessageCircle size={15}/> Mesaj gönder</button></div>
           </div>}
         </section>
       </div>}
-      <p className="px-1 text-[10px] leading-5 text-[var(--mu)]">Topluluk gönderileri ve mesajları yalnızca yetkili üyeler içindir. Özel notların otomatik paylaşılmaz; paylaşım için ayrıca açık onay gereklidir.</p>
+      <p className="px-1 text-[10px] leading-5 text-[var(--mu)]">Kamara gönderileri ve mesajları yalnızca yetkili üyeler içindir. Özel notların otomatik paylaşılmaz; paylaşım için ayrıca açık onay gereklidir.</p>
     </div>
   </div>;
 };

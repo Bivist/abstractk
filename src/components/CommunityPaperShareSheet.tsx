@@ -10,6 +10,7 @@ type Recipient = {
   avatar_url: string | null;
   affiliation?: string;
   research_interests?: string[];
+  profile_visibility?: 'community' | 'private';
 };
 
 const field = 'w-full rounded-xl border border-[var(--ln)] bg-[var(--bg)] px-3 py-2.5 text-sm text-[var(--ink)] outline-none focus:border-sky-500';
@@ -57,10 +58,10 @@ export const CommunityPaperShareSheet: React.FC<{
         if (ids.length) {
           const { data, error: profileError } = await supabase
             .from('community_profiles')
-            .select('user_id,username,display_name,avatar_url,affiliation,research_interests')
+            .select('user_id,username,display_name,avatar_url,affiliation,research_interests,profile_visibility')
             .in('user_id', ids);
           if (profileError) throw profileError;
-          if (active) setFollowed((data || []) as Recipient[]);
+          if (active) setFollowed(((data || []) as Recipient[]).map(person => person.profile_visibility === 'private' ? { ...person, avatar_url: null, affiliation: '', research_interests: [] } : person));
         } else if (active) setFollowed([]);
       } catch (e) {
         if (active) setError(e && typeof e === 'object' && 'message' in e ? String((e as {message:unknown}).message) : 'Takip edilen üyeler yüklenemedi.');
@@ -85,9 +86,9 @@ export const CommunityPaperShareSheet: React.FC<{
     setSearching(true);
     setError('');
     try {
-      const { data, error: searchError } = await supabase.rpc('community_search_members', { p_query: query.trim(), p_limit: 25 });
+      const { data, error: searchError } = await supabase.rpc('community_search_members_v2', { p_query: query.trim(), p_limit: 25 });
       if (searchError) throw searchError;
-      setResults((data || []) as Recipient[]);
+      setResults(((data || []) as Recipient[]).map(person => person.profile_visibility === 'private' ? { ...person, avatar_url: null, affiliation: '', research_interests: [] } : person));
     } catch (e) {
       setError(e && typeof e === 'object' && 'message' in e ? String((e as {message:unknown}).message) : 'Üye araması yapılamadı.');
     } finally {
@@ -103,6 +104,8 @@ export const CommunityPaperShareSheet: React.FC<{
 
   const send = async () => {
     if (!supabase || !paper || selected.size === 0) return;
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if ([...selected].some(id => !uuidPattern.test(id))) { setError('Alıcı listesindeki hesap kimliği geçersiz. Kişileri yeniden ara ve seç.'); return; }
     setSending(true);
     setError('');
     let directCount = 0;
@@ -130,6 +133,7 @@ export const CommunityPaperShareSheet: React.FC<{
               p_user_ids: [recipientId], p_kind: 'direct', p_title: null
             });
             if (conversationError) throw conversationError;
+            if (typeof conversationId !== 'string' || !uuidPattern.test(conversationId)) throw new Error('Sohbet kimliği geçerli UUID olarak dönmedi.');
             const { error: sendError } = await supabase.rpc('community_send_message', {
               p_conversation_id: conversationId,
               p_body: note.trim() || 'Seninle bir akademik makale paylaştı.',
@@ -203,7 +207,7 @@ export const CommunityPaperShareSheet: React.FC<{
             </button>)}
           </div>
           {results.length > 0 && <><h3 className="mb-2 mt-5 text-xs font-bold uppercase tracking-wider text-[var(--mu)]">Arama sonuçları</h3><div className="space-y-1">{results.filter(person => !followed.some(f => f.user_id === person.user_id)).map(person => <button key={person.user_id} type="button" onClick={() => toggle(person.user_id)} className={'flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-colors ' + (selected.has(person.user_id) ? 'bg-sky-100 ring-1 ring-sky-500 dark:bg-sky-950/50' : 'hover:bg-[var(--bg)]')}>
-            <Avatar person={person}/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-[var(--ink)]">{person.display_name || person.username}</span><span className="block truncate text-[10px] text-[var(--mu)]">@{person.username}{person.affiliation ? ' · ' + person.affiliation : ''}</span></span>
+            <Avatar person={person}/><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-[var(--ink)]">{person.display_name || person.username}</span><span className="block truncate text-[10px] text-[var(--mu)]">@{person.username}{person.profile_visibility==='private'?' · Gizli hesap':person.affiliation ? ' · ' + person.affiliation : ''}</span></span>
             <span className={'inline-flex h-6 w-6 items-center justify-center rounded-full border ' + (selected.has(person.user_id) ? 'border-sky-700 bg-sky-700 text-white' : 'border-[var(--ln)] text-transparent')}><Check size={14}/></span>
           </button>)}</div></>}
         </div>
