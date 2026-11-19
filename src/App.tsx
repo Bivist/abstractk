@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 
 import { Helmet } from 'react-helmet-async';
 import { Paper, FilterState, SettingsState, TabId, LighthouseWatchState, ReadingHistoryItem, PaperNote } from './types';
 import { I18N } from './constants/i18n';
+import { observeAppLanguage } from './utils/domLocalization';
 import { buildSearchTiers, fetchWorks, parseWorksToPapers, getEffectiveNodes, normalizeYears, fetchWorkById } from './utils/openalex';
 import { SFX } from './utils/sfx';
 import { ensureTranslatedPaper } from './utils/translate';
@@ -501,6 +502,9 @@ export default function App() {
 
   // Localization Dictionary
   const langDict = I18N[settings.lang || 'tr'] || I18N.tr;
+
+  // Keep every legacy and dynamically rendered screen in the selected language.
+  useEffect(() => observeAppLanguage(settings.lang || 'tr'), [settings.lang]);
 
   useEffect(() => {
     if (detailPaper?.id) trackEvent('paper_viewed', { paper_id: detailPaper.id });
