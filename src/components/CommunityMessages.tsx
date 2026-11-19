@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Loader2, MessageCircle, Paperclip, Send, Users } from 'lucide-react';
+import { ArrowLeft, Loader2, MessageCircle, Paperclip, Send, Users, Plus, Search, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type Profile = {
@@ -76,6 +76,10 @@ export const CommunityMessages: React.FC<{
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState('');
+  const [newMessageOpen, setNewMessageOpen] = useState(false);
+  const [newMessageQuery, setNewMessageQuery] = useState('');
+  const [newMessageResults, setNewMessageResults] = useState<Profile[]>([]);
+  const [searchingMembers, setSearchingMembers] = useState(false);
   const [showExtras, setShowExtras] = useState(false);
   const [selectedSharedNoteId, setSelectedSharedNoteId] = useState('');
   const [extraAttachmentType, setExtraAttachmentType] = useState<'none' | 'citation' | 'collection' | 'research_summary'>('none');
@@ -184,6 +188,53 @@ export const CommunityMessages: React.FC<{
     } finally {
       setSending(false);
     }
+  };
+
+  const searchNewMessageMembers = async () => {
+    if (!supabase || newMessageQuery.trim().length < 2) { setError('Kişi aramak için en az iki karakter yaz.'); return; }
+    setSearchingMembers(true); setError('');
+    try {
+      const { data, error } = await supabase.rpc('community_search_members_v2', { p_query: newMessageQuery.trim(), p_limit: 20 });
+      if (error) throw error;
+      setNewMessageResults(((data || []) as Profile[]).filter(person => person.user_id !== userId));
+    } catch (e) {
+      setError(e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'Üye araması yapılamadı.');
+    } finally { setSearchingMembers(false); }
+  };
+
+  const beginDirectMessage = async (otherId: string) => {
+    if (!supabase || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(otherId)) {
+      setError('Seçilen hesabın kimlik bilgisi geçersiz. Lütfen kişiyi yeniden ara.'); return;
+    }
+    setSending(true); setError('');
+    try {
+      const { data: allowed, error: permissionError } = await supabase.rpc('community_can_message', { p_other: otherId });
+      if (permissionError) throw permissionError;
+      if (!allowed) {
+        const firstMessage = window.prompt('Bu kişiyle doğrudan mesajlaşma iznin henüz yok. İlk mesajını istek olarak gönder:');
+        if (!firstMessage?.trim()) return;
+        const { error } = await supabase.rpc('community_create_message_request', {
+          p_recipient: otherId, p_body: firstMessage.trim().slice(0, 5000), p_attachment_type: null, p_attachment: null
+        });
+        if (error) throw error;
+        setError('Mesaj isteğin gönderildi. Kabul edilirse sohbet açılacak.');
+        setNewMessageOpen(false);
+        return;
+      }
+      const { data, error } = await supabase.rpc('community_create_approved_conversation', {
+        p_user_ids: [otherId], p_kind: 'direct', p_title: null
+      });
+      if (error) throw error;
+      const conversationId = typeof data === 'string' ? data : '';
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(conversationId)) {
+        throw new Error('Sohbet kimliği sunucudan geçerli bir UUID olarak dönmedi. Yeniden deneyebilirsin.');
+      }
+      await loadConversations();
+      setNewMessageOpen(false); setNewMessageQuery(''); setNewMessageResults([]);
+      await openConversation(conversationId);
+    } catch (e) {
+      setError(e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'Yeni mesaj başlatılamadı.');
+    } finally { setSending(false); }
   };
 
   const openConversation = useCallback(async (conversationId: string) => {
@@ -360,8 +411,9 @@ export const CommunityMessages: React.FC<{
         <div className="shrink-0 border-b border-[var(--ln)] p-3 sm:p-4">
           <div className="flex items-center justify-between gap-2">
             <div><h2 className="text-base font-bold text-[var(--ink)]">Mesajlar</h2><p className="mt-1 text-xs text-[var(--mu)]">Sohbetlerin ve mesaj isteklerin</p></div>
-            <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">{conversations.length} sohbet</span>
+            <div className="flex items-center gap-2"><span className="rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold text-sky-700 dark:bg-sky-950/50 dark:text-sky-300">{conversations.length} sohbet</span><button type="button" aria-label="Yeni mesaj" title="Yeni mesaj" onClick={()=>{setNewMessageOpen(v=>!v);setNewMessageResults([]);setNewMessageQuery('');setError('');}} className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-sky-700 text-white"><Plus size={18}/></button></div>
           </div>
+          {newMessageOpen&&<div className="mt-3 rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-3"><div className="flex items-center justify-between"><h3 className="text-sm font-bold text-[var(--ink)]">Yeni mesaj</h3><button type="button" aria-label="Kapat" onClick={()=>setNewMessageOpen(false)} className="rounded-lg p-1 text-[var(--mu)]"><X size={16}/></button></div><div className="mt-2 flex gap-2"><input className={field} value={newMessageQuery} onChange={e=>setNewMessageQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')void searchNewMessageMembers();}} placeholder="İsim veya kullanıcı adı ara…"/><button type="button" className={button} disabled={searchingMembers} onClick={()=>void searchNewMessageMembers()}>{searchingMembers?<Loader2 size={15} className="animate-spin"/>:<Search size={15}/>} Ara</button></div><div className="mt-2 max-h-48 space-y-1 overflow-y-auto">{newMessageResults.map(person=><button type="button" key={person.user_id} disabled={sending} onClick={()=>void beginDirectMessage(person.user_id)} className="flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-[var(--sf)]"><MemberAvatar profile={person} size="sm"/><span className="min-w-0 flex-1"><span className="block truncate text-xs font-semibold text-[var(--ink)]">{person.display_name||person.username}</span><span className="block truncate text-[10px] text-[var(--mu)]">@{person.username}</span></span>{sending?<Loader2 size={14} className="animate-spin"/>:<MessageCircle size={15} className="text-[var(--mu)]"/>}</button>)}{newMessageQuery.length>=2&&!newMessageResults.length&&!searchingMembers&&<p className="p-2 text-xs text-[var(--mu)]">Henüz sonuç yok. Arama yapabilirsin.</p>}</div></div>}
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setShowRequests(false)} className={'min-h-10 rounded-xl px-3 text-xs font-semibold ' + (!showRequests ? 'bg-sky-700 text-white' : 'bg-[var(--bg)] text-[var(--mu)]')}>Sohbetler</button>
             <button type="button" onClick={() => setShowRequests(true)} className={'min-h-10 rounded-xl px-3 text-xs font-semibold ' + (showRequests ? 'bg-sky-700 text-white' : 'bg-[var(--bg)] text-[var(--mu)]')}>İstekler {requests.length > 0 ? '(' + requests.length + ')' : ''}</button>
