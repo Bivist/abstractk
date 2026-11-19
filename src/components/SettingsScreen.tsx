@@ -342,6 +342,20 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </div>
       </div>
 
+      <div className="mb-5 rounded-2xl border border-[#c5dfe9] dark:border-[#0d2f45] bg-white/70 dark:bg-[#071828]/70 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <span className="block text-xs font-semibold text-[#0a2540] dark:text-[#e0f4ff]">Kamara ilgi alanı önerileri</span>
+            <p className="mt-1 text-[11px] leading-relaxed text-[#66869a] dark:text-[#83b5cc]">Beğendiğin ve görüntülediğin makalelerden anonim bir ilgi profili oluşturularak benzer ilgi alanlarına göre öneriler sunulur. İzni dilediğin an kapatabilirsin.</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer shrink-0">
+            <input type="checkbox" checked={settings.communityRecommendations} onChange={e => onUpdateSettings(prev => ({ ...prev, communityRecommendations: e.target.checked }))} className="sr-only peer" />
+            <span className="w-11 h-6 rounded-full bg-[#c5dfe9] dark:bg-[#0d2f45] peer-checked:bg-[#0369a1] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-5 after:h-5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5" />
+          </label>
+        </div>
+        <p className="mt-2 text-[10px] text-[#7895a7] dark:text-[#64879c]">Kapattığında Kamara öneri profilin silinir. Kişisel önerilerin etkilenmez.</p>
+      </div>
+
       {/* ── UYGULAMA TURU ── */}
       {onReplayTour && (
         <div className="mb-5">
