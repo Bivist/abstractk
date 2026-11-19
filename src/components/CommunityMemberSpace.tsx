@@ -142,7 +142,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     if(!ids.length) {setProfiles({});setLikes(new Set());setCommentCounts({});}
     if(ids.length){
     const [profileRows,likeRows,commentRows]=await Promise.all([
-      supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',[...new Set(rows.map(p=>p.author_id))]),
+      supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,avatar_shape,bio,affiliation,research_interests').in('user_id',[...new Set(rows.map(p=>p.author_id))]),
       supabase.from('community_post_likes').select('post_id,user_id').in('post_id',ids),
       supabase.from('community_comments').select('post_id,author_id').in('post_id',ids)
     ]);
