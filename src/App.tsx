@@ -504,7 +504,7 @@ export default function App() {
   const langDict = I18N[settings.lang || 'tr'] || I18N.tr;
 
   // Keep every legacy and dynamically rendered screen in the selected language.
-  useEffect(() => observeAppLanguage(settings.lang || 'tr'), [settings.lang]);
+  useEffect(() => observeAppLanguage((settings.lang in I18N ? settings.lang : 'tr') as keyof typeof I18N), [settings.lang]);
 
   useEffect(() => {
     if (detailPaper?.id) trackEvent('paper_viewed', { paper_id: detailPaper.id });
