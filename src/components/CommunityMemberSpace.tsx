@@ -77,10 +77,10 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   const [attachmentContent,setAttachmentContent]=useState('');
 
   const loadProfile=useCallback(async()=>{
+    if(!supabase) return;
     const {data:ownPostRows,error:ownPostError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').eq('author_id',userId).order('created_at',{ascending:false}).limit(60);
     if(ownPostError)throw ownPostError;
     setMyPosts((ownPostRows||[]) as Post[]);
-    if(!supabase) return;
     const {data,error}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests,profile_visibility').eq('user_id',userId).maybeSingle();
     if(error) throw error;
     if(data) {
@@ -89,6 +89,23 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
       setProfileDraft({username:p.username||'',display_name:p.display_name||'',bio:p.bio||'',affiliation:p.affiliation||'',research_interests:(p.research_interests||[]).join(', ')});
     }
   },[userId]);
+
+  useEffect(()=>{
+    if(!supabase||!posts.length)return;
+    let active=true;
+    void (async()=>{
+      const visibleIds=posts.filter(post=>post.author_id!==userId).map(post=>post.id);
+      await Promise.all(visibleIds.map(postId=>supabase!.rpc('community_record_post_view',{p_post_id:postId})));
+      if(!active||!myPosts.length)return;
+      const ownIds=myPosts.map(post=>post.id);
+      const {data,error}=await supabase!.rpc('community_post_view_counts',{p_post_ids:ownIds});
+      if(error){setError(errorText(error));return;}
+      const counts:Record<string,number>={};
+      (data||[]).forEach((row:any)=>counts[row.post_id]=Number(row.view_count)||0);
+      setMyPostStats(prev=>{const next={...prev};ownIds.forEach(id=>{next[id]={likes:next[id]?.likes||0,comments:next[id]?.comments||0,views:counts[id]||0};});return next;});
+    })();
+    return()=>{active=false;};
+  },[posts,myPosts,userId]);
 
   useEffect(()=>{
     if(!supabase||!myPosts.length)return;
