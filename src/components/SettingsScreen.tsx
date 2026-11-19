@@ -347,6 +347,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               English
             </button>
           </div>
+          <p className="px-2 pt-2 text-[11px] leading-relaxed text-[#4a7a96] dark:text-[#5fa8c8]">
+            {settings.lang === 'en'
+              ? 'This changes the language of the entire app interface, including menus, settings, dialogs and community screens.'
+              : 'Bu seçim menüler, ayarlar, pencereler ve topluluk ekranları dâhil uygulamanın tamamının arayüz dilini değiştirir.'}
+          </p>
         </div>
       </div>
 
