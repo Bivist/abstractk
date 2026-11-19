@@ -310,7 +310,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   };
   const respondFollowRequest=async(requestId:string,requesterId:string,accept:boolean)=>{
     if(!supabase)return;setBusy(true);setError('');
-    try{const {error}=await supabase.rpc('community_respond_follow_request',{p_request_id:requestId,p_accept:accept});if(error)throw error;setFollowRequests(prev=>prev.filter(item=>item.id!==requestId));if(accept)setFollowedPeople(prev=>new Set(prev).add(requesterId));setNotice(accept?'Takip isteği kabul edildi.':'Takip isteği silindi.');if(accept)await loadFeed();}
+    try{const {error}=await supabase.rpc('community_respond_follow_request',{p_request_id:requestId,p_accept:accept});if(error)throw error;setFollowRequests(prev=>prev.filter(item=>item.id!==requestId));setNotice(accept?'Takip isteği kabul edildi.':'Takip isteği silindi.');if(accept)await loadFeed();}
     catch(e){setError(errorText(e));}finally{setBusy(false);}
   };
   const markNotificationsRead=async()=>{
