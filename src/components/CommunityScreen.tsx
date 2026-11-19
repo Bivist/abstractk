@@ -37,7 +37,7 @@ function friendlyError(error: unknown) {
   return 'İşlem tamamlanamadı. Lütfen tekrar dene.';
 }
 
-export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: string | null; notes: PaperNote[]; pendingPaper?: Paper | null; onPendingPaperHandled?: () => void }> = ({ userId, avatarUrl, notes, pendingPaper, onPendingPaperHandled }) => {
+export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: string | null; avatarShape?: 'circle' | 'rounded' | 'square'; notes: PaperNote[]; pendingPaper?: Paper | null; onPendingPaperHandled?: () => void }> = ({ userId, avatarUrl, avatarShape, notes, pendingPaper, onPendingPaperHandled }) => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMember, setIsMember] = useState(false);
@@ -298,7 +298,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
             </section>
           </>
         ) : (
-          <CommunityMemberSpace userId={userId} avatarUrl={avatarUrl} notes={notes} pendingPaper={pendingPaper} onPendingPaperHandled={onPendingPaperHandled} onReturnToAdmin={isAdmin ? () => setAdminUsingCommunity(false) : undefined} />
+          <CommunityMemberSpace userId={userId} avatarUrl={avatarUrl} avatarShape={avatarShape} notes={notes} pendingPaper={pendingPaper} onPendingPaperHandled={onPendingPaperHandled} onReturnToAdmin={isAdmin ? () => setAdminUsingCommunity(false) : undefined} />
         )}
       </div>
     </div>
