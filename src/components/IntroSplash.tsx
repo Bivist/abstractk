@@ -4,7 +4,7 @@ import { AppIcon } from './AppIcon';
 
 interface IntroSplashProps {
   onComplete: () => void;
-  lang?: 'tr' | 'en';
+  lang?: 'tr' | 'en' | 'ar' | 'zh' | 'es';
 }
 
 export const IntroSplash: React.FC<IntroSplashProps> = ({ onComplete, lang = 'tr' }) => {
@@ -62,9 +62,9 @@ export const IntroSplash: React.FC<IntroSplashProps> = ({ onComplete, lang = 'tr
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); handleExit(); }}
-            className="absolute bottom-10 right-6 px-4 py-2 rounded-full text-xs font-semibold bg-white/80 dark:bg-[#0c2d44]/80 border border-[#c5dfe9] dark:border-[#0d2f45] text-[#0369a1] dark:text-[#7dd3fc] shadow-sm backdrop-blur hover:bg-white dark:hover:bg-[#0c2d44]"
+            className={"absolute bottom-10 " + (lang === "ar" ? "left-6" : "right-6") + " px-4 py-2 rounded-full text-xs font-semibold bg-white/80 dark:bg-[#0c2d44]/80 border border-[#c5dfe9] dark:border-[#0d2f45] text-[#0369a1] dark:text-[#7dd3fc] shadow-sm backdrop-blur hover:bg-white dark:hover:bg-[#0c2d44]"
           >
-            {lang === 'en' ? 'Skip' : 'Geç'} ›
+            {lang === 'en' ? 'Skip' : lang === 'ar' ? 'تخطّي' : lang === 'zh' ? '跳过' : lang === 'es' ? 'Omitir' : 'Geç'} ›
           </button>
         </motion.div>
       )}
