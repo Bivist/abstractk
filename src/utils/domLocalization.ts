@@ -415,12 +415,12 @@ const LEGACY_UI_EN: Record<string, string> = {
 
 function buildTranslationDictionary(lang: Language): Record<string, string> {
   const result: Record<string, string> = {};
-  const target = I18N[lang];
+  const target = I18N[lang] as Record<string, string>;
   for (const key of Object.keys(I18N.tr)) {
-    const translated = target[key as keyof typeof target];
+    const translated = target[key];
     if (typeof translated !== 'string') continue;
     for (const sourceLang of Object.keys(I18N) as Language[]) {
-      const source = I18N[sourceLang][key as keyof typeof I18N[typeof sourceLang]];
+      const source = (I18N[sourceLang] as Record<string, string>)[key];
       if (typeof source === 'string') result[source] = translated;
     }
   }
