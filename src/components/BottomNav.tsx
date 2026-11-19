@@ -182,7 +182,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                     : 'text-[#527993] dark:text-[#7bb0cc] font-medium'
                 }`}
               >
-                {langDict[tab.labelKey] || (tab.id === 'community' ? 'Topluluk' : tab.labelKey)}
+                {langDict[tab.labelKey] || (tab.id === 'community' ? 'Kamara' : tab.labelKey)}
               </span>
             </button>
           );
