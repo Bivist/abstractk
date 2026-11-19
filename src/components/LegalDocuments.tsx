@@ -36,6 +36,9 @@ const documents: Record<LegalDocumentKey, { title: string; icon: React.ReactNode
         <li>PostHog Inc. — yalnızca rıza verirseniz kullanım istatistikleri.</li>
         <li>Yasal yükümlülük hâlinde yetkili kamu kurum ve kuruluşları.</li>
       </ul>
+      <p>OpenAlex’e iletilen bilgiler makale aramaları ve filtre sorgularıdır; yazar/dergi adı, coğrafi terim ve anahtar kelimeler bu kapsama girebilir. “blup” çevirisi açıkken makale başlığı ve özeti Google Translate hizmetine gönderilir. Google Fonts sayfa yüklenirken IP adresinizi Google’a iletebilir. Vercel, barındırma kapsamında sunucu ve erişim kayıtlarını işleyebilir.</p>
+      <p>PostHog yalnızca “Tümünü kabul et” tercihi sonrasında; sekme görüntüleme, makale görüntüleme/beğenme/paylaşma (makale kimliği), filtre uygulanıp uygulanmadığı ve kimlik doğrulama gibi olayları işler. İçerik metni veya arama sorgusunun kendisi PostHog olaylarına dahil edilmez.</p>
+      <p>Paylaşım sayfalarında (/paper/…) OpenAlex’ten alınan makale başlığı ve özeti herkese açık, arama motorlarınca dizinlenebilen sayfada gösterilebilir. Beğenilen makaleleri yazdırma/PDF dışa aktarma işlemi tarayıcınızda oluşturulur; bu işlem için ilgili çıktı sunucuya gönderilmez.</p>
       <h4>1.5. Yurt dışına aktarım</h4>
       <p>Hizmet sağlayıcılarının sunucuları yurt dışında (ör. ABD veya AB) bulunabilir. Bu nedenle verileriniz KVKK m.9 ve ilgili mevzuat kapsamında yurt dışına aktarılabilir. Aktarım, Kanun’da öngörülen güvence mekanizmalarına (yeterlilik kararı, standart sözleşme vb.) veya ilgili durumlarda açık rızanıza dayanır. Analitik amaçlı aktarım yalnızca açık rızanızla yapılır; rızanızı çerez tercihlerinden istediğiniz an geri çekebilirsiniz.</p>
       <h4>1.6. Saklama süresi</h4>
