@@ -39,6 +39,14 @@ export const DetailSheet: React.FC<DetailSheetProps> = ({
   const [noteType, setNoteType] = React.useState<PaperNote['type']>('note');
   const [noteContent, setNoteContent] = React.useState('');
   React.useEffect(() => { setNoteContent(''); setNoteType('note'); }, [paper?.id]);
+  React.useEffect(() => {
+    if (!paper) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', handleKeyDown); };
+  }, [paper?.id, onClose]);
   if (!paper) return null;
 
   const displayTitle = isTranslating && paper.trTitle ? paper.trTitle : paper.title;
@@ -46,8 +54,8 @@ export const DetailSheet: React.FC<DetailSheetProps> = ({
   const oaLabel = paper.oa ? (OA_STATUS[paper.oa] || paper.oa) + (paper.oa === 'closed' ? '' : ' açık erişim') : '-';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-lg max-h-[92dvh] bg-[#eef7fb] dark:bg-[#020f1a] rounded-t-3xl border-t border-[#c5dfe9] dark:border-[#0d2f45] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={onClose} role="presentation">
+      <div role="dialog" aria-modal="true" aria-label={langDict.details_title || "Makale ayrıntıları"} onClick={event => event.stopPropagation()} className="w-full max-w-lg max-h-[92dvh] bg-[#eef7fb] dark:bg-[#020f1a] rounded-t-3xl border-t border-[#c5dfe9] dark:border-[#0d2f45] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-300">
         {/* Grab bar */}
         <div className="w-10 h-1 bg-[#c5dfe9] dark:bg-[#0d2f45] rounded-full mx-auto my-2.5 shrink-0" />
 
