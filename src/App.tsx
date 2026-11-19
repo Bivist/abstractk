@@ -51,7 +51,7 @@ const DEFAULT_SETTINGS: SettingsState = {
   lang: 'tr',
   reelsMode: false,
   displayMode: 'auto',
-  communityRecommendations: true
+  communityRecommendations: false
 };
 
 /** Bu cihazdaki yerel verinin hangi hesaba ait olduğunu tutar (girişte birleştirme / bulut öncelikli kararı için). */
@@ -458,11 +458,11 @@ export default function App() {
   useEffect(() => {
     if (!auth.user || !supabase) return;
     const timer = window.setTimeout(() => {
-      syncCommunityProfile(likedPapers, readingHistory, true)
+      syncCommunityProfile(likedPapers, readingHistory, settings.communityRecommendations)
         .catch(error => console.warn('Kamara profili eşitlenemedi:', error));
     }, 1200);
     return () => window.clearTimeout(timer);
-  }, [auth.user?.id, likedPapers, readingHistory]);
+  }, [auth.user?.id, likedPapers, readingHistory, settings.communityRecommendations]);
 
   // Save Likes
   useEffect(() => {
