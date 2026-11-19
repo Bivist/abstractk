@@ -42,7 +42,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   const [viewedProfile,setViewedProfile]=useState<Profile|null>(null);
   const [viewedProfilePrivate,setViewedProfilePrivate]=useState(false);
   const [profileLoading,setProfileLoading]=useState(false);
-  const [bookmarks,setBookmarks]=useState<Set<string>>(new Set());
+  
   const [commentCounts,setCommentCounts]=useState<Record<string,number>>({});
   const [comments,setComments]=useState<Record<string,{id:string;author_id:string;parent_id:string|null;body:string;created_at:string}[]>>({});
   const [replyTargets,setReplyTargets]=useState<Record<string,string>>({});
@@ -89,17 +89,15 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     const sourceIds=[...new Set(rows.map(p=>p.repost_of).filter((id):id is string=>!!id))];
     if(sourceIds.length){const {data:sourceRows,error:sourceError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').in('id',sourceIds);if(sourceError)throw sourceError;const sourceList=(sourceRows||[]) as Post[];setSourcePosts(prev=>({...prev,...Object.fromEntries(sourceList.map(p=>[p.id,p]))}));const sourceAuthors=[...new Set(sourceList.map(p=>p.author_id))];if(sourceAuthors.length){const {data:sourceProfiles,error:sourceProfileError}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',sourceAuthors);if(sourceProfileError)throw sourceProfileError;setProfiles(prev=>({...prev,...Object.fromEntries((sourceProfiles||[]).map((p:any)=>[p.user_id,p as Profile]))}));}}
     const ids=rows.map(p=>p.id);
-    if(!ids.length) {setProfiles({});setLikes(new Set());setBookmarks(new Set());setCommentCounts({});}
+    if(!ids.length) {setProfiles({});setLikes(new Set());setCommentCounts({});}
     if(ids.length){
     const [profileRows,likeRows,bookmarkRows,commentRows]=await Promise.all([
       supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',[...new Set(rows.map(p=>p.author_id))]),
       supabase.from('community_post_likes').select('post_id,user_id').in('post_id',ids),
-      supabase.from('community_post_bookmarks').select('post_id,user_id').eq('user_id',userId).in('post_id',ids),
       supabase.from('community_comments').select('post_id,author_id').in('post_id',ids)
     ]);
     if(profileRows.error) throw profileRows.error;
     if(likeRows.error) throw likeRows.error;
-    if(bookmarkRows.error) throw bookmarkRows.error;
     if(commentRows.error) throw commentRows.error;
     const pmap:Record<string,Profile>={}; (profileRows.data||[]).forEach((p:any)=>pmap[p.user_id]=p as Profile);
     const commentAuthorIds=[...new Set((commentRows.data||[]).map((x:any)=>x.author_id).filter((id:string)=>!pmap[id]))];
@@ -193,7 +191,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
         const incoming=payload.new as {id:string;kind:string;actor_id:string|null;created_at:string;read_at:string|null;payload?:Record<string,unknown>};
         if(!incoming?.id)return;
         setNotifications(prev=>[incoming,...prev.filter(item=>item.id!==incoming.id)].slice(0,50));
-        setNotice('Yeni bir topluluk bildirimin var.');
+        setNotice('Yeni bir kamara bildirimin var.');
       })
       .subscribe(status=>{
         if(status==='SUBSCRIBED'){
@@ -238,7 +236,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     try{
       const payload={user_id:userId,username,display_name:profileDraft.display_name.trim().slice(0,80),avatar_url:avatarUrl||null,bio:profileDraft.bio.trim().slice(0,500),affiliation:profileDraft.affiliation.trim().slice(0,120),research_interests:profileDraft.research_interests.split(',').map(x=>x.trim()).filter(Boolean).slice(0,12),profile_visibility:profileVisibility,searchable:true};
       const {error}=await supabase.from('community_profiles').upsert(payload,{onConflict:'user_id'});if(error)throw error;
-      await loadProfile();setNotice('Topluluk profilin kaydedildi.');
+      await loadProfile();setNotice('Kamara profilin kaydedildi.');
     }catch(e){setError(errorText(e));}finally{setBusy(false);}
   };
 
@@ -260,12 +258,6 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     if(!supabase)return;
     const active=likes.has(postId);setLikes(prev=>{const n=new Set(prev);active?n.delete(postId):n.add(postId);return n;});
     const result=active?await supabase.from('community_post_likes').delete().eq('post_id',postId).eq('user_id',userId):await supabase.from('community_post_likes').insert({post_id:postId,user_id:userId});
-    if(result.error){setError(errorText(result.error));await loadFeed();}
-  };
-  const toggleBookmark=async(postId:string)=>{
-    if(!supabase)return;
-    const active=bookmarks.has(postId);setBookmarks(prev=>{const n=new Set(prev);active?n.delete(postId):n.add(postId);return n;});
-    const result=active?await supabase.from('community_post_bookmarks').delete().eq('post_id',postId).eq('user_id',userId):await supabase.from('community_post_bookmarks').insert({post_id:postId,user_id:userId});
     if(result.error){setError(errorText(result.error));await loadFeed();}
   };
   const loadComments=async(postId:string)=>{
@@ -449,7 +441,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
           {post.repost_of&&<div className="mt-3 rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-3"><div className="mb-1 text-[10px] font-semibold text-[var(--mu)]">Yeniden paylaşılan gönderi · {profiles[sourcePosts[post.repost_of]?.author_id]?.display_name||profiles[sourcePosts[post.repost_of]?.author_id]?.username||'Kaynak gönderi'}</div>{sourcePosts[post.repost_of]?.body?.trim()&&<p className="whitespace-pre-wrap text-xs leading-5 text-[var(--ink)]">{sourcePosts[post.repost_of].body}</p>}{Boolean(sourcePosts[post.repost_of]?.paper?.title)&&<p className="mt-2 text-xs font-semibold text-sky-700">{String(sourcePosts[post.repost_of].paper?.title)}</p>}{safeHttpUrl(sourcePosts[post.repost_of]?.paper?.url)&&<a className="mt-2 inline-block text-[11px] font-semibold text-sky-700 underline dark:text-sky-300" href={safeHttpUrl(sourcePosts[post.repost_of]?.paper?.url)!} target="_blank" rel="noopener noreferrer">Makale kaynağını aç</a>}</div>}
           {post.body?.trim()&&!post.repost_of&&<p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-[var(--ink)]">{post.body}</p>}
           {post.paper&&<div className="mt-3 rounded-xl border border-sky-200 bg-sky-50/70 p-3 text-sm dark:border-sky-900 dark:bg-sky-950/20"><div className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">Paylaşılan makale</div><div className="mt-1 font-semibold text-[var(--ink)]">{String(post.paper.title||'Akademik makale')}</div>{safeHttpUrl(post.paper.url)&&<a className="mt-2 inline-block text-xs font-semibold text-sky-700 underline dark:text-sky-300" href={safeHttpUrl(post.paper.url)!} target="_blank" rel="noopener noreferrer">Makale kaynağını aç</a>}</div>}
-          <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-[var(--ln)] pt-2"><button onClick={()=>void toggleLike(post.id)} className={`inline-flex items-center gap-1.5 text-xs ${likes.has(post.id)?'font-bold text-rose-600':'text-[var(--mu)]'}`}><Heart size={16} fill={likes.has(post.id)?'currentColor':'none'}/> Beğen</button><button onClick={()=>{const next=new Set(openComments);if(next.has(post.id))next.delete(post.id);else{next.add(post.id);void loadComments(post.id);}setOpenComments(next);}} className="inline-flex items-center gap-1.5 text-xs text-[var(--mu)]"><MessageCircle size={16}/> Yorum ({commentCounts[post.id]||0})</button><button onClick={()=>setRepostOpen(prev=>{const next=new Set(prev);next.has(post.id)?next.delete(post.id):next.add(post.id);return next;})} className="inline-flex items-center gap-1.5 text-xs text-[var(--mu)]"><Repeat2 size={16}/> Yeniden paylaş</button><button onClick={()=>void toggleBookmark(post.id)} className={`ml-auto inline-flex items-center gap-1.5 text-xs ${bookmarks.has(post.id)?'font-bold text-sky-700':'text-[var(--mu)]'}`}><Bookmark size={16} fill={bookmarks.has(post.id)?'currentColor':'none'}/> Kaydet</button></div>
+          <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-[var(--ln)] pt-2"><button onClick={()=>void toggleLike(post.id)} className={`inline-flex items-center gap-1.5 text-xs ${likes.has(post.id)?'font-bold text-rose-600':'text-[var(--mu)]'}`}><Heart size={16} fill={likes.has(post.id)?'currentColor':'none'}/> Beğen</button><button onClick={()=>{const next=new Set(openComments);if(next.has(post.id))next.delete(post.id);else{next.add(post.id);void loadComments(post.id);}setOpenComments(next);}} className="inline-flex items-center gap-1.5 text-xs text-[var(--mu)]"><MessageCircle size={16}/> Yorum ({commentCounts[post.id]||0})</button><button onClick={()=>setRepostOpen(prev=>{const next=new Set(prev);next.has(post.id)?next.delete(post.id):next.add(post.id);return next;})} className="inline-flex items-center gap-1.5 text-xs text-[var(--mu)]"><Repeat2 size={16}/> Yeniden paylaş</button></div>
           {repostOpen.has(post.id)&&<div className="mt-3 rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-3"><textarea className={field} rows={2} maxLength={1000} value={repostDrafts[post.id]||''} onChange={e=>setRepostDrafts(prev=>({...prev,[post.id]:e.target.value}))} placeholder="Bu makale veya gönderi hakkında ne düşünüyorsun?"/><div className="mt-2 flex justify-end gap-2"><button className="rounded-lg px-3 py-2 text-xs text-[var(--mu)]" onClick={()=>setRepostOpen(prev=>{const next=new Set(prev);next.delete(post.id);return next;})}>Vazgeç</button><button className={button} disabled={busy||!(repostDrafts[post.id]||'').trim()} onClick={()=>void submitRepost(post.id)}><Repeat2 size={14}/> Notla paylaş</button></div></div>}
           {openComments.has(post.id)&&<div className="mt-3 space-y-2">{(comments[post.id]||[]).map(c=><div key={c.id} className={`rounded-lg bg-[var(--bg)] p-2.5 ${c.parent_id?'ml-5 border-l-2 border-sky-300':''}`}><div className="text-[10px] font-semibold text-[var(--mu)]">{profiles[c.author_id]?.display_name||shortId(c.author_id)} · {new Date(c.created_at).toLocaleString('tr-TR')}</div><p className="mt-1 whitespace-pre-wrap text-xs text-[var(--ink)]">{c.body}</p><button className="mt-1 text-[10px] font-semibold text-sky-700 dark:text-sky-300" onClick={()=>setReplyTargets(prev=>({...prev,[post.id]:c.id}))}>Yanıtla</button></div>)}{replyTargets[post.id]&&<div className="text-[10px] text-[var(--mu)]">Yoruma yanıt yazılıyor <button onClick={()=>setReplyTargets(prev=>({...prev,[post.id]:''}))} className="ml-2 text-rose-600">Vazgeç</button></div>}<div className="flex gap-2"><input className={field} value={commentDrafts[post.id]||''} onChange={e=>setCommentDrafts(p=>({...p,[post.id]:e.target.value}))} placeholder={replyTargets[post.id]?'Yanıt yaz…':'Yorum yaz…'} maxLength={2000}/><button className={button} onClick={()=>void addComment(post.id)} aria-label="Yorumu gönder"><Send size={15}/></button></div></div>}
         </article>)}
