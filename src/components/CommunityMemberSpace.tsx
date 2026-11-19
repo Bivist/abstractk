@@ -350,15 +350,36 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   };
   const sendPendingPaper=async()=>{
     if(!supabase||!pendingPaper||selectedPeople.size<1)return;
-    setBusy(true);setError('');
+    setBusy(true);setError('');setNotice('');
     try{
       const recipients=[...selectedPeople];
-      const {data:conversationId,error:createError}=await supabase.rpc('community_create_approved_conversation',{p_user_ids:recipients,p_kind:recipients.length===1?'direct':'group',p_title:recipients.length===1?null:(groupTitle.trim()||'Makale paylaşımı')});
-      if(createError)throw createError;
-      const attachment={id:pendingPaper.id,title:pendingPaper.title,url:pendingPaper.link,authors:pendingPaper.authors,journal:pendingPaper.journal,year:pendingPaper.year,field:pendingPaper.sub||pendingPaper.field,abstract:pendingPaper.abs};
-      const {error:sendError}=await supabase.rpc('community_send_message',{p_conversation_id:conversationId,p_body:'Seninle bir akademik makale paylaştı.',p_attachment_type:'paper',p_attachment:attachment});
-      if(sendError)throw sendError;
-      setSelectedPeople(new Set());setGroupTitle('');onPendingPaperHandled?.();await loadConversations();await openConversation(conversationId as string);setNotice('Makale seçtiğin üyelere özel mesajla gönderildi.');
+      const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if(recipients.some(id=>!uuidPattern.test(id)))throw new Error('Alıcı listesinde geçersiz hesap kimliği var. Lütfen kişileri yeniden seç.');
+      const attachment={id:pendingPaper.id,title:String(pendingPaper.title||'Akademik makale').slice(0,500),url:safeHttpUrl(pendingPaper.link),authors:String(pendingPaper.authors||'').slice(0,1000),journal:String(pendingPaper.journal||'').slice(0,300),year:pendingPaper.year,field:String(pendingPaper.sub||pendingPaper.field||'').slice(0,200),abstract:String(pendingPaper.abs||'').slice(0,12000)};
+      let sent=0,requested=0;const failed:string[]=[];
+      for(const recipientId of recipients){
+        try{
+          const {data:allowed,error:permissionError}=await supabase.rpc('community_can_message',{p_other:recipientId});
+          if(permissionError)throw permissionError;
+          if(allowed){
+            const {data:conversationId,error:createError}=await supabase.rpc('community_create_approved_conversation',{p_user_ids:[recipientId],p_kind:'direct',p_title:null});
+            if(createError)throw createError;
+            if(typeof conversationId!=='string'||!uuidPattern.test(conversationId))throw new Error('Sohbet kimliği geçerli UUID değil.');
+            const {error:sendError}=await supabase.rpc('community_send_message',{p_conversation_id:conversationId,p_body:'Seninle bir akademik makale paylaştı.',p_attachment_type:'paper',p_attachment:attachment});
+            if(sendError)throw sendError;
+            sent++;
+          }else{
+            const {error:requestError}=await supabase.rpc('community_create_message_request',{p_recipient:recipientId,p_body:'Seninle bir akademik makale paylaştı.',p_attachment_type:'paper',p_attachment:attachment});
+            if(requestError)throw requestError;
+            requested++;
+          }
+        }catch(e){failed.push(profiles[recipientId]?.display_name||profiles[recipientId]?.username||'Bir alıcı');}
+      }
+      setSelectedPeople(new Set());setGroupTitle('');onPendingPaperHandled?.();
+      await loadConversations();
+      if(sent+requested>0)setNotice(sent&&requested? 'Makale '+sent+' kişiye doğrudan, '+requested+' kişiye mesaj isteği olarak gönderildi.':sent?'Makale seçtiğin üyelere gönderildi.':'Makale mesaj isteği olarak gönderildi.');
+      if(failed.length)setError('Şu alıcılara gönderilemedi: '+failed.join(', ')+'.');
+      if(sent>0){const {data:rows}=await supabase.from('community_conversations').select('id').order('updated_at',{ascending:false}).limit(1);if(rows?.[0]?.id)await openConversation(rows[0].id);}
     }catch(e){setError(errorText(e));}finally{setBusy(false);}
   };
   const sendMessage=async()=>{
