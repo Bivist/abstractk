@@ -137,16 +137,14 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
       if(sourceIds.length){const {data:sourceRows,error:sourceError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').in('id',sourceIds);if(sourceError)throw sourceError;const sourceList=(sourceRows||[]) as Post[];setSourcePosts(prev=>({...prev,...Object.fromEntries(sourceList.map(p=>[p.id,p]))}));const sourceAuthors=[...new Set(sourceList.map(p=>p.author_id))];if(sourceAuthors.length){const {data:sourceProfiles,error:sourceProfileError}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',sourceAuthors);if(sourceProfileError)throw sourceProfileError;setProfiles(prev=>({...prev,...Object.fromEntries((sourceProfiles||[]).map((p:any)=>[p.user_id,p as Profile]))}));}}
       const ids=rows.map(p=>p.id);
       if(ids.length){
-        const [pr,lr,br,cr]=await Promise.all([
+        const [pr,lr,cr]=await Promise.all([
           supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',[...new Set(rows.map(p=>p.author_id))]),
           supabase.from('community_post_likes').select('post_id,user_id').in('post_id',ids),
-          supabase.from('community_post_bookmarks').select('post_id,user_id').eq('user_id',userId).in('post_id',ids),
           supabase.from('community_comments').select('post_id,author_id').in('post_id',ids)
         ]);
-        if(pr.error)throw pr.error;if(lr.error)throw lr.error;if(br.error)throw br.error;if(cr.error)throw cr.error;
+        if(pr.error)throw pr.error;if(lr.error)throw lr.error;if(cr.error)throw cr.error;
         setProfiles(prev=>({...prev,...Object.fromEntries((pr.data||[]).map((p:any)=>[p.user_id,p as Profile]))}));
         setLikes(prev=>new Set([...prev,...(lr.data||[]).filter((x:any)=>x.user_id===userId).map((x:any)=>x.post_id)]));
-        setBookmarks(prev=>new Set([...prev,...(br.data||[]).map((x:any)=>x.post_id)]));
         setCommentCounts(prev=>{const next={...prev};(cr.data||[]).forEach((x:any)=>next[x.post_id]=(next[x.post_id]||0)+1);return next;});
         const commentAuthors=[...new Set((cr.data||[]).map((x:any)=>x.author_id))];
         if(commentAuthors.length){const {data:cp,error:ce}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',commentAuthors);if(ce)throw ce;setProfiles(prev=>({...prev,...Object.fromEntries((cp||[]).map((p:any)=>[p.user_id,p as Profile]))}));}
