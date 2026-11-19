@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Loader2, MessageCircle, Paperclip, Send, Users, Plus, Search, X } from 'lucide-react';
+import { ArrowLeft, Loader2, MessageCircle, Paperclip, Send, Users, Plus, Search, X, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 type Profile = {
@@ -76,6 +76,9 @@ export const CommunityMessages: React.FC<{
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [messageImageUrls, setMessageImageUrls] = useState<Record<string, string>>({});
   const [newMessageOpen, setNewMessageOpen] = useState(false);
   const [newMessageQuery, setNewMessageQuery] = useState('');
   const [newMessageResults, setNewMessageResults] = useState<Profile[]>([]);
@@ -87,6 +90,8 @@ export const CommunityMessages: React.FC<{
   const [attachmentUrl, setAttachmentUrl] = useState('');
   const [attachmentContent, setAttachmentContent] = useState('');
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { if (!imageFile) { setImagePreview(null); return; } const url = URL.createObjectURL(imageFile); setImagePreview(url); return () => URL.revokeObjectURL(url); }, [imageFile]);
+  const signMessageImages = useCallback(async (rows: Message[]) => { if (!supabase) return; const entries = await Promise.all(rows.filter(row => row.attachment_type === 'image' && typeof row.attachment?.path === 'string').map(async row => { const path = String(row.attachment?.path || ''); const { data, error } = await supabase!.storage.from('community-message-images').createSignedUrl(path, 3600); return !error && data?.signedUrl ? [row.id, data.signedUrl] : null; })); const next = Object.fromEntries(entries.filter(Boolean)); if (Object.keys(next).length) setMessageImageUrls(prev => ({ ...prev, ...next })); }, []);
 
   const loadConversations = useCallback(async () => {
     if (!supabase) return;
@@ -252,6 +257,7 @@ export const CommunityMessages: React.FC<{
         .limit(100);
       if (messageError) throw messageError;
       setMessages((data || []) as Message[]);
+      await signMessageImages((data || []) as Message[]);
       const readAt = new Date().toISOString();
       const { error: readError } = await supabase.rpc('community_mark_conversation_read', { p_conversation_id: conversationId });
       if (readError) throw readError;
@@ -317,6 +323,7 @@ export const CommunityMessages: React.FC<{
           .map(conversation => conversation.id === incoming.conversation_id ? { ...conversation, updated_at: incoming.created_at } : conversation)
           .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at)));
         if (activeConversationRef.current === incoming.conversation_id) {
+          if (incoming.attachment_type === 'image') void signMessageImages([incoming]);
           setMessages(prev => prev.some(message => message.id === incoming.id)
             ? prev
             : [...prev, incoming].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at)));
@@ -342,7 +349,7 @@ export const CommunityMessages: React.FC<{
       active = false;
       void supabase!.removeChannel(channel);
     };
-  }, [userId, loadConversations, loadRequests, openConversation]);
+  }, [userId, loadConversations, loadRequests, openConversation, signMessageImages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -352,7 +359,7 @@ export const CommunityMessages: React.FC<{
     if (!supabase || !activeConversation) return;
     const sharedNote = sharedNotes.find(note => note.id === selectedSharedNoteId);
     const attachmentType = extraAttachmentType === 'none' ? null : extraAttachmentType;
-    if (!draft.trim() && !sharedNote && !attachmentType) return;
+    if (!draft.trim() && !sharedNote && !attachmentType && !imageFile) return;
     setSending(true);
     setError('');
     try {
@@ -363,14 +370,25 @@ export const CommunityMessages: React.FC<{
       } : null;
       if (attachmentType && attachmentType !== 'research_summary' && !attachment?.url) throw new Error('Geçerli bir https:// veya http:// bağlantısı gir.');
       if (attachmentType === 'research_summary' && !attachment?.content) throw new Error('Araştırma özeti boş olamaz.');
+      let imageAttachment: Record<string, unknown> | null = null;
+      if (imageFile) {
+        if (!['image/jpeg','image/png','image/webp'].includes(imageFile.type)) throw new Error('Yalnızca JPG, PNG veya WebP fotoğraf gönderebilirsin.');
+        if (imageFile.size > 5 * 1024 * 1024) throw new Error('Fotoğraf en fazla 5 MB olabilir.');
+        const ext = imageFile.type === 'image/png' ? 'png' : imageFile.type === 'image/webp' ? 'webp' : 'jpg';
+        const path = activeConversation + '/' + userId + '/' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + ext;
+        const { error: uploadError } = await supabase.storage.from('community-message-images').upload(path, imageFile, { contentType: imageFile.type, upsert: false, cacheControl: '3600' });
+        if (uploadError) throw uploadError;
+        imageAttachment = { path, mime: imageFile.type, size: imageFile.size };
+      }
       const { data: messageId, error: sendError } = await supabase.rpc('community_send_message', {
         p_conversation_id: activeConversation,
-        p_body: draft.trim() || (sharedNote ? 'Seninle bir araştırma notu paylaştı.' : attachmentType ? 'Seninle bir akademik içerik paylaştı.' : ''),
-        p_attachment_type: sharedNote ? 'note_snapshot' : attachmentType,
-        p_attachment: sharedNote ? { shared_note_id: sharedNote.id, snapshot: sharedNote.snapshot } : attachment
+        p_body: draft.trim() || (sharedNote ? 'Seninle bir araştırma notu paylaştı.' : attachmentType ? 'Seninle bir akademik içerik paylaştı.' : imageFile ? 'Bir fotoğraf gönderdi.' : ''),
+        p_attachment_type: imageAttachment ? 'image' : sharedNote ? 'note_snapshot' : attachmentType,
+        p_attachment: imageAttachment || (sharedNote ? { shared_note_id: sharedNote.id, snapshot: sharedNote.snapshot } : attachment)
       });
       if (sendError) throw sendError;
       setDraft('');
+      setImageFile(null);
       setSelectedSharedNoteId('');
       setExtraAttachmentType('none');
       setAttachmentTitle('');
@@ -387,6 +405,7 @@ export const CommunityMessages: React.FC<{
         ? prev
         : [...prev, sentMessage as Message].sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at)));
       setLatestMessages(prev => ({ ...prev, [activeConversation]: sentMessage as Message }));
+      if ((sentMessage as Message).attachment_type === 'image') await signMessageImages([sentMessage as Message]);
       await loadConversations();
     } catch (e) {
       setError(e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'Mesaj gönderilemedi.');
@@ -448,7 +467,7 @@ export const CommunityMessages: React.FC<{
             const unread = Boolean(last && last.sender_id !== userId && (!readAt || Date.parse(last.created_at) > Date.parse(readAt)));
             const title = conversation.kind === 'group' ? conversation.title || 'Akademik grup' : person?.display_name || person?.username || 'Kamara üyesi';
             const preview = last
-              ? last.body || (last.attachment_type === 'paper' ? 'Bir makale paylaştı' : last.attachment_type ? 'Bir içerik paylaştı' : 'Yeni mesaj')
+              ? last.body || (last.attachment_type === 'paper' ? 'Bir makale paylaştı' : last.attachment_type === 'image' ? 'Bir fotoğraf gönderdi' : last.attachment_type ? 'Bir içerik paylaştı' : 'Yeni mesaj')
               : 'Henüz mesaj yok';
             return (
               <div key={conversation.id} className={'flex items-center gap-2 rounded-2xl p-2 transition-colors ' + (activeConversation === conversation.id ? 'bg-sky-100 dark:bg-sky-950/50' : 'hover:bg-[var(--bg)]')}>
