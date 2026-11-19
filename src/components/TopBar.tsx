@@ -7,6 +7,7 @@ interface TopBarProps {
   onToggleTheme: () => void;
   reelsMode?: boolean;
   avatarUrl?: string | null;
+  avatarShape?: 'circle' | 'rounded' | 'square';
   showAvatar?: boolean;
 }
 
@@ -16,6 +17,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onToggleTheme,
   reelsMode = false,
   avatarUrl = null,
+  avatarShape = 'circle',
   showAvatar = true
 }) => {
   const [avatarExpanded, setAvatarExpanded] = useState(false);
@@ -100,7 +102,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           onClick={toggleAvatar}
           aria-label={avatarExpanded ? 'Profil fotoğrafını küçült' : 'Profil fotoğrafını büyüt'}
           aria-expanded={avatarExpanded}
-          className={`profile-avatar-trigger ${avatarExpanded ? 'is-expanded' : ''} ${avatarAnimation === 'grow' ? 'avatar-grow' : 'avatar-shrink'}`}
+          className={`profile-avatar-trigger ${avatarExpanded ? 'is-expanded' : ''} ${avatarAnimation === 'grow' ? 'avatar-grow' : 'avatar-shrink'}`} style={{ borderRadius: avatarShape === 'circle' ? '9999px' : avatarShape === 'rounded' ? '18px' : '4px' }}
         >
           <img src={avatarUrl} alt="Profil fotoğrafın" className="profile-avatar-image" />
         </button>
