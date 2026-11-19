@@ -45,6 +45,8 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   const [showNotifications,setShowNotifications]=useState(false);
   const [viewedProfileId,setViewedProfileId]=useState<string|null>(null);
   const [viewedProfile,setViewedProfile]=useState<Profile|null>(null);
+  const [viewedProfilePosts,setViewedProfilePosts]=useState<Post[]>([]);
+  const [viewedProfilePostStats,setViewedProfilePostStats]=useState<Record<string,{likes:number;comments:number;views:number}>>({});
   const [viewedProfilePrivate,setViewedProfilePrivate]=useState(false);
   const [profileLoading,setProfileLoading]=useState(false);
   
@@ -436,6 +438,8 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     if(!supabase)return;
     setViewedProfileId(otherId);
     setViewedProfile(null);
+    setViewedProfilePosts([]);
+    setViewedProfilePostStats({});
     setViewedProfilePrivate(false);
     setProfileLoading(true);
     try{
@@ -450,6 +454,27 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
       const visible=data as Profile;
       setViewedProfile(visible);
       setProfiles(prev=>({...prev,[otherId]:visible}));
+      const {data:postRows,error:postError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').eq('author_id',otherId).neq('moderation_status','removed').order('created_at',{ascending:false}).limit(30);
+      if(postError)throw postError;
+      const memberPosts=(postRows||[]) as Post[];
+      setViewedProfilePosts(memberPosts);
+      if(memberPosts.length){
+        const ids=memberPosts.map(post=>post.id);
+        const [likesResult,commentsResult,viewsResult]=await Promise.all([
+          supabase.from('community_post_likes').select('post_id').in('post_id',ids),
+          supabase.from('community_comments').select('post_id').in('post_id',ids),
+          supabase.rpc('community_post_view_counts',{p_post_ids:ids})
+        ]);
+        if(likesResult.error)throw likesResult.error;
+        if(commentsResult.error)throw commentsResult.error;
+        if(viewsResult.error)throw viewsResult.error;
+        const stats:Record<string,{likes:number;comments:number;views:number}>={};
+        ids.forEach(id=>stats[id]={likes:0,comments:0,views:0});
+        (likesResult.data||[]).forEach((row:any)=>{if(stats[row.post_id])stats[row.post_id].likes++;});
+        (commentsResult.data||[]).forEach((row:any)=>{if(stats[row.post_id])stats[row.post_id].comments++;});
+        (viewsResult.data||[]).forEach((row:any)=>{if(stats[row.post_id])stats[row.post_id].views=Number(row.view_count)||0;});
+        setViewedProfilePostStats(stats);
+      }
     }catch(e){
       setViewedProfilePrivate(true);
       setError(errorText(e));
@@ -461,6 +486,8 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   const closeViewedProfile=()=>{
     setViewedProfileId(null);
     setViewedProfile(null);
+    setViewedProfilePosts([]);
+    setViewedProfilePostStats({});
     setViewedProfilePrivate(false);
   };
 
@@ -547,6 +574,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
             {viewedProfile.affiliation&&<p className="mt-3 text-sm font-medium text-[var(--ink)]">{viewedProfile.affiliation}</p>}
             {viewedProfile.bio&&<p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--mu)]">{viewedProfile.bio}</p>}
             {!!viewedProfile.research_interests?.length&&<div className="mt-4"><div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--mu)]">Araştırma alanları</div><div className="flex flex-wrap justify-center gap-2">{viewedProfile.research_interests.map(item=><span key={item} className="rounded-full bg-sky-50 px-3 py-1.5 text-[11px] font-medium text-sky-800 dark:bg-sky-950/50 dark:text-sky-200">{item}</span>)}</div></div>}
+            <div className="mt-5 border-t border-[var(--ln)] pt-4 text-left"><div className="flex items-center justify-between"><h3 className="text-sm font-bold text-[var(--ink)]">Paylaşımları</h3><span className="text-[10px] text-[var(--mu)]">{viewedProfilePosts.length} gönderi</span></div><div className="mt-2 space-y-2">{viewedProfilePosts.map(post=><article key={post.id} className="rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-3">{post.body&&<p className="whitespace-pre-wrap text-xs leading-5 text-[var(--ink)]">{post.body}</p>}{post.paper&&<div className="mt-1 rounded-lg bg-[var(--sf)] p-2 text-xs font-semibold text-[var(--ink)]">{String(post.paper.title||'Paylaşılan makale')}</div>}<div className="mt-2 flex flex-wrap gap-3 text-[10px] text-[var(--mu)]"><span><Heart size={12} className="mr-1 inline"/> {viewedProfilePostStats[post.id]?.likes||0}</span><span><MessageCircle size={12} className="mr-1 inline"/> {viewedProfilePostStats[post.id]?.comments||0}</span><span><Users size={12} className="mr-1 inline"/> {viewedProfilePostStats[post.id]?.views||0} görüntülenme</span></div></article>)}{!viewedProfilePosts.length&&<p className="rounded-xl bg-[var(--bg)] p-3 text-xs text-[var(--mu)]">Henüz paylaşım yok.</p>}</div></div>
             <div className="mt-5 grid grid-cols-2 gap-2"><button type="button" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[var(--ln)] px-3 text-xs font-semibold text-[var(--ink)]" onClick={()=>void toggleFollow(viewedProfile.user_id)}>{followedPeople.has(viewedProfile.user_id)?'Takibi bırak':sentFollowRequests.has(viewedProfile.user_id)?'İstek gönderildi':'Takip et'}</button><button type="button" className={button} onClick={()=>{const id=viewedProfile.user_id;closeViewedProfile();void startConversation(id);}}><MessageCircle size={15}/> Mesaj gönder</button></div>
           </div>}
         </section>
