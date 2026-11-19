@@ -505,3 +505,18 @@ html[dir="rtl"] .font-mono {
   direction: ltr;
   unicode-bidi: isolate;
 }
+
+
+/* Legal document reading surface */
+.legal-document-content h4 {
+  margin: 1.15rem 0 .35rem;
+  color: var(--ink);
+  font-size: .82rem;
+  font-weight: 750;
+  letter-spacing: -.01em;
+}
+.legal-document-content p { margin: .55rem 0; }
+.legal-document-content ul { margin: .5rem 0 .75rem; padding-left: 1.2rem; list-style: disc; }
+.legal-document-content li { margin: .35rem 0; padding-left: .1rem; }
+.legal-document-content a { color: #0369a1; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.dark .legal-document-content a { color: #7dd3fc; }
