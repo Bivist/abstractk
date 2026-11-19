@@ -503,7 +503,9 @@ function translateElement(root: ParentNode, lang: Language): void {
  * the selected language as well.
  */
 export function observeAppLanguage(lang: Language): () => void {
-  document.documentElement.lang = lang === 'zh' ? 'zh-Hans' : lang;\n  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';\n  document.documentElement.dataset.appLanguage = lang;
+  document.documentElement.lang = lang === 'zh' ? 'zh-Hans' : lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  document.documentElement.dataset.appLanguage = lang;
   const root = document.getElementById('root');
   if (!root) return () => {};
 
