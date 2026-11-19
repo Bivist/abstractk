@@ -61,7 +61,7 @@ export interface SettingsState {
   fx: boolean;
   translate: boolean;
   sound: boolean;
-  lang: 'tr' | 'en';
+  lang: 'tr' | 'en' | 'ar' | 'zh' | 'es';
   reelsMode: boolean; // Akış modu (dikey kaydırma)
   displayMode: 'auto' | 'mobile' | 'desktop';
   /** Kullanıcı açıkça izin verirse anonim topluluk önerilerine katılır. */
