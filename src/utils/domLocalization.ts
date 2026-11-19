@@ -450,6 +450,18 @@ function translateKnownText(value: string, lang: Language): string {
     if (match) return value.replace(trimmed, `${match[1]} selected`);
     match = trimmed.match(/^(\d+) açık$/);
     if (match) return value.replace(trimmed, `${match[1]} open`);
+    match = trimmed.match(/^(\d+) makale kaydedildi$/);
+    if (match) return value.replace(trimmed, `${match[1]} papers saved`);
+    match = trimmed.match(/^(\d+) Gün Seri$/);
+    if (match) return value.replace(trimmed, `${match[1]}-day streak`);
+    match = trimmed.match(/^Günde (\d+) makale hedefi$/);
+    if (match) return value.replace(trimmed, `Daily goal: ${match[1]} papers`);
+    match = trimmed.match(/^(\d+) yüklü$/);
+    if (match) return value.replace(trimmed, `${match[1]} loaded`);
+    match = trimmed.match(/^(\d+) seçili$/);
+    if (match) return value.replace(trimmed, `${match[1]} selected`);
+    match = trimmed.match(/^(\d+) kişiye gönderilecek\. Yeni kişilere önce mesaj isteği gider\.$/);
+    if (match) return value.replace(trimmed, `Will be sent to ${match[1]} recipient(s). New contacts will first receive a message request.`);
   }
   return value;
 }
