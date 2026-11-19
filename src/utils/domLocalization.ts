@@ -355,8 +355,8 @@ function translateKnownText(value: string, lang: Language): string {
   // Convert only recognizable day-month-year date fragments.
   const months = lang === 'en' ? TR_MONTHS : EN_MONTHS_TO_TR;
   const monthPattern = lang === 'en'
-    ? /(\\d{1,2})\\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\\s+(\\d{4})/g
-    : /(\\d{1,2})\\s+(January|February|March|April|May|June|July|August|September|October|November|December)\\s+(\\d{4})/g;
+    ? /(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+(\d{4})/g
+    : /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/g;
   if (monthPattern.test(value)) {
     monthPattern.lastIndex = 0;
     return value.replace(monthPattern, (_whole, day, month, year) => `${day} ${months[month] || month} ${year}`);
