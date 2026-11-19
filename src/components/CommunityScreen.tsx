@@ -181,7 +181,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
     const next = !enabled;
     const confirmed = window.confirm(next
       ? 'Topluluğu etkinleştirmek istediğine emin misin? Yalnızca yetkilendirilmiş üyeler erişebilir.'
-      : 'Topluluğu kapatmak istediğine emin misin? Topluluk verileri silinmeyecek.');
+      : 'Topluluğu kapatmak istediğine emin misin? Kamara verileri silinmeyecek.');
     if (!confirmed) return;
     setBusy(true);
     setError('');
@@ -190,7 +190,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
       const { error: rpcError } = await supabase.rpc('community_admin_set_enabled', { p_enabled: next });
       if (rpcError) throw rpcError;
       setEnabled(next);
-      setNotice(next ? 'Topluluk etkinleştirildi.' : 'Topluluk kapatıldı. Veriler korundu.');
+      setNotice(next ? 'Kamara etkinleştirildi.' : 'Kamara kapatıldı. Veriler korundu.');
       await loadConsole();
     } catch (e) {
       setError(friendlyError(e));
@@ -203,15 +203,15 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
   const adminCount = useMemo(() => Object.values(memberships).filter(role => role === 'admin').length, [memberships]);
 
   if (loading) {
-    return <div className="flex flex-1 items-center justify-center text-sky-700 dark:text-sky-300"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Topluluk erişimi kontrol ediliyor…</div>;
+    return <div className="flex flex-1 items-center justify-center text-sky-700 dark:text-sky-300"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Kamara erişimi kontrol ediliyor…</div>;
   }
 
   if (!userId) {
-    return <div className="flex flex-1 items-center justify-center p-6"><div className="max-w-md rounded-3xl border border-sky-200 bg-white p-7 text-center shadow-sm dark:border-sky-900 dark:bg-[#071828]"><ShieldCheck className="mx-auto mb-3 h-9 w-9 text-sky-600" /><h2 className="text-xl font-bold">Özel topluluk</h2><p className="mt-2 text-sm text-slate-500">Topluluk alanını görüntülemek için Abstract hesabına giriş yapmalısın.</p></div></div>;
+    return <div className="flex flex-1 items-center justify-center p-6"><div className="max-w-md rounded-3xl border border-sky-200 bg-white p-7 text-center shadow-sm dark:border-sky-900 dark:bg-[#071828]"><ShieldCheck className="mx-auto mb-3 h-9 w-9 text-sky-600" /><h2 className="text-xl font-bold">Özel kamara</h2><p className="mt-2 text-sm text-slate-500">Kamara alanını görüntülemek için Abstract hesabına giriş yapmalısın.</p></div></div>;
   }
 
   if (!isAdmin && !isMember) {
-    return <div className="flex flex-1 items-center justify-center overflow-y-auto p-6"><div className="w-full max-w-lg rounded-3xl border border-sky-200 bg-white p-8 text-center shadow-sm dark:border-sky-900 dark:bg-[#071828]"><div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"><ShieldCheck size={28} /></div><p className="text-xs font-bold uppercase tracking-[.2em] text-sky-700 dark:text-sky-300">Abstract · Kapalı beta</p><h2 className="mt-3 text-2xl font-bold">Bilimsel topluluk</h2><p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">Topluluk erişimi şu anda hesabında etkin değil. Hesabına yeniden erişim vermek için yöneticiyle iletişime geçebilirsin.</p><div className="mt-6 rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:bg-slate-900/60">Erişim durumu: Yetkilendirme bekleniyor</div></div></div>;
+    return <div className="flex flex-1 items-center justify-center overflow-y-auto p-6"><div className="w-full max-w-lg rounded-3xl border border-sky-200 bg-white p-8 text-center shadow-sm dark:border-sky-900 dark:bg-[#071828]"><div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"><ShieldCheck size={28} /></div><p className="text-xs font-bold uppercase tracking-[.2em] text-sky-700 dark:text-sky-300">Abstract · Kapalı beta</p><h2 className="mt-3 text-2xl font-bold">Bilimsel kamara</h2><p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-500 dark:text-slate-400">Kamara erişimi şu anda hesabında etkin değil. Hesabına yeniden erişim vermek için yöneticiyle iletişime geçebilirsin.</p><div className="mt-6 rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:bg-slate-900/60">Erişim durumu: Yetkilendirme bekleniyor</div></div></div>;
   }
 
   return (
@@ -219,14 +219,14 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-sky-700 dark:text-sky-300"><Waves size={15} /> Abstract / Topluluk</div>
-            <h1 className="font-serif text-3xl font-bold tracking-tight text-[var(--ink)] sm:text-4xl">{isAdmin ? 'Topluluk yönetimi' : 'Bilimsel topluluk'}</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--mu)]">{isAdmin ? 'Üyeleri ve erişim izinlerini buradan yönet. Yeni hesaplar otomatik olarak topluluğa üye olur; bireysel erişim kararları sende kalır.' : 'Akademik topluluk alanı hazırlanıyor. Paylaşım ve iletişim özellikleri henüz etkin değil.'}</p>
-            {isAdmin && enabled && <button type="button" onClick={() => setAdminUsingCommunity(true)} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-sky-700 px-4 text-sm font-semibold text-white">Topluluk alanını görüntüle</button>}
+            <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[.2em] text-sky-700 dark:text-sky-300"><Waves size={15} /> Abstract / Kamara</div>
+            <h1 className="font-serif text-3xl font-bold tracking-tight text-[var(--ink)] sm:text-4xl">{isAdmin ? 'Kamara yönetimi' : 'Bilimsel kamara'}</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--mu)]">{isAdmin ? 'Üyeleri ve erişim izinlerini buradan yönet. Yeni hesaplar otomatik olarak topluluğa üye olur; bireysel erişim kararları sende kalır.' : 'Akademik kamara alanı hazırlanıyor. Paylaşım ve iletişim özellikleri henüz etkin değil.'}</p>
+            {isAdmin && enabled && <button type="button" onClick={() => setAdminUsingCommunity(true)} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-sky-700 px-4 text-sm font-semibold text-white">Kamara alanını görüntüle</button>}
           </div>
           <div className={`inline-flex items-center gap-2 self-start rounded-full border px-3 py-2 text-xs font-semibold ${enabled ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300'}`}>
             <span className={`h-2 w-2 rounded-full ${enabled ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-            {enabled ? 'Topluluk açık' : 'Topluluk kapalı'}
+            {enabled ? 'Kamara açık' : 'Kamara kapalı'}
           </div>
         </header>
 
@@ -246,7 +246,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
 
             <section className="rounded-3xl border border-[var(--ln)] bg-[var(--sf)] p-5 shadow-sm sm:p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div><h2 className="text-lg font-bold text-[var(--ink)]">Genel erişim kontrolü</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Bu anahtar topluluk modülünü tüm üyeler için açar veya kapatır. Kullanıcı erişimini ayrıca aşağıdaki bölümden kişi bazında yönetebilirsin.</p></div>
+                <div><h2 className="text-lg font-bold text-[var(--ink)]">Genel erişim kontrolü</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">Bu anahtar kamara modülünü tüm üyeler için açar veya kapatır. Kullanıcı erişimini ayrıca aşağıdaki bölümden kişi bazında yönetebilirsin.</p></div>
                 <button
                   type="button"
                   onClick={() => void toggleCommunity()}
@@ -261,7 +261,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
             </section>
 
             <section className="rounded-3xl border border-[var(--ln)] bg-[var(--sf)] p-5 shadow-sm sm:p-6">
-              <div><h2 className="text-lg font-bold text-[var(--ink)]">Kullanıcı erişimi</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">E-posta, görünen ad veya kullanıcı UID'siyle ara. E-posta yalnızca bu yönetici ekranında kullanılır; topluluk profillerinde gösterilmez.</p></div>
+              <div><h2 className="text-lg font-bold text-[var(--ink)]">Kullanıcı erişimi</h2><p className="mt-1 text-xs leading-5 text-[var(--mu)]">E-posta, görünen ad veya kullanıcı UID'siyle ara. E-posta yalnızca bu yönetici ekranında kullanılır; kamara profillerinde gösterilmez.</p></div>
               <form className="mt-4 flex flex-col gap-2 sm:flex-row" onSubmit={e => { e.preventDefault(); void searchUsers(); }}>
                 <div className="relative flex-1"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--mu)]" /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="E-posta, ad veya UID…" className="h-11 w-full rounded-xl border border-[var(--ln)] bg-[var(--bg)] pl-10 pr-3 text-sm text-[var(--ink)] outline-none focus:border-sky-500" /></div>
                 <button type="submit" disabled={busy || query.trim().length < 2} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-sky-700 px-5 text-sm font-bold text-white disabled:opacity-50">{busy ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />} Ara</button>
@@ -279,7 +279,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
                   const pairSelected = selectedConnectionUsers.has(account.user_id);
                   return <div key={account.user_id} className="flex flex-col gap-3 rounded-2xl border border-[var(--ln)] p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 items-start gap-3"><input type="checkbox" aria-label={account.display_name + ' bağlantı için seç'} checked={pairSelected} disabled={!pairSelected&&selectedConnectionUsers.size>=2} onChange={e=>{const checked=e.target.checked;setSelectedConnectionUsers(prev=>{const next=new Set(prev);checked?next.add(account.user_id):next.delete(account.user_id);return next;});setSelectedConnectionAccounts(prev=>{const next={...prev};if(checked)next[account.user_id]=account;else delete next[account.user_id];return next;});}} className="mt-1 h-4 w-4 shrink-0 accent-sky-700"/><div className="min-w-0"><div className="truncate text-sm font-semibold text-[var(--ink)]">{account.display_name || 'İsimsiz hesap'}</div><div className="truncate text-xs text-[var(--mu)]">{account.email || 'E-posta yok'}</div><div className="mt-1 break-all font-mono text-[10px] text-[var(--mu)]">{account.user_id}</div></div></div>
-                    <div className="flex shrink-0 flex-col gap-1.5 sm:items-end"><span className="text-[10px] font-bold uppercase tracking-wide text-[var(--mu)]">Atanmış rol / erişim</span><div className="flex items-center gap-2"><span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${role==='admin'?'border-violet-200 bg-violet-50 text-violet-800':role==='member'?'border-emerald-200 bg-emerald-50 text-emerald-800':role==='disabled'?'border-rose-200 bg-rose-50 text-rose-800':'border-amber-200 bg-amber-50 text-amber-800'}`}>{role ? roleLabels[role] : 'Henüz yetki yok'}</span><div className="relative"><select aria-label={account.display_name+' için erişim rolü ata'} disabled={busy || account.user_id === userId && role === 'admin' && adminCount <= 1} value={role || 'none'} onChange={e => { if (e.target.value !== 'none') void changeRole(account.user_id, e.target.value as CommunityRole); }} className="h-10 max-w-[170px] appearance-none rounded-xl border border-[var(--ln)] bg-[var(--bg)] py-2 pl-3 pr-8 text-xs font-semibold text-[var(--ink)] disabled:opacity-50"><option value="none">Rol ata…</option><option value="member">Üye erişimi ver</option><option value="admin">Yönetici yetkisi ver</option><option value="disabled">Erişimi kapat</option></select><ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--mu)]" /></div></div><span className="text-[10px] text-[var(--mu)]">Üye: topluluk özellikleri · Yönetici: tüm yönetim yetkileri · Kapalı: erişemez</span></div>
+                    <div className="flex shrink-0 flex-col gap-1.5 sm:items-end"><span className="text-[10px] font-bold uppercase tracking-wide text-[var(--mu)]">Atanmış rol / erişim</span><div className="flex items-center gap-2"><span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${role==='admin'?'border-violet-200 bg-violet-50 text-violet-800':role==='member'?'border-emerald-200 bg-emerald-50 text-emerald-800':role==='disabled'?'border-rose-200 bg-rose-50 text-rose-800':'border-amber-200 bg-amber-50 text-amber-800'}`}>{role ? roleLabels[role] : 'Henüz yetki yok'}</span><div className="relative"><select aria-label={account.display_name+' için erişim rolü ata'} disabled={busy || account.user_id === userId && role === 'admin' && adminCount <= 1} value={role || 'none'} onChange={e => { if (e.target.value !== 'none') void changeRole(account.user_id, e.target.value as CommunityRole); }} className="h-10 max-w-[170px] appearance-none rounded-xl border border-[var(--ln)] bg-[var(--bg)] py-2 pl-3 pr-8 text-xs font-semibold text-[var(--ink)] disabled:opacity-50"><option value="none">Rol ata…</option><option value="member">Üye erişimi ver</option><option value="admin">Yönetici yetkisi ver</option><option value="disabled">Erişimi kapat</option></select><ChevronDown size={13} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--mu)]" /></div></div><span className="text-[10px] text-[var(--mu)]">Üye: kamara özellikleri · Yönetici: tüm yönetim yetkileri · Kapalı: erişemez</span></div>
                   </div>;
                 })}
               </div>
@@ -293,7 +293,7 @@ export const CommunityScreen: React.FC<{ userId: string | null; avatarUrl?: stri
             <section className="rounded-3xl border border-[var(--ln)] bg-[var(--sf)] p-5 shadow-sm sm:p-6">
               <div className="flex items-center gap-2"><Clock3 size={17} className="text-sky-700 dark:text-sky-300" /><h2 className="text-lg font-bold text-[var(--ink)]">Yönetim geçmişi</h2></div>
               <div className="mt-4 space-y-2">
-                {audit.length ? audit.map(entry => <div key={entry.id} className="flex flex-col gap-1 rounded-xl bg-[var(--bg)] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="text-xs font-semibold text-[var(--ink)]">{entry.action}</div><div className="truncate text-[10px] text-[var(--mu)]">Hedef: {entry.target_user_id || 'Genel topluluk ayarı'} · İşlemi yapan: {entry.actor_id || 'Bilinmiyor'}</div></div><time className="shrink-0 text-[10px] text-[var(--mu)]">{new Date(entry.created_at).toLocaleString('tr-TR')}</time></div>) : <p className="text-sm text-[var(--mu)]">Henüz yönetim işlemi kaydedilmemiş.</p>}
+                {audit.length ? audit.map(entry => <div key={entry.id} className="flex flex-col gap-1 rounded-xl bg-[var(--bg)] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="text-xs font-semibold text-[var(--ink)]">{entry.action}</div><div className="truncate text-[10px] text-[var(--mu)]">Hedef: {entry.target_user_id || 'Genel kamara ayarı'} · İşlemi yapan: {entry.actor_id || 'Bilinmiyor'}</div></div><time className="shrink-0 text-[10px] text-[var(--mu)]">{new Date(entry.created_at).toLocaleString('tr-TR')}</time></div>) : <p className="text-sm text-[var(--mu)]">Henüz yönetim işlemi kaydedilmemiş.</p>}
               </div>
             </section>
           </>
