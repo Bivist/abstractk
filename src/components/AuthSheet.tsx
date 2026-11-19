@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, Mail, Lock, Loader2, UserRound } from 'lucide-react';
+import { LegalDocumentModal, type LegalDocumentKey } from './LegalDocuments';
 import {
   signInWithGoogle,
   signInWithEmail,
@@ -20,6 +21,7 @@ interface AuthSheetProps {
   /** Açılış ekranı: "Misafir olarak devam et" düğmesini gösterir. */
   guestOption?: boolean;
   langDict: Record<string, string>;
+  onCommunityConsentChange?: (accepted: boolean) => void;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -33,7 +35,7 @@ const GoogleLogo = () => (
   </svg>
 );
 
-export const AuthSheet: React.FC<AuthSheetProps> = ({ isOpen, onClose, recovery, onRecoveryDone, guestOption = false, langDict }) => {
+export const AuthSheet: React.FC<AuthSheetProps> = ({ isOpen, onClose, recovery, onRecoveryDone, guestOption = false, langDict, onCommunityConsentChange }) => {
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -41,6 +43,9 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({ isOpen, onClose, recovery,
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
+  const [communityConsent, setCommunityConsent] = useState(false);
+  const [legalDocument, setLegalDocument] = useState<LegalDocumentKey | null>(null);
 
   // Her açılışta formu temizle; şifre yenileme bağlantısıyla gelindiyse o moda geç.
   useEffect(() => {
@@ -49,6 +54,8 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({ isOpen, onClose, recovery,
     setPassword('');
     setError(null);
     setInfo(null);
+    setAcceptedPolicies(false);
+    setCommunityConsent(false);
   }, [isOpen, recovery]);
 
   if (!isOpen) return null;
@@ -75,6 +82,10 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({ isOpen, onClose, recovery,
     setError(null);
     setInfo(null);
 
+    if (mode === 'signup' && !acceptedPolicies) {
+      setError('Hesap oluşturmak için Kullanım Koşulları ve Gizlilik Politikası’nı kabul etmelisin.');
+      return;
+    }
     if (mode !== 'recovery' && !EMAIL_RE.test(email.trim())) {
       setError('Geçerli bir e-posta adresi gir.');
       return;
@@ -89,7 +100,9 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({ isOpen, onClose, recovery,
       if (mode === 'signin') {
         finish(await signInWithEmail(email, password));
       } else if (mode === 'signup') {
-        finish(await signUpWithEmail(email, password, displayName));
+        const result = await signUpWithEmail(email, password, displayName);
+        if (result.ok) onCommunityConsentChange?.(communityConsent);
+        finish(result);
       } else if (mode === 'forgot') {
         finish(await sendPasswordReset(email), false);
       } else {
@@ -108,6 +121,7 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({ isOpen, onClose, recovery,
 
   const google = async () => {
     if (busy) return;
+    if (!acceptedPolicies) { setError('Google ile devam etmeden önce Kullanım Koşulları ve Gizlilik Politikası’nı kabul etmelisin.'); return; }
     setBusy(true);
     setError(null);
     const res = await signInWithGoogle();
@@ -235,6 +249,20 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({ isOpen, onClose, recovery,
               <p role="status" className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">{info}</p>
             )}
 
+            {(mode === 'signup' || mode === 'signin') && (
+              <div className="space-y-2 rounded-xl border border-[#c5dfe9] dark:border-[#0d2f45] bg-white/70 dark:bg-[#071828]/70 p-3">
+                <label className="flex items-start gap-2.5 text-[11px] leading-relaxed text-[#42677e] dark:text-[#9bc3d8]">
+                  <input type="checkbox" checked={acceptedPolicies} onChange={e => setAcceptedPolicies(e.target.checked)} className="mt-0.5 accent-sky-700" />
+                  <span> <button type="button" onClick={() => setLegalDocument('terms')} className="font-bold text-sky-700 dark:text-sky-300 underline">Kullanım Koşulları’nı</button> ve <button type="button" onClick={() => setLegalDocument('privacy')} className="font-bold text-sky-700 dark:text-sky-300 underline">Gizlilik Politikası’nı</button> okudum ve kabul ediyorum.</span>
+                </label>
+                {mode === 'signup' && (
+                  <label className="flex items-start gap-2.5 text-[11px] leading-relaxed text-[#42677e] dark:text-[#9bc3d8]">
+                    <input type="checkbox" checked={communityConsent} onChange={e => setCommunityConsent(e.target.checked)} className="mt-0.5 accent-sky-700" />
+                    <span>Beğendiğim/görüntülediğim makalelerden anonim ilgi profili oluşturulmasını ve benzer ilgi alanlarına göre Kamara önerileri sunulmasını kabul ediyorum. Bu izin isteğe bağlıdır ve Ayarlar’dan geri çekilebilir. <button type="button" onClick={() => setLegalDocument('privacy')} className="font-semibold text-sky-700 dark:text-sky-300 underline">Ayrıntılar</button></span>
+                  </label>
+                )}
+              </div>
+            )}
             <button
               type="submit"
               disabled={busy}
@@ -297,6 +325,7 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({ isOpen, onClose, recovery,
           </p>
         </div>
       </div>
+      {legalDocument && <LegalDocumentModal documentKey={legalDocument} onClose={() => setLegalDocument(null)} />}
     </div>
   );
 };
