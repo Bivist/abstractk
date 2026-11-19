@@ -7,6 +7,7 @@ type Profile = {
   username: string;
   display_name: string;
   avatar_url: string | null;
+  avatar_shape?: 'circle' | 'rounded' | 'square';
   bio?: string;
   affiliation?: string;
   research_interests?: string[];
@@ -42,7 +43,7 @@ const MemberAvatar: React.FC<{ profile?: Profile | null; label?: string; size?: 
   const name = (profile?.display_name || profile?.username || label || 'Kamara üyesi').trim();
   const initial = name.charAt(0).toLocaleUpperCase('tr-TR') || 'A';
   const content = (
-    <span className={'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--ln)] bg-sky-100 font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-200 ' + dimension}>
+    <span className={'relative inline-flex shrink-0 items-center justify-center overflow-hidden border border-[var(--ln)] bg-sky-100 font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-200 ' + dimension} style={{ borderRadius: profile?.avatar_shape === 'square' ? '4px' : profile?.avatar_shape === 'rounded' ? '12px' : '9999px' }}>
       <span>{initial}</span>
       {safeHttpUrl(profile?.avatar_url) && <img src={safeHttpUrl(profile?.avatar_url)!} alt="" className="absolute inset-0 h-full w-full rounded-full object-cover" onError={e => e.currentTarget.remove()} />}
     </span>
@@ -139,7 +140,7 @@ export const CommunityMessages: React.FC<{
     if (otherIds.length) {
       const { data: profileRows, error: profileError } = await supabase
         .from('community_profiles')
-        .select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests,profile_visibility,searchable')
+        .select('user_id,username,display_name,avatar_url,avatar_shape,bio,affiliation,research_interests,profile_visibility,searchable')
         .in('user_id', otherIds);
       if (profileError) throw profileError;
       const visibleProfiles = (profileRows || []).filter((profile: any) => profile.profile_visibility === 'community' && profile.searchable !== false);
@@ -165,7 +166,7 @@ export const CommunityMessages: React.FC<{
     if (senderIds.length) {
       const { data: profileRows, error: profileError } = await supabase
         .from('community_profiles')
-        .select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests')
+        .select('user_id,username,display_name,avatar_url,avatar_shape,bio,affiliation,research_interests')
         .in('user_id', senderIds);
       if (profileError) throw profileError;
       setProfiles(prev => ({ ...prev, ...Object.fromEntries((profileRows || []).map((profile: any) => [profile.user_id, profile as Profile])) }));
