@@ -27,6 +27,8 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   const [profileDraft,setProfileDraft]=useState({username:'',display_name:'',bio:'',affiliation:'',research_interests:''});
   const [selectedResearchInterests,setSelectedResearchInterests]=useState<string[]>([]);
   const [posts,setPosts]=useState<Post[]>([]);
+  const [myPosts,setMyPosts]=useState<Post[]>([]);
+  const [myPostStats,setMyPostStats]=useState<Record<string,{likes:number;comments:number;views:number}>>({});
   const [sourcePosts,setSourcePosts]=useState<Record<string,Post>>({});
   const [repostOpen,setRepostOpen]=useState<Set<string>>(new Set());
   const [repostDrafts,setRepostDrafts]=useState<Record<string,string>>({});
@@ -75,6 +77,9 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   const [attachmentContent,setAttachmentContent]=useState('');
 
   const loadProfile=useCallback(async()=>{
+    const {data:ownPostRows,error:ownPostError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').eq('author_id',userId).order('created_at',{ascending:false}).limit(60);
+    if(ownPostError)throw ownPostError;
+    setMyPosts((ownPostRows||[]) as Post[]);
     if(!supabase) return;
     const {data,error}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests,profile_visibility').eq('user_id',userId).maybeSingle();
     if(error) throw error;
@@ -84,6 +89,28 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
       setProfileDraft({username:p.username||'',display_name:p.display_name||'',bio:p.bio||'',affiliation:p.affiliation||'',research_interests:(p.research_interests||[]).join(', ')});
     }
   },[userId]);
+
+  useEffect(()=>{
+    if(!supabase||!myPosts.length)return;
+    let active=true;
+    void (async()=>{
+      const ids=myPosts.map(post=>post.id);
+      const [likeResult,commentResult,viewResult]=await Promise.all([
+        supabase.from('community_post_likes').select('post_id').in('post_id',ids),
+        supabase.from('community_comments').select('post_id').in('post_id',ids),
+        supabase.rpc('community_post_view_counts',{p_post_ids:ids})
+      ]);
+      if(!active)return;
+      if(likeResult.error||commentResult.error||viewResult.error){setError(errorText(likeResult.error||commentResult.error||viewResult.error));return;}
+      const stats:Record<string,{likes:number;comments:number;views:number}>={};
+      ids.forEach(id=>stats[id]={likes:0,comments:0,views:0});
+      (likeResult.data||[]).forEach((row:any)=>{if(stats[row.post_id])stats[row.post_id].likes++;});
+      (commentResult.data||[]).forEach((row:any)=>{if(stats[row.post_id])stats[row.post_id].comments++;});
+      (viewResult.data||[]).forEach((row:any)=>{if(stats[row.post_id])stats[row.post_id].views=Number(row.view_count)||0;});
+      setMyPostStats(stats);
+    })();
+    return()=>{active=false;};
+  },[myPosts,userId]);
 
   const loadFeed=useCallback(async()=>{
     if(!supabase) return;
@@ -459,6 +486,10 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
         <div className="space-y-2"><div className="text-xs font-semibold text-[var(--mu)]">İlgilendiğim alanlar</div><p className="text-[10px] leading-4 text-[var(--mu)]">Ana sayfadaki filtrelerle aynı bilimsel alan ağacından seçim yapabilirsin. Birden fazla alan seçebilirsin.</p><div className="max-h-72 space-y-2 overflow-y-auto rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-2">{TAXONOMY.map(node=><div key={node.id} className="rounded-lg border border-[var(--ln)] p-2"><div className="font-semibold">{renderInterestNode(node)}</div></div>)}</div><div className="text-[10px] text-[var(--mu)]">{selectedResearchInterests.length} alan seçildi</div></div>
         <div className="space-y-2"><div className="text-xs font-semibold text-[var(--mu)]">Hesap görünürlüğü</div><div className="grid grid-cols-2 gap-2"><button type="button" aria-pressed={profileVisibility==='community'} onClick={()=>setProfileVisibility('community')} className={'rounded-xl border px-3 py-3 text-left transition '+(profileVisibility==='community'?'border-sky-500 bg-sky-50 text-sky-900 dark:bg-sky-950/40 dark:text-sky-100':'border-[var(--ln)] bg-[var(--bg)] text-[var(--mu)]')}><span className="block text-sm font-bold">Herkese açık</span><span className="mt-1 block text-[10px] leading-4">Kamara üyeleri profilini bulabilir ve takip edebilir.</span></button><button type="button" aria-pressed={profileVisibility==='private'} onClick={()=>setProfileVisibility('private')} className={'rounded-xl border px-3 py-3 text-left transition '+(profileVisibility==='private'?'border-sky-500 bg-sky-50 text-sky-900 dark:bg-sky-950/40 dark:text-sky-100':'border-[var(--ln)] bg-[var(--bg)] text-[var(--mu)]')}><span className="block text-sm font-bold">Gizli hesap</span><span className="mt-1 block text-[10px] leading-4">Takip etmek isteyenler önce istek gönderir.</span></button></div></div>
         <button className={button} disabled={busy} onClick={()=>void saveProfile()}>{busy?<Loader2 className="animate-spin" size={16}/>:<Check size={16}/>} Profili kaydet</button>
+        <div className="border-t border-[var(--ln)] pt-4"><div className="flex items-center justify-between gap-2"><h3 className="text-sm font-bold text-[var(--ink)]">Paylaşımlarım</h3><span className="text-[10px] text-[var(--mu)]">{myPosts.length} gönderi</span></div>
+          <div className="mt-3 grid grid-cols-3 gap-2"><div className="rounded-xl bg-[var(--bg)] p-2 text-center"><div className="text-lg font-bold text-[var(--ink)]">{myPosts.length}</div><div className="text-[10px] text-[var(--mu)]">Gönderi</div></div><div className="rounded-xl bg-[var(--bg)] p-2 text-center"><div className="text-lg font-bold text-[var(--ink)]">{Object.values(myPostStats).reduce((n,v)=>n+v.likes,0)}</div><div className="text-[10px] text-[var(--mu)]">Beğeni</div></div><div className="rounded-xl bg-[var(--bg)] p-2 text-center"><div className="text-lg font-bold text-[var(--ink)]">{Object.values(myPostStats).reduce((n,v)=>n+v.views,0)}</div><div className="text-[10px] text-[var(--mu)]">Görüntülenme</div></div></div>
+          <div className="mt-3 space-y-3">{myPosts.map(post=><article key={post.id} className="rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-3"><div className="text-[10px] text-[var(--mu)]">{new Date(post.created_at).toLocaleString('tr-TR')}</div>{post.body&&<p className="mt-1 whitespace-pre-wrap text-sm text-[var(--ink)]">{post.body}</p>}{post.paper&&<div className="mt-2 rounded-lg border border-[var(--ln)] bg-[var(--sf)] p-2"><div className="text-xs font-semibold text-[var(--ink)]">{String(post.paper.title||'Paylaşılan makale')}</div>{post.paper.journal&&<div className="mt-1 text-[10px] text-[var(--mu)]">{String(post.paper.journal)}</div>}</div>}<div className="mt-3 flex flex-wrap gap-3 border-t border-[var(--ln)] pt-2 text-[10px] text-[var(--mu)]"><span className="inline-flex items-center gap-1"><Heart size={13}/> {myPostStats[post.id]?.likes||0} beğeni</span><span className="inline-flex items-center gap-1"><MessageCircle size={13}/> {myPostStats[post.id]?.comments||0} yorum</span><span className="inline-flex items-center gap-1"><Users size={13}/> {myPostStats[post.id]?.views||0} görüntülenme</span></div></article>)}{!myPosts.length&&<p className="rounded-xl bg-[var(--bg)] p-3 text-xs text-[var(--mu)]">Henüz paylaşım yapmadın.</p>}</div>
+        </div>
         <div className="border-t border-[var(--ln)] pt-3"><h3 className="text-sm font-bold text-[var(--ink)]">Engellediğim üyeler</h3>{blockedMembers.map(member=><div key={member.blocked_id} className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-[var(--bg)] p-2.5"><span className="truncate text-xs text-[var(--mu)]">{member.display_name||member.username||shortId(member.blocked_id)}</span><button className="text-xs font-semibold text-sky-700 dark:text-sky-300" onClick={()=>void unblockMember(member.blocked_id)}>Engeli kaldır</button></div>)}{!blockedMembers.length&&<p className="mt-1 text-xs text-[var(--mu)]">Engellediğin üye yok.</p>}</div>
       </section>}
 
