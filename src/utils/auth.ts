@@ -89,7 +89,7 @@ export async function updateDisplayName(displayName: string): Promise<AuthResult
 }
 
 /** Fotoğrafı 320px'e küçültüp JPEG olarak kullanıcının özel klasörüne yükler. */
-export async function uploadAvatar(file: File): Promise<AuthResult> {
+export async function uploadAvatar(file: File, shape: 'circle' | 'rounded' | 'square' = 'circle'): Promise<AuthResult> {
   if (!supabase) return { ok: false, message: 'Profil fotoğrafı yüklenemiyor.' };
   if (!file.type.startsWith('image/')) return { ok: false, message: 'Lütfen bir görsel dosyası seç.' };
   if (file.size > 8 * 1024 * 1024) return { ok: false, message: 'Fotoğraf en fazla 8 MB olabilir.' };
@@ -106,11 +106,12 @@ export async function uploadAvatar(file: File): Promise<AuthResult> {
     const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('Sıkıştırma başarısız.')), 'image/jpeg', 0.8));
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { ok: false, message: 'Önce hesabına giriş yapmalısın.' };
-    const path = `${user.id}/avatar.jpg`;
-    const { error } = await supabase.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg', upsert: true, cacheControl: '3600' });
+    const path = `${user.id}/avatar.png`;
+    const png = await new Promise<Blob>((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error('PNG dönüştürme başarısız.')), 'image/png'));
+    const { error } = await supabase.storage.from('avatars').upload(path, png, { contentType: 'image/png', upsert: true, cacheControl: '3600' });
     if (error) throw error;
     const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-    const { error: metaError } = await supabase.auth.updateUser({ data: { avatar_url: `${data.publicUrl}?v=${Date.now()}` } });
+    const { error: metaError } = await supabase.auth.updateUser({ data: { avatar_url: `${data.publicUrl}?v=${Date.now()}`, avatar_shape: shape } });
     if (metaError) throw metaError;
     return { ok: true, message: 'Profil fotoğrafın güncellendi.' };
   } catch (error) {
@@ -124,9 +125,9 @@ export async function removeAvatar(): Promise<AuthResult> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { ok: false, message: 'Önce hesabına giriş yapmalısın.' };
-    const { error } = await supabase.storage.from('avatars').remove([`${user.id}/avatar.jpg`]);
+    const { error } = await supabase.storage.from('avatars').remove([`${user.id}/avatar.jpg`, `${user.id}/avatar.png`]);
     if (error) throw error;
-    const { error: metaError } = await supabase.auth.updateUser({ data: { avatar_url: null } });
+    const { error: metaError } = await supabase.auth.updateUser({ data: { avatar_url: null, avatar_shape: 'circle' } });
     if (metaError) throw metaError;
     return { ok: true, message: 'Profil fotoğrafın kaldırıldı.' };
   } catch {
