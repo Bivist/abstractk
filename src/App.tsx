@@ -1243,7 +1243,7 @@ export default function App() {
         )}
 
         {currentTab === 'community' && (
-          <CommunityScreen userId={auth.user?.id || null} avatarUrl={(auth.user?.user_metadata?.avatar_url as string | undefined) || null} notes={paperNotes} pendingPaper={communityPendingPaper} onPendingPaperHandled={() => setCommunityPendingPaper(null)} />
+          <CommunityScreen userId={auth.user?.id || null} avatarUrl={(auth.user?.user_metadata?.avatar_url as string | undefined) || null} avatarShape={(auth.user?.user_metadata?.avatar_shape as 'circle' | 'rounded' | 'square' | undefined) || 'circle'} notes={paperNotes} pendingPaper={communityPendingPaper} onPendingPaperHandled={() => setCommunityPendingPaper(null)} />
         )}
 
         {currentTab === 'sets' && (
