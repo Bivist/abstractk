@@ -323,30 +323,36 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           {langDict.set_lbl_lang || "Uygulama Dili"}
         </span>
         <div className="bg-white dark:bg-[#071828] border border-[#c5dfe9] dark:border-[#0d2f45] rounded-2xl p-2 shadow-sm">
-          <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#dff0f7] dark:bg-[#0d2236] rounded-xl">
-            <button
-              type="button"
-              onClick={() => onUpdateSettings(prev => ({ ...prev, lang: 'tr' }))}
-              className={`py-2 text-xs font-semibold rounded-lg transition-all ${
-                settings.lang === 'tr'
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 p-1 bg-[#dff0f7] dark:bg-[#0d2236] rounded-xl">
+            {([
+              ['tr', 'Türkçe'], ['en', 'English'], ['ar', 'العربية'],
+              ['zh', '简体中文'], ['es', 'Español'],
+            ] as const).map(([code, label]) => (
+              <button
+                key={code}
+                type="button"
+                lang={code === 'zh' ? 'zh-Hans' : code}
+                onClick={() => onUpdateSettings(prev => ({ ...prev, lang: code }))}
+                aria-pressed={settings.lang === code}
+                className={'py-2 px-2 text-xs font-semibold rounded-lg transition-all ' + (settings.lang === code
                   ? 'bg-white dark:bg-[#071828] text-[#0369a1] dark:text-[#38bdf8] shadow-sm'
-                  : 'text-[#4a7a96] dark:text-[#5fa8c8]'
-              }`}
-            >
-              Türkçe
-            </button>
-            <button
-              type="button"
-              onClick={() => onUpdateSettings(prev => ({ ...prev, lang: 'en' }))}
-              className={`py-2 text-xs font-semibold rounded-lg transition-all ${
-                settings.lang === 'en'
-                  ? 'bg-white dark:bg-[#071828] text-[#0369a1] dark:text-[#38bdf8] shadow-sm'
-                  : 'text-[#4a7a96] dark:text-[#5fa8c8]'
-              }`}
-            >
-              English
-            </button>
+                  : 'text-[#4a7a96] dark:text-[#5fa8c8]')}
+              >
+                {label}
+              </button>
+            ))}
           </div>
+          <p className="px-2 pt-2 text-[11px] leading-relaxed text-[#4a7a96] dark:text-[#5fa8c8]">
+            {settings.lang === 'en'
+              ? 'This changes the language of the entire app interface, including menus, settings, dialogs and community screens.'
+              : settings.lang === 'ar'
+                ? 'يغيّر هذا الخيار لغة واجهة التطبيق، بما في ذلك القوائم والإعدادات والنوافذ وشاشات المجتمع.'
+                : settings.lang === 'zh'
+                  ? '此设置将更改整个应用界面的语言，包括菜单、设置、对话框和社区页面。'
+                  : settings.lang === 'es'
+                    ? 'Esta opción cambia el idioma de toda la interfaz, incluidos los menús, ajustes, diálogos y pantallas de la comunidad.'
+                    : 'Bu seçim menüler, ayarlar, pencereler ve topluluk ekranları dâhil uygulamanın tamamının arayüz dilini değiştirir.'}
+          </p>
         </div>
       </div>
 
