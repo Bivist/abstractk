@@ -90,6 +90,7 @@ export default function App() {
   const [communityPendingPaper, setCommunityPendingPaper] = useState<Paper | null>(null);
   const [communitySharePaper, setCommunitySharePaper] = useState<Paper | null>(null);
   const [communityShareConfirmPaper, setCommunityShareConfirmPaper] = useState<Paper | null>(null);
+  const [communityShareCaption, setCommunityShareCaption] = useState('');
   const setCommunityDiagnostic = (message: string) => {
     console.info('[Abstract kamara erişimi]', message);
   };
@@ -677,6 +678,7 @@ export default function App() {
       setToast('Kamara paylaşımı için etkin üyelik gerekiyor.');
       return;
     }
+    setCommunityShareCaption('');
     setCommunityShareConfirmPaper(paper);
   }, [auth.user?.id, communityCanPost]);
 
@@ -686,7 +688,7 @@ export default function App() {
     setCommunityShareConfirmPaper(null);
     const { error } = await supabase.from('community_posts').insert({
       author_id: auth.user.id,
-      body: '',
+      body: communityShareCaption.trim().slice(0, 2000),
       paper: {
         id: paper.id,
         title: paper.title,
@@ -700,7 +702,7 @@ export default function App() {
     });
     if (error) setToast('Makale kamarata paylaşılamadı: ' + error.message);
     else { setToast('Makale kamara akışında paylaşıldı.'); setDetailPaper(null); }
-  }, [auth.user?.id, communityShareConfirmPaper]);
+  }, [auth.user?.id, communityShareConfirmPaper, communityShareCaption]);
 
   const handleSendPaperToCommunity = useCallback((paper: Paper) => {
     if (!communityCanPost || !auth.user) { setToast('Makale göndermek için etkin kamara üyeliği gerekiyor.'); return; }
@@ -1355,6 +1357,8 @@ export default function App() {
           <h2 id="community-share-title" className="mt-2 text-lg font-bold text-[var(--ink)]">Akışta paylaş</h2>
           <p className="mt-1 text-sm leading-6 text-[var(--mu)]">Bu makale, kamara akışında takipçilerinle paylaşılacak.</p>
           <div className="mt-3 rounded-xl bg-[var(--bg)] p-3 text-sm font-semibold text-[var(--ink)]">{communityShareConfirmPaper.title}</div>
+          <label className="mt-3 block text-xs font-semibold text-[var(--mu)]">Bu makaleyle birlikte ne paylaşmak istersin? <span className="font-normal">(isteğe bağlı)</span><textarea value={communityShareCaption} onChange={event=>setCommunityShareCaption(event.target.value)} maxLength={2000} rows={3} placeholder="Makale hakkında düşünceni veya kısa bir notunu yaz…" className="mt-1 w-full resize-y rounded-xl border border-[var(--ln)] bg-[var(--bg)] p-3 text-sm font-normal text-[var(--ink)] outline-none focus:border-sky-500"/></label>
+          <div className="mt-1 text-right text-[10px] text-[var(--mu)]">{communityShareCaption.length}/2000</div>
           <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={()=>setCommunityShareConfirmPaper(null)} className="rounded-xl border border-[var(--ln)] px-4 py-2.5 text-sm font-semibold text-[var(--mu)]">Vazgeç</button><button type="button" onClick={()=>void confirmSharePaperToCommunity()} className="rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white">Paylaş</button></div>
         </section>
       </div>}
