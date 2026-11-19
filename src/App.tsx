@@ -1101,6 +1101,7 @@ export default function App() {
         onToggleTheme={handleToggleTheme}
         reelsMode={currentTab === 'disc' && settings.reelsMode}
         avatarUrl={(auth.user?.user_metadata?.avatar_url as string | undefined) || null}
+        avatarShape={(auth.user?.user_metadata?.avatar_shape as 'circle' | 'rounded' | 'square' | undefined) || 'circle'}
         showAvatar={currentTab !== 'sets'}
       />
       </div>
@@ -1256,6 +1257,7 @@ export default function App() {
             userEmail={auth.user?.email ?? null}
             userDisplayName={(auth.user?.user_metadata?.display_name as string | undefined) || (auth.user?.user_metadata?.full_name as string | undefined) || (auth.user?.user_metadata?.name as string | undefined) || null}
             userAvatarUrl={(auth.user?.user_metadata?.avatar_url as string | undefined) || null}
+            userAvatarShape={(auth.user?.user_metadata?.avatar_shape as 'circle' | 'rounded' | 'square' | undefined) || 'circle'}
             onUploadAvatar={uploadAvatar}
             onRemoveAvatar={removeAvatar}
             onUpdateDisplayName={updateDisplayName}
