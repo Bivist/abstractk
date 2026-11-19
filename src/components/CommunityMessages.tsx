@@ -39,7 +39,7 @@ function safeHttpUrl(value: unknown): string | null {
 
 const MemberAvatar: React.FC<{ profile?: Profile | null; label?: string; size?: 'sm' | 'md'; onClick?: () => void }> = ({ profile, label, size = 'md', onClick }) => {
   const dimension = size === 'sm' ? 'h-8 w-8 text-[10px]' : 'h-11 w-11 text-sm';
-  const name = (profile?.display_name || profile?.username || label || 'Topluluk üyesi').trim();
+  const name = (profile?.display_name || profile?.username || label || 'Kamara üyesi').trim();
   const initial = name.charAt(0).toLocaleUpperCase('tr-TR') || 'A';
   const content = (
     <span className={'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--ln)] bg-sky-100 font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-200 ' + dimension}>
@@ -394,7 +394,7 @@ export const CommunityMessages: React.FC<{
             const last = latestMessages[conversation.id];
             const readAt = lastReadAt[conversation.id];
             const unread = Boolean(last && last.sender_id !== userId && (!readAt || Date.parse(last.created_at) > Date.parse(readAt)));
-            const title = conversation.kind === 'group' ? conversation.title || 'Akademik grup' : person?.display_name || person?.username || 'Topluluk üyesi';
+            const title = conversation.kind === 'group' ? conversation.title || 'Akademik grup' : person?.display_name || person?.username || 'Kamara üyesi';
             const preview = last
               ? last.body || (last.attachment_type === 'paper' ? 'Bir makale paylaştı' : last.attachment_type ? 'Bir içerik paylaştı' : 'Yeni mesaj')
               : 'Henüz mesaj yok';
@@ -442,7 +442,7 @@ export const CommunityMessages: React.FC<{
             {!loadingMessages && messages.map(message => {
               const mine = message.sender_id === userId;
               const sender = profiles[message.sender_id] || null;
-              const senderName = sender?.display_name || sender?.username || 'Topluluk üyesi';
+              const senderName = sender?.display_name || sender?.username || 'Kamara üyesi';
               return (
                 <div key={message.id} className={'flex items-end gap-2 ' + (mine ? 'justify-end' : 'justify-start')}>
                   {!mine && <MemberAvatar profile={sender} label={senderName} size="sm" onClick={() => onOpenProfile(message.sender_id)} />}
@@ -489,7 +489,7 @@ export const CommunityMessages: React.FC<{
         </> : <div className="m-auto max-w-sm px-6 py-16 text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"><MessageCircle size={24} /></div>
           <h3 className="text-base font-bold text-[var(--ink)]">Sohbetlerine hoş geldin</h3>
-          <p className="mt-2 text-sm leading-6 text-[var(--mu)]">Soldan bir konuşma seç veya topluluk üyeleri arasından bir araştırmacıya mesaj gönder.</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--mu)]">Soldan bir konuşma seç veya kamara üyeleri arasından bir araştırmacıya mesaj gönder.</p>
         </div>}
       </section>
 
