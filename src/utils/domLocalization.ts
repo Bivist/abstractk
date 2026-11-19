@@ -1,6 +1,6 @@
 import { I18N } from '../constants/i18n';
 
-type Language = 'tr' | 'en';
+type Language = keyof typeof I18N;
 
 /**
  * Exact UI-copy translations for legacy screens that still contain inline
@@ -413,17 +413,23 @@ const LEGACY_UI_EN: Record<string, string> = {
   'Bu metin Abstract\'ın mevcut teknik işleyişi esas alınarak hazırlanmış genel bilgilendirmedir; hukuki danışmanlık veya mevzuata tam uyum garantisi değildir. Özellikle veri sorumlusu iletişim kanalı, saklama süreleri, hizmet sağlayıcı sözleşmeleri ve uluslararası aktarım mekanizmaları netleştirilerek yayına alınmadan önce hukuk uzmanı tarafından gözden geçirilmelidir.': 'This notice is general information based on Abstract’s current technical operation; it is not legal advice or a guarantee of full legal compliance. In particular, the data controller’s contact channel, retention periods, service-provider agreements and international transfer mechanisms should be clarified and reviewed by a legal professional before publication.',
 };
 
-const KEY_TRANSLATIONS: Record<string, string> = Object.fromEntries(
-  Object.keys(I18N.tr).flatMap((key) => {
-    const tr = I18N.tr[key as keyof typeof I18N.tr];
-    const en = I18N.en[key as keyof typeof I18N.en];
-    return typeof tr === 'string' && typeof en === 'string' ? [[tr, en]] : [];
-  })
-);
-
-const EN_TO_TR: Record<string, string> = Object.fromEntries(
-  Object.entries({ ...KEY_TRANSLATIONS, ...LEGACY_UI_EN }).map(([tr, en]) => [en, tr])
-);
+function buildTranslationDictionary(lang: Language): Record<string, string> {
+  const result: Record<string, string> = {};
+  const target = I18N[lang];
+  for (const key of Object.keys(I18N.tr)) {
+    const translated = target[key as keyof typeof target];
+    if (typeof translated !== 'string') continue;
+    for (const sourceLang of Object.keys(I18N) as Language[]) {
+      const source = I18N[sourceLang][key as keyof typeof I18N[typeof sourceLang]];
+      if (typeof source === 'string') result[source] = translated;
+    }
+  }
+  if (lang === 'en') Object.assign(result, LEGACY_UI_EN);
+  if (lang === 'tr') {
+    for (const [turkish, english] of Object.entries(LEGACY_UI_EN)) result[english] = turkish;
+  }
+  return result;
+}
 
 const TR_MONTHS: Record<string, string> = {
   Ocak: 'January', Şubat: 'February', Mart: 'March', Nisan: 'April',
@@ -437,42 +443,18 @@ const EN_MONTHS_TO_TR: Record<string, string> = Object.fromEntries(
 function translateKnownText(value: string, lang: Language): string {
   const trimmed = value.trim();
   if (!trimmed) return value;
-  const dictionary = lang === 'en' ? { ...KEY_TRANSLATIONS, ...LEGACY_UI_EN } : EN_TO_TR;
-  const translated = dictionary[trimmed];
+  const translated = buildTranslationDictionary(lang)[trimmed];
   if (translated) return value.replace(trimmed, translated);
 
-  // Localized long dates are rendered by native Intl calls in several screens.
-  // Convert only recognizable day-month-year date fragments.
-  const months = lang === 'en' ? TR_MONTHS : EN_MONTHS_TO_TR;
-  const monthPattern = lang === 'en'
-    ? /(\d{1,2})\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\s+(\d{4})/g
-    : /(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/g;
-  if (monthPattern.test(value)) {
-    monthPattern.lastIndex = 0;
-    return value.replace(monthPattern, (_whole, day, month, year) => `${day} ${months[month] || month} ${year}`);
-  }
-
   if (lang === 'en') {
-    let match = trimmed.match(/^(\d+) kayıt listeleniyor$/);
+    let match = trimmed.match(/^(\\d+) kayıt listeleniyor$/);
     if (match) return value.replace(trimmed, `${match[1]} entries listed`);
-    match = trimmed.match(/^(\d+) üye listeleniyor$/);
+    match = trimmed.match(/^(\\d+) üye listeleniyor$/);
     if (match) return value.replace(trimmed, `${match[1]} members listed`);
-    match = trimmed.match(/^(\d+) seçildi$/);
+    match = trimmed.match(/^(\\d+) seçildi$/);
     if (match) return value.replace(trimmed, `${match[1]} selected`);
-    match = trimmed.match(/^(\d+) açık$/);
-    if (match) return value.replace(trimmed, `${match[1]} open`);
-    match = trimmed.match(/^(\d+) makale kaydedildi$/);
+    match = trimmed.match(/^(\\d+) makale kaydedildi$/);
     if (match) return value.replace(trimmed, `${match[1]} papers saved`);
-    match = trimmed.match(/^(\d+) Gün Seri$/);
-    if (match) return value.replace(trimmed, `${match[1]}-day streak`);
-    match = trimmed.match(/^Günde (\d+) makale hedefi$/);
-    if (match) return value.replace(trimmed, `Daily goal: ${match[1]} papers`);
-    match = trimmed.match(/^(\d+) yüklü$/);
-    if (match) return value.replace(trimmed, `${match[1]} loaded`);
-    match = trimmed.match(/^(\d+) seçili$/);
-    if (match) return value.replace(trimmed, `${match[1]} selected`);
-    match = trimmed.match(/^(\d+) kişiye gönderilecek\. Yeni kişilere önce mesaj isteği gider\.$/);
-    if (match) return value.replace(trimmed, `Will be sent to ${match[1]} recipient(s). New contacts will first receive a message request.`);
   }
   return value;
 }
@@ -521,7 +503,7 @@ function translateElement(root: ParentNode, lang: Language): void {
  * the selected language as well.
  */
 export function observeAppLanguage(lang: Language): () => void {
-  document.documentElement.lang = lang;
+  document.documentElement.lang = lang === 'zh' ? 'zh-Hans' : lang;\n  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';\n  document.documentElement.dataset.appLanguage = lang;
   const root = document.getElementById('root');
   if (!root) return () => {};
 
