@@ -335,12 +335,32 @@ const EN_TO_TR: Record<string, string> = Object.fromEntries(
   Object.entries({ ...KEY_TRANSLATIONS, ...LEGACY_UI_EN }).map(([tr, en]) => [en, tr])
 );
 
+const TR_MONTHS: Record<string, string> = {
+  Ocak: 'January', Şubat: 'February', Mart: 'March', Nisan: 'April',
+  Mayıs: 'May', Haziran: 'June', Temmuz: 'July', Ağustos: 'August',
+  Eylül: 'September', Ekim: 'October', Kasım: 'November', Aralık: 'December',
+};
+const EN_MONTHS_TO_TR: Record<string, string> = Object.fromEntries(
+  Object.entries(TR_MONTHS).map(([tr, en]) => [en, tr])
+);
+
 function translateKnownText(value: string, lang: Language): string {
   const trimmed = value.trim();
   if (!trimmed) return value;
   const dictionary = lang === 'en' ? { ...KEY_TRANSLATIONS, ...LEGACY_UI_EN } : EN_TO_TR;
   const translated = dictionary[trimmed];
   if (translated) return value.replace(trimmed, translated);
+
+  // Localized long dates are rendered by native Intl calls in several screens.
+  // Convert only recognizable day-month-year date fragments.
+  const months = lang === 'en' ? TR_MONTHS : EN_MONTHS_TO_TR;
+  const monthPattern = lang === 'en'
+    ? /(\\d{1,2})\\s+(Ocak|Şubat|Mart|Nisan|Mayıs|Haziran|Temmuz|Ağustos|Eylül|Ekim|Kasım|Aralık)\\s+(\\d{4})/g
+    : /(\\d{1,2})\\s+(January|February|March|April|May|June|July|August|September|October|November|December)\\s+(\\d{4})/g;
+  if (monthPattern.test(value)) {
+    monthPattern.lastIndex = 0;
+    return value.replace(monthPattern, (_whole, day, month, year) => `${day} ${months[month] || month} ${year}`);
+  }
 
   if (lang === 'en') {
     let match = trimmed.match(/^(\d+) kayıt listeleniyor$/);
