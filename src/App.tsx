@@ -83,7 +83,7 @@ export default function App() {
   // Active Tab
   const [currentTab, setCurrentTab] = useState<TabId>('home');
 
-  // Topluluk erişimi: kullanıcının kendi üyelik satırını RLS üzerinden oku.
+  // Kamara erişimi: kullanıcının kendi üyelik satırını RLS üzerinden oku.
   // Böylece yönetici tespiti için ayrı RPC çağrısına bağımlı kalınmaz.
   const [communityNavVisible, setCommunityNavVisible] = useState(false);
   const [communityCanPost, setCommunityCanPost] = useState(false);
@@ -91,7 +91,7 @@ export default function App() {
   const [communitySharePaper, setCommunitySharePaper] = useState<Paper | null>(null);
   const [communityShareConfirmPaper, setCommunityShareConfirmPaper] = useState<Paper | null>(null);
   const setCommunityDiagnostic = (message: string) => {
-    console.info('[Abstract topluluk erişimi]', message);
+    console.info('[Abstract kamara erişimi]', message);
   };
   useEffect(() => {
     let active = true;
@@ -150,7 +150,7 @@ export default function App() {
           if (active) {
             setCommunityNavVisible(true);
             setCommunityCanPost(true);
-            setCommunityDiagnostic(`Yönetici yetkisi doğrulandı · Topluluk sekmesi açık · UID: ${uid}`);
+            setCommunityDiagnostic(`Yönetici yetkisi doğrulandı · Kamara sekmesi açık · UID: ${uid}`);
           }
           return;
         }
@@ -168,7 +168,7 @@ export default function App() {
           if (active) {
             setCommunityNavVisible(allowed);
             setCommunityCanPost(allowed);
-            setCommunityDiagnostic(`Üyelik: MEMBER · Topluluk etkin: ${String(enabled)} · Sekme: ${allowed ? 'AÇIK' : 'KAPALI'} · UID: ${uid}`);
+            setCommunityDiagnostic(`Üyelik: MEMBER · Kamara etkin: ${String(enabled)} · Sekme: ${allowed ? 'AÇIK' : 'KAPALI'} · UID: ${uid}`);
           }
           return;
         }
@@ -182,7 +182,7 @@ export default function App() {
           setCommunityDiagnostic(`Yönetici/üye yetkisi bulunamadı (rol: ${role || 'yok'}) · UID: ${uid}`);
         }
       } catch (error) {
-        console.warn('Topluluk erişimi doğrulanamadı:', error);
+        console.warn('Kamara erişimi doğrulanamadı:', error);
         if (active) {
           setCommunityNavVisible(knownAdmin);
           setCommunityCanPost(knownAdmin);
@@ -453,12 +453,12 @@ export default function App() {
     SFX.setEnabled(settings.sound);
   }, [settings]);
 
-  // Giriş yapan kullanıcıların topluluk öneri profili otomatik eşitlenir.
+  // Giriş yapan kullanıcıların kamara öneri profili otomatik eşitlenir.
   useEffect(() => {
     if (!auth.user || !supabase) return;
     const timer = window.setTimeout(() => {
       syncCommunityProfile(likedPapers, readingHistory, true)
-        .catch(error => console.warn('Topluluk profili eşitlenemedi:', error));
+        .catch(error => console.warn('Kamara profili eşitlenemedi:', error));
     }, 1200);
     return () => window.clearTimeout(timer);
   }, [auth.user?.id, likedPapers, readingHistory]);
@@ -674,7 +674,7 @@ export default function App() {
 
   const handleSharePaperToCommunity = useCallback(async (paper: Paper) => {
     if (!supabase || !auth.user || !communityCanPost) {
-      setToast('Topluluk paylaşımı için etkin üyelik gerekiyor.');
+      setToast('Kamara paylaşımı için etkin üyelik gerekiyor.');
       return;
     }
     setCommunityShareConfirmPaper(paper);
@@ -698,12 +698,12 @@ export default function App() {
         abstract: paper.abs
       }
     });
-    if (error) setToast('Makale toplulukta paylaşılamadı: ' + error.message);
-    else { setToast('Makale topluluk akışında paylaşıldı.'); setDetailPaper(null); }
+    if (error) setToast('Makale kamarata paylaşılamadı: ' + error.message);
+    else { setToast('Makale kamara akışında paylaşıldı.'); setDetailPaper(null); }
   }, [auth.user?.id, communityShareConfirmPaper]);
 
   const handleSendPaperToCommunity = useCallback((paper: Paper) => {
-    if (!communityCanPost || !auth.user) { setToast('Makale göndermek için etkin topluluk üyeliği gerekiyor.'); return; }
+    if (!communityCanPost || !auth.user) { setToast('Makale göndermek için etkin kamara üyeliği gerekiyor.'); return; }
     setCommunitySharePaper(paper);
   }, [communityCanPost, auth.user?.id]);
 
@@ -799,9 +799,9 @@ export default function App() {
           let communityIds: string[] = [];
           if (communityEnabledRef.current) {
             try { communityIds = await getCommunityRecommendationIds(); }
-            catch (communityError) { console.warn('Topluluk önerileri alınamadı:', communityError); }
+            catch (communityError) { console.warn('Kamara önerileri alınamadı:', communityError); }
           }
-          // Toplulukta benzer ilgi alanlarına sahip kullanıcıların beğendiği makaleleri,
+          // Kamarata benzer ilgi alanlarına sahip kullanıcıların beğendiği makaleleri,
           // mevcut arama havuzunda yoksa OpenAlex'ten ayrıca getir. Dar filtreler varken filtreleri delme.
           let communityPapers: Paper[] = [];
           const activeFilter = filterRef.current;
@@ -1351,9 +1351,9 @@ export default function App() {
       />
       {communityShareConfirmPaper&&<div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/45 p-4" onClick={()=>setCommunityShareConfirmPaper(null)}>
         <section role="dialog" aria-modal="true" aria-labelledby="community-share-title" onClick={event=>event.stopPropagation()} className="w-full max-w-sm rounded-2xl border border-[var(--ln)] bg-[var(--sf)] p-5 shadow-2xl">
-          <div className="text-[10px] font-bold uppercase tracking-[.18em] text-sky-700 dark:text-sky-300">Abstract · Topluluk</div>
+          <div className="text-[10px] font-bold uppercase tracking-[.18em] text-sky-700 dark:text-sky-300">Abstract · Kamara</div>
           <h2 id="community-share-title" className="mt-2 text-lg font-bold text-[var(--ink)]">Akışta paylaş</h2>
-          <p className="mt-1 text-sm leading-6 text-[var(--mu)]">Bu makale, topluluk akışında takipçilerinle paylaşılacak.</p>
+          <p className="mt-1 text-sm leading-6 text-[var(--mu)]">Bu makale, kamara akışında takipçilerinle paylaşılacak.</p>
           <div className="mt-3 rounded-xl bg-[var(--bg)] p-3 text-sm font-semibold text-[var(--ink)]">{communityShareConfirmPaper.title}</div>
           <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={()=>setCommunityShareConfirmPaper(null)} className="rounded-xl border border-[var(--ln)] px-4 py-2.5 text-sm font-semibold text-[var(--mu)]">Vazgeç</button><button type="button" onClick={()=>void confirmSharePaperToCommunity()} className="rounded-xl bg-sky-700 px-4 py-2.5 text-sm font-semibold text-white">Paylaş</button></div>
         </section>
