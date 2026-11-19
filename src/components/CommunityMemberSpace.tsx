@@ -6,7 +6,7 @@ import { CommunityMessages } from './CommunityMessages';
 import { TAXONOMY } from '../constants/taxonomy';
 import type { TaxonomyNode } from '../types';
 
-type Profile = { user_id:string; username:string; display_name:string; avatar_url:string|null; bio:string; affiliation:string; research_interests:string[]; profile_visibility?:'community'|'private'; searchable?:boolean; };
+type Profile = { user_id:string; username:string; display_name:string; avatar_url:string|null; avatar_shape?:'circle'|'rounded'|'square'; bio:string; affiliation:string; research_interests:string[]; profile_visibility?:'community'|'private'; searchable?:boolean; };
 type Post = { id:string; author_id:string; body:string; paper:Record<string,unknown>|null; created_at:string; is_featured?:boolean; repost_of?:string|null; repost_note?:string|null; moderation_status?:string; };
 type Conversation = { id:string; kind:'direct'|'group'; title:string|null; updated_at:string; };
 type Message = { id:string; conversation_id:string; sender_id:string; body:string; attachment_type:string|null; attachment:Record<string,unknown>|null; created_at:string; };
@@ -20,7 +20,7 @@ function errorText(error:unknown) { return error && typeof error==='object' && '
 function shortId(id:string) { return id.slice(0,8); }
 function safeHttpUrl(value:unknown):string|null { try { const url=new URL(String(value)); return url.protocol==='https:'||url.protocol==='http:'?url.href:null; } catch { return null; } }
 
-export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|null; notes:PaperNote[]; pendingPaper?:import('../types').Paper|null; onPendingPaperHandled?:()=>void; onReturnToAdmin?:()=>void}> = ({userId,avatarUrl,notes,pendingPaper,onPendingPaperHandled,onReturnToAdmin}) => {
+export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|null; avatarShape?:'circle'|'rounded'|'square'; notes:PaperNote[]; pendingPaper?:import('../types').Paper|null; onPendingPaperHandled?:()=>void; onReturnToAdmin?:()=>void}> = ({userId,avatarUrl,avatarShape='circle',notes,pendingPaper,onPendingPaperHandled,onReturnToAdmin}) => {
   const [section,setSection]=useState<'feed'|'messages'|'people'|'notes'|'profile'|'requests'>('feed');
   const [profile,setProfile]=useState<Profile|null>(null);
   const [profileVisibility,setProfileVisibility]=useState<'community'|'private'>('community');
@@ -83,7 +83,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     const {data:ownPostRows,error:ownPostError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').eq('author_id',userId).order('created_at',{ascending:false}).limit(60);
     if(ownPostError)throw ownPostError;
     setMyPosts((ownPostRows||[]) as Post[]);
-    const {data,error}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests,profile_visibility').eq('user_id',userId).maybeSingle();
+    const {data,error}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,avatar_shape,bio,affiliation,research_interests,profile_visibility').eq('user_id',userId).maybeSingle();
     if(error) throw error;
     if(data) {
       const p=data as Profile; setProfile(p);setProfileVisibility((data as any).profile_visibility==='private'?'private':'community');
@@ -137,7 +137,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     if(error) throw error;
     const rows=(data||[]) as Post[]; setPosts(rows); setFeedHasMore(rows.length===40);
     const sourceIds=[...new Set(rows.map(p=>p.repost_of).filter((id):id is string=>!!id))];
-    if(sourceIds.length){const {data:sourceRows,error:sourceError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').in('id',sourceIds);if(sourceError)throw sourceError;const sourceList=(sourceRows||[]) as Post[];setSourcePosts(prev=>({...prev,...Object.fromEntries(sourceList.map(p=>[p.id,p]))}));const sourceAuthors=[...new Set(sourceList.map(p=>p.author_id))];if(sourceAuthors.length){const {data:sourceProfiles,error:sourceProfileError}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,bio,affiliation,research_interests').in('user_id',sourceAuthors);if(sourceProfileError)throw sourceProfileError;setProfiles(prev=>({...prev,...Object.fromEntries((sourceProfiles||[]).map((p:any)=>[p.user_id,p as Profile]))}));}}
+    if(sourceIds.length){const {data:sourceRows,error:sourceError}=await supabase.from('community_posts').select('id,author_id,body,paper,created_at,is_featured,repost_of,repost_note,moderation_status').in('id',sourceIds);if(sourceError)throw sourceError;const sourceList=(sourceRows||[]) as Post[];setSourcePosts(prev=>({...prev,...Object.fromEntries(sourceList.map(p=>[p.id,p]))}));const sourceAuthors=[...new Set(sourceList.map(p=>p.author_id))];if(sourceAuthors.length){const {data:sourceProfiles,error:sourceProfileError}=await supabase.from('community_profiles').select('user_id,username,display_name,avatar_url,avatar_shape,bio,affiliation,research_interests').in('user_id',sourceAuthors);if(sourceProfileError)throw sourceProfileError;setProfiles(prev=>({...prev,...Object.fromEntries((sourceProfiles||[]).map((p:any)=>[p.user_id,p as Profile]))}));}}
     const ids=rows.map(p=>p.id);
     if(!ids.length) {setProfiles({});setLikes(new Set());setCommentCounts({});}
     if(ids.length){
@@ -262,16 +262,16 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
   useEffect(()=>{
     if(!supabase||!profile)return;
     const nextAvatar=avatarUrl||null;
-    if((profile.avatar_url||null)===nextAvatar)return;
+    if((profile.avatar_url||null)===nextAvatar && (profile.avatar_shape||'circle')===avatarShape)return;
     let cancelled=false;
-    void supabase.from('community_profiles').update({avatar_url:nextAvatar}).eq('user_id',userId).then(({error})=>{
+    void supabase.from('community_profiles').update({avatar_url:nextAvatar,avatar_shape:avatarShape}).eq('user_id',userId).then(({error})=>{
       if(cancelled)return;
       if(error){setError(errorText(error));return;}
-      setProfile(current=>current?{...current,avatar_url:nextAvatar}:current);
-      setProfiles(current=>({...current,[userId]:current[userId]?{...current[userId],avatar_url:nextAvatar}:current[userId]}));
+      setProfile(current=>current?{...current,avatar_url:nextAvatar,avatar_shape:avatarShape}:current);
+      setProfiles(current=>({...current,[userId]:current[userId]?{...current[userId],avatar_url:nextAvatar,avatar_shape:avatarShape}:current[userId]}));
     });
     return()=>{cancelled=true;};
-  },[avatarUrl,profile?.user_id,profile?.avatar_url,userId]);
+  },[avatarUrl,avatarShape,profile?.user_id,profile?.avatar_url,profile?.avatar_shape,userId]);
 
   useEffect(()=>{if(pendingPaper)setSection('people');},[pendingPaper?.id]);
 
@@ -289,7 +289,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
     if(!/^[a-zA-Z0-9_.-]{3,30}$/.test(username)){setError('Kullanıcı adı 3–30 karakter olmalı; harf, sayı, nokta, alt çizgi ve tire kullanılabilir.');return;}
     setBusy(true);setError('');setNotice('');
     try{
-      const payload={user_id:userId,username,display_name:profileDraft.display_name.trim().slice(0,80),avatar_url:avatarUrl||null,bio:profileDraft.bio.trim().slice(0,500),affiliation:profileDraft.affiliation.trim().slice(0,120),research_interests:selectedResearchInterests.slice(0,60),profile_visibility:profileVisibility,searchable:true};
+      const payload={user_id:userId,username,display_name:profileDraft.display_name.trim().slice(0,80),avatar_url:avatarUrl||null,avatar_shape:avatarShape,bio:profileDraft.bio.trim().slice(0,500),affiliation:profileDraft.affiliation.trim().slice(0,120),research_interests:selectedResearchInterests.slice(0,60),profile_visibility:profileVisibility,searchable:true};
       const {error}=await supabase.from('community_profiles').upsert(payload,{onConflict:'user_id'});if(error)throw error;
       await loadProfile();setNotice('Kamara profilin kaydedildi.');
     }catch(e){setError(errorText(e));}finally{setBusy(false);}
