@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { SettingsState } from '../types';
 import { LegalDocumentLinks, LegalDocumentModal, type LegalDocumentKey } from './LegalDocuments';
+import { AvatarCropper, type AvatarShape } from './AvatarCropper';
 import { Smartphone, Monitor, Trash2, LogIn, LogOut, UserRound, Cloud, Save, Camera, X, NotebookPen, ChevronRight, Cookie, ShieldCheck } from 'lucide-react';
 
 interface SettingsScreenProps {
@@ -14,7 +15,8 @@ interface SettingsScreenProps {
   userEmail?: string | null;
   userDisplayName?: string | null;
   userAvatarUrl?: string | null;
-  onUploadAvatar?: (file: File) => Promise<{ ok: boolean; message?: string }>;
+  userAvatarShape?: AvatarShape;
+  onUploadAvatar?: (file: File, shape: AvatarShape) => Promise<{ ok: boolean; message?: string }>;
   onRemoveAvatar?: () => Promise<{ ok: boolean; message?: string }>;
   onUpdateDisplayName?: (name: string) => Promise<{ ok: boolean; message?: string }>;
   syncStatus?: 'idle' | 'syncing' | 'synced' | 'error';
@@ -33,6 +35,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   userEmail = null,
   userDisplayName = null,
   userAvatarUrl = null,
+  userAvatarShape = 'circle',
   onUploadAvatar,
   onRemoveAvatar,
   onUpdateDisplayName,
@@ -45,6 +48,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [nameBusy, setNameBusy] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
+  const [avatarCropFile, setAvatarCropFile] = useState<File | null>(null);
   const [nameMessage, setNameMessage] = useState<string | null>(null);
   const [activeLegalDocument, setActiveLegalDocument] = useState<LegalDocumentKey | null>(null);
   useEffect(() => { setDisplayName(userDisplayName || ''); }, [userDisplayName]);
@@ -75,7 +79,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             {userEmail ? (
               <div className="p-4 space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-tr from-sky-600 to-cyan-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-sky-600/20 border-2 border-white dark:border-[#0d2f45]">
+                  <div className="w-16 h-16 overflow-hidden bg-gradient-to-tr from-sky-600 to-cyan-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-sky-600/20 border-2 border-white dark:border-[#0d2f45]" style={{ borderRadius: userAvatarShape === "circle" ? "9999px" : userAvatarShape === "rounded" ? "16px" : "4px" }}>
                     {userAvatarUrl ? <img src={userAvatarUrl} alt="Profil fotoğrafı" className="w-full h-full object-cover" /> : <UserRound className="w-7 h-7" />}
                   </div>
                   <div className="min-w-0">
@@ -89,12 +93,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 <div className="flex flex-wrap items-center gap-2">
                   <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-sky-700 text-white text-xs font-bold cursor-pointer">
                     <Camera className="w-4 h-4" /> {userAvatarUrl ? 'Fotoğrafı değiştir' : 'Fotoğraf ekle'}
-                    <input type="file" accept="image/*" className="sr-only" disabled={avatarBusy} onChange={async e => {
+                    <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={avatarBusy} onChange={e => {
                       const file = e.target.files?.[0]; e.currentTarget.value = '';
-                      if (!file || !onUploadAvatar) return;
-                      setAvatarBusy(true); setAvatarMessage(null);
-                      try { const result = await onUploadAvatar(file); setAvatarMessage(result.message || (result.ok ? 'Kaydedildi.' : 'Yüklenemedi.')); }
-                      finally { setAvatarBusy(false); }
+                      if (!file) return;
+                      if (file.size > 8 * 1024 * 1024) { setAvatarMessage('Fotoğraf en fazla 8 MB olabilir.'); return; }
+                      setAvatarCropFile(file);
                     }} />
                   </label>
                   {userAvatarUrl && <button type="button" disabled={avatarBusy} onClick={async () => {
@@ -408,6 +411,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           Binali © 2026. All rights reserved.
         </p>
       </footer>
+      {avatarCropFile && <AvatarCropper file={avatarCropFile} onCancel={() => setAvatarCropFile(null)} onSave={async (file, shape) => {
+        if (!onUploadAvatar) return;
+        setAvatarBusy(true); setAvatarMessage(null);
+        try { const result = await onUploadAvatar(file, shape); setAvatarMessage(result.message || (result.ok ? 'Kaydedildi.' : 'Yüklenemedi.')); if (result.ok) setAvatarCropFile(null); }
+        finally { setAvatarBusy(false); }
+      }} />}
       {activeLegalDocument && <LegalDocumentModal documentKey={activeLegalDocument} onClose={() => setActiveLegalDocument(null)} />}
     </div>
   );
