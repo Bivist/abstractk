@@ -267,7 +267,7 @@ export const CommunityMessages: React.FC<{
     } finally {
       setLoadingMessages(false);
     }
-  }, []);
+  }, [signMessageImages]);
 
   useEffect(() => {
     let active = true;
