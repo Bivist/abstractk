@@ -1387,6 +1387,7 @@ export default function App() {
           recovery={auth.recovery}
           onRecoveryDone={() => { auth.clearRecovery(); setToast(langDict.password_updated_toast || 'Şifren güncellendi'); }}
           langDict={langDict}
+          onCommunityConsentChange={(accepted) => setSettings(prev => ({ ...prev, communityRecommendations: accepted }))}
         />
       )}
 
