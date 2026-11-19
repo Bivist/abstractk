@@ -356,7 +356,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
       const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       if(recipients.some(id=>!uuidPattern.test(id)))throw new Error('Alıcı listesinde geçersiz hesap kimliği var. Lütfen kişileri yeniden seç.');
       const attachment={id:pendingPaper.id,title:String(pendingPaper.title||'Akademik makale').slice(0,500),url:safeHttpUrl(pendingPaper.link),authors:String(pendingPaper.authors||'').slice(0,1000),journal:String(pendingPaper.journal||'').slice(0,300),year:pendingPaper.year,field:String(pendingPaper.sub||pendingPaper.field||'').slice(0,200),abstract:String(pendingPaper.abs||'').slice(0,12000)};
-      let sent=0,requested=0;const failed:string[]=[];
+      let sent=0,requested=0;let firstConversationId:string|null=null;const failed:string[]=[];
       for(const recipientId of recipients){
         try{
           const {data:allowed,error:permissionError}=await supabase.rpc('community_can_message',{p_other:recipientId});
@@ -367,7 +367,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
             if(typeof conversationId!=='string'||!uuidPattern.test(conversationId))throw new Error('Sohbet kimliği geçerli UUID değil.');
             const {error:sendError}=await supabase.rpc('community_send_message',{p_conversation_id:conversationId,p_body:'Seninle bir akademik makale paylaştı.',p_attachment_type:'paper',p_attachment:attachment});
             if(sendError)throw sendError;
-            sent++;
+            sent++;if(!firstConversationId)firstConversationId=conversationId;
           }else{
             const {error:requestError}=await supabase.rpc('community_create_message_request',{p_recipient:recipientId,p_body:'Seninle bir akademik makale paylaştı.',p_attachment_type:'paper',p_attachment:attachment});
             if(requestError)throw requestError;
@@ -379,7 +379,7 @@ export const CommunityMemberSpace:React.FC<{userId:string; avatarUrl?:string|nul
       await loadConversations();
       if(sent+requested>0)setNotice(sent&&requested? 'Makale '+sent+' kişiye doğrudan, '+requested+' kişiye mesaj isteği olarak gönderildi.':sent?'Makale seçtiğin üyelere gönderildi.':'Makale mesaj isteği olarak gönderildi.');
       if(failed.length)setError('Şu alıcılara gönderilemedi: '+failed.join(', ')+'.');
-      if(sent>0){const {data:rows}=await supabase.from('community_conversations').select('id').order('updated_at',{ascending:false}).limit(1);if(rows?.[0]?.id)await openConversation(rows[0].id);}
+      if(firstConversationId)await openConversation(firstConversationId);
     }catch(e){setError(errorText(e));}finally{setBusy(false);}
   };
   const sendMessage=async()=>{
