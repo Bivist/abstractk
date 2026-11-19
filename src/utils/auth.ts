@@ -103,7 +103,6 @@ export async function uploadAvatar(file: File, shape: 'circle' | 'rounded' | 'sq
     if (!ctx) throw new Error('Görsel işlenemedi.');
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
     image.close();
-    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('Sıkıştırma başarısız.')), 'image/jpeg', 0.8));
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { ok: false, message: 'Önce hesabına giriş yapmalısın.' };
     const path = `${user.id}/avatar.png`;
